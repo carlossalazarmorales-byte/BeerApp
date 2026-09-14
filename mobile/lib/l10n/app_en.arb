@@ -1,0 +1,72 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "BeerApp",
+  "@appTitle": {
+    "description": "The application title, used by the OS task switcher and app metadata."
+  },
+
+  "navMap": "Map",
+  "@navMap": {
+    "description": "Bottom navigation label for the Map destination."
+  },
+  "navDiscover": "Discover",
+  "@navDiscover": {
+    "description": "Bottom navigation label for the Discover destination."
+  },
+  "navScan": "Scan",
+  "@navScan": {
+    "description": "Bottom navigation label for the Scan destination."
+  },
+  "navCollection": "Collection",
+  "@navCollection": {
+    "description": "Bottom navigation label for the Collection destination."
+  },
+  "navProfile": "Profile",
+  "@navProfile": {
+    "description": "Bottom navigation label for the Profile destination."
+  },
+
+  "comingSoonBadge": "Coming soon",
+  "@comingSoonBadge": {
+    "description": "Badge shown on placeholder screens for features not built yet."
+  },
+
+  "mapScreenDescription": "Explore the beers around you on an interactive world map.",
+  "@mapScreenDescription": {
+    "description": "Placeholder description for the Map screen."
+  },
+  "discoverScreenDescription": "Find new breweries, styles and beers worth trying.",
+  "@discoverScreenDescription": {
+    "description": "Placeholder description for the Discover screen."
+  },
+  "scanScreenDescription": "Scan a beer label to add it to your collection in seconds.",
+  "@scanScreenDescription": {
+    "description": "Placeholder description for the Scan screen."
+  },
+  "collectionScreenDescription": "Keep track of every beer you have tried and rated.",
+  "@collectionScreenDescription": {
+    "description": "Placeholder description for the Collection screen."
+  },
+  "profileScreenDescription": "Manage your profile, achievements and preferences.",
+  "@profileScreenDescription": {
+    "description": "Placeholder description for the Profile screen."
+  },
+
+  "loadingStateMessage": "Loading…",
+  "@loadingStateMessage": {
+    "description": "Accessible label announced while a loading state is shown."
+  },
+  "emptyStateDefaultMessage": "Nothing here yet.",
+  "@emptyStateDefaultMessage": {
+    "description": "Default message shown by the reusable empty state when no custom message is provided."
+  },
+  "errorStateDefaultMessage": "Something went wrong.",
+  "@errorStateDefaultMessage": {
+    "description": "Default message shown by the reusable error state when no custom message is provided."
+  },
+  "errorStateRetryLabel": "Retry",
+  "@errorStateRetryLabel": {
+    "description": "Label for the retry button shown by the reusable error state."
+  }
+}

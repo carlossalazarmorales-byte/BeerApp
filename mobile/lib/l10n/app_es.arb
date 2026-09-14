@@ -1,0 +1,24 @@
+{
+  "@@locale": "es",
+
+  "appTitle": "BeerApp",
+
+  "navMap": "Mapa",
+  "navDiscover": "Descubrir",
+  "navScan": "Escanear",
+  "navCollection": "Colección",
+  "navProfile": "Perfil",
+
+  "comingSoonBadge": "Próximamente",
+
+  "mapScreenDescription": "Explora las cervezas a tu alrededor en un mapa mundial interactivo.",
+  "discoverScreenDescription": "Encuentra nuevas cervecerías, estilos y cervezas que vale la pena probar.",
+  "scanScreenDescription": "Escanea la etiqueta de una cerveza para añadirla a tu colección en segundos.",
+  "collectionScreenDescription": "Lleva el registro de cada cerveza que has probado y valorado.",
+  "profileScreenDescription": "Gestiona tu perfil, logros y preferencias.",
+
+  "loadingStateMessage": "Cargando…",
+  "emptyStateDefaultMessage": "Todavía no hay nada aquí.",
+  "errorStateDefaultMessage": "Algo salió mal.",
+  "errorStateRetryLabel": "Reintentar"
+}
