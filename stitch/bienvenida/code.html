@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#725948",
+                        "on-secondary-container": "#775d4c",
+                        "surface-container": "#efeeea",
+                        "tertiary-fixed": "#ffe088",
+                        "surface": "#faf9f5",
+                        "secondary-fixed": "#fedcc5",
+                        "inverse-on-surface": "#f2f1ed",
+                        "on-tertiary-fixed": "#241a00",
+                        "on-secondary": "#ffffff",
+                        "on-primary-fixed": "#261a00",
+                        "surface-container-highest": "#e3e2df",
+                        "on-error": "#ffffff",
+                        "tertiary": "#735c00",
+                        "surface-tint": "#795900",
+                        "outline-variant": "#d4c5ab",
+                        "on-surface": "#1b1c1a",
+                        "on-tertiary-container": "#675200",
+                        "on-surface-variant": "#504532",
+                        "on-secondary-fixed-variant": "#594231",
+                        "primary": "#795900",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#1b1c1a",
+                        "inverse-primary": "#fbbc00",
+                        "secondary-fixed-dim": "#e1c0aa",
+                        "surface-variant": "#e3e2df",
+                        "on-secondary-fixed": "#29180a",
+                        "surface-container-low": "#f4f4f0",
+                        "inverse-surface": "#2f312e",
+                        "secondary-container": "#fbd9c2",
+                        "on-tertiary-fixed-variant": "#574500",
+                        "tertiary-fixed-dim": "#e9c349",
+                        "on-primary": "#ffffff",
+                        "surface-dim": "#dbdad6",
+                        "on-primary-fixed-variant": "#5c4300",
+                        "primary-fixed-dim": "#fbbc00",
+                        "primary-container": "#ffbf00",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#ffdfa0",
+                        "tertiary-container": "#ecc54b",
+                        "error-container": "#ffdad6",
+                        "surface-container-high": "#e9e8e4",
+                        "outline": "#827660",
+                        "on-primary-container": "#6d5000",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#faf9f5",
+                        "background": "#faf9f5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Inter"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(250, 249, 245, 0.85);
+            backdrop-filter: blur(16px);
+        }
+        .text-glow {
+            text-shadow: 0 0 20px rgba(255, 191, 0, 0.4);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface antialiased overflow-hidden">
+<div class="relative min-h-screen flex flex-col justify-end items-center">
+<!-- Background Hero Image -->
+<div class="absolute inset-0 z-0">
+<img alt="Cold craft beer with condensation" class="w-full h-full object-cover" data-alt="Close-up of a cold artisanal beer glass with visible condensation droplets, glowing amber liquid, and creamy foam head, warm backlit studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCaIWqcVvg6AVtpjl4yupKTTYLVDp6SeEY-WwNifk_GXE4Xk_8uiJgXIc1Fd6qOXT5NYDEg9kAwTJvGqir65aluV-CznOWW2jpOCa8t0HfrthbYFPiJzhC_QaWhOZ9wwfoACjLDbSMnNjcyZf0_VKWCyTyrH1FNxt3-ipjrelm1O6ci90XzosTIpj2aauyGrIjPQmrlMi9EBGbsQXmg2Y7k9w9CYuKFMLZJ5ohN15G5iz5rYX8c7rm3yJZGDbc5IKXiFv9TDD3imnU"/>
+<div class="absolute inset-0 bg-gradient-to-t from-on-secondary-fixed/90 via-on-secondary-fixed/30 to-transparent"></div>
+</div>
+<!-- Content Canvas -->
+<main class="relative z-10 w-full max-w-md px-6 pb-12 flex flex-col items-center">
+<!-- Branding Header -->
+<div class="mb-12 text-center animate-fade-in">
+<div class="flex items-center justify-center mb-6">
+<div class="relative w-20 h-20 flex items-center justify-center bg-gradient-to-br from-primary to-primary-container rounded-full shadow-2xl">
+<span class="material-symbols-outlined text-white text-4xl" data-icon="public">public</span>
+<div class="absolute -bottom-1 -right-1 w-10 h-10 bg-on-secondary-fixed flex items-center justify-center rounded-full border-4 border-surface shadow-lg">
+<span class="material-symbols-outlined text-primary-container text-xl" data-icon="settings_input_component">settings_input_component</span>
+</div>
+</div>
+</div>
+<h1 class="font-headline font-black text-4xl uppercase tracking-widest text-white mb-2 text-glow">
+                    Artisanal Draught
+                </h1>
+<p class="font-headline font-semibold text-primary-fixed tracking-tight text-lg">
+                    'Tu pasaporte al mundo cervecero'
+                </p>
+</div>
+<!-- Interaction Block (Glassmorphism) -->
+<div class="glass-panel w-full p-8 rounded-[2rem] shadow-[0px_12px_32px_rgba(41,24,10,0.15)] space-y-6">
+<!-- Social Logins -->
+<div class="space-y-4">
+<!-- Google -->
+<button class="w-full flex items-center justify-center gap-3 bg-surface-container-lowest text-on-surface font-label font-bold py-4 px-6 rounded-xl border-outline-variant/15 border shadow-sm hover:opacity-90 active:scale-95 transition-all">
+<img alt="Google" class="w-5 h-5" data-alt="Google colorful letter G logo icon" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuFsenvkgpU_It8TKAVLCcWoyCIu8Ih9VuJamqxuUlPyCppqth9YDn-bgQFlCkOrWtrwok91s0Yo0GeATdFWRlgnCcmYTFgajV8LfVwOX-aVb1RXDrBxEvsM8XN2M9OowdugI2oESN7L9Hi4eY7tWc2MEFF2BWvVsqthqBsVj9xNjKoF8xQRxE7iEKYq9_9q4Yj-33ky5wPAdx15r0bnJcGBLqN0sbgkiMbN8FG7PuH5tsFTAj7_SgzQ4kPMs2jqB2lua310bFvqA"/>
+<span>Continuar con Google</span>
+</button>
+<!-- Apple -->
+<button class="w-full flex items-center justify-center gap-3 bg-black text-white font-label font-bold py-4 px-6 rounded-xl hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-2xl" data-icon="apple" style="font-variation-settings: 'FILL' 1;">ios</span>
+<span>Continuar con Apple</span>
+</button>
+<!-- Facebook -->
+<button class="w-full flex items-center justify-center gap-3 bg-[#1877F2] text-white font-label font-bold py-4 px-6 rounded-xl hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-2xl" data-icon="facebook">social_leaderboard</span>
+<span>Continuar con Facebook</span>
+</button>
+</div>
+<!-- Divider -->
+<div class="flex items-center gap-4">
+<div class="h-[1px] flex-1 bg-outline-variant/30"></div>
+<span class="text-xs font-label font-semibold text-on-surface-variant uppercase tracking-widest">o bien</span>
+<div class="h-[1px] flex-1 bg-outline-variant/30"></div>
+</div>
+<!-- Transactional Actions -->
+<div class="space-y-4 text-center">
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-white font-label font-extrabold py-5 px-6 rounded-xl shadow-lg shadow-primary/20 active:scale-[0.98] transition-transform">
+                        Registrarse con correo electrónico
+                    </button>
+<button class="text-on-secondary-fixed-variant font-label font-bold text-sm underline underline-offset-4 decoration-primary/40 hover:text-primary transition-colors">
+                        Entrar como invitado
+                    </button>
+</div>
+<!-- Footer Legal -->
+<p class="text-[10px] text-center text-on-surface-variant leading-relaxed px-4">
+                    Al continuar, aceptas nuestros <b>Términos de servicio</b> y la <b>Política de privacidad</b>.
+                </p>
+</div>
+<!-- Secondary Contextual Info -->
+<div class="mt-8 flex gap-8 items-center justify-center opacity-80">
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-primary-fixed mb-1" data-icon="verified">verified</span>
+<span class="text-[10px] font-headline text-white/70 uppercase font-bold tracking-widest">Global Vault</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-primary-fixed mb-1" data-icon="local_drink">local_drink</span>
+<span class="text-[10px] font-headline text-white/70 uppercase font-bold tracking-widest">+500 Brewers</span>
+</div>
+<div class="flex flex-col items-center">
+<span class="material-symbols-outlined text-primary-fixed mb-1" data-icon="stars">stars</span>
+<span class="text-[10px] font-headline text-white/70 uppercase font-bold tracking-widest">Rewards</span>
+</div>
+</div>
+</main>
+</div>
+</body></html>

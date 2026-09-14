@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+
+<html class="light" lang="es"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Invítame a una Caña - Artisanal Draught</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary": "#725948",
+                      "on-secondary-container": "#775d4c",
+                      "surface-container": "#efeeea",
+                      "tertiary-fixed": "#ffe088",
+                      "surface": "#faf9f5",
+                      "secondary-fixed": "#fedcc5",
+                      "inverse-on-surface": "#f2f1ed",
+                      "on-tertiary-fixed": "#241a00",
+                      "on-secondary": "#ffffff",
+                      "on-primary-fixed": "#261a00",
+                      "surface-container-highest": "#e3e2df",
+                      "on-error": "#ffffff",
+                      "tertiary": "#735c00",
+                      "surface-tint": "#795900",
+                      "outline-variant": "#d4c5ab",
+                      "on-surface": "#1b1c1a",
+                      "on-tertiary-container": "#675200",
+                      "on-surface-variant": "#504532",
+                      "on-secondary-fixed-variant": "#594231",
+                      "primary": "#795900",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "on-background": "#1b1c1a",
+                      "inverse-primary": "#fbbc00",
+                      "secondary-fixed-dim": "#e1c0aa",
+                      "surface-variant": "#e3e2df",
+                      "on-secondary-fixed": "#29180a",
+                      "surface-container-low": "#f4f4f0",
+                      "inverse-surface": "#2f312e",
+                      "secondary-container": "#fbd9c2",
+                      "on-tertiary-fixed-variant": "#574500",
+                      "tertiary-fixed-dim": "#e9c349",
+                      "on-primary": "#ffffff",
+                      "surface-dim": "#dbdad6",
+                      "on-primary-fixed-variant": "#5c4300",
+                      "primary-fixed-dim": "#fbbc00",
+                      "primary-container": "#ffbf00",
+                      "on-error-container": "#93000a",
+                      "primary-fixed": "#ffdfa0",
+                      "tertiary-container": "#ecc54b",
+                      "error-container": "#ffdad6",
+                      "surface-container-high": "#e9e8e4",
+                      "outline": "#827660",
+                      "on-primary-container": "#6d5000",
+                      "error": "#ba1a1a",
+                      "surface-bright": "#faf9f5",
+                      "background": "#faf9f5"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "fontFamily": {
+                      "headline": ["Plus Jakarta Sans"],
+                      "body": ["Inter"],
+                      "label": ["Plus Jakarta Sans"]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .text-shadow-subtle {
+            text-shadow: 0px 2px 4px rgba(41, 24, 10, 0.2);
+        }
+        .glass-panel {
+            background: rgba(250, 249, 245, 0.7);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface">
+<!-- TopAppBar Shell -->
+<header class="fixed top-0 w-full z-50 bg-[#faf9f5]/80 backdrop-blur-md dark:bg-stone-950/80 shadow-[0px_12px_32px_rgba(41,24,10,0.06)] flex justify-between items-center px-6 h-16 w-full">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-[#795900] dark:text-[#ffbf00] text-2xl hover:opacity-80 transition-opacity cursor-pointer active:scale-95 duration-200">menu</span>
+<h1 class="font-headline font-black uppercase tracking-widest text-[#795900] dark:text-[#ffbf00] text-xl">Artisanal Draught</h1>
+</div>
+<div class="w-8 h-8 rounded-full overflow-hidden border-2 border-primary/20">
+<img alt="User Avatar" class="w-full h-full object-cover" data-alt="close-up portrait of a friendly man with a short beard smiling warmly against a soft neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDqbTrbi0hiAYTeWBgZEwgDoLOwdrtnuTSQkHwtgnWaijdP96az-sQ5McUOdoEJX-n1mG-q7fqJqQOehrkMwgDdQRlNgTliawiVWjRlZaBQ-61Xh87AGRHr6VN8JUcCQs98uH4rDBX_GLHq901FfHKugldYv-lbTUtA30Wt4atMsSMcZGDeADK4ithUbG_tUF786HVmkKmBBumufkUCs8ICaC98zZJF75VwXLabe21JqrhRVnCw-fptS8BgvQaU4YGKRuCbUUCn-rQ"/>
+</div>
+</header>
+<main class="pt-24 pb-32 px-6 max-w-4xl mx-auto overflow-x-hidden">
+<!-- Hero Section: The "Friendly Developer" -->
+<section class="relative mb-12 flex flex-col md:flex-row items-center gap-8 bg-surface-container-low p-8 rounded-[2rem] overflow-hidden">
+<div class="relative z-10 flex-1 space-y-4 text-center md:text-left">
+<h2 class="text-4xl md:text-5xl font-headline font-extrabold text-on-secondary-fixed leading-tight tracking-tight">Invítame a una Caña</h2>
+<p class="text-on-surface-variant text-lg max-w-md font-medium leading-relaxed">¿Te gusta la app? ¡Ayúdame a mantenerla fresca invitándome a una ronda!</p>
+<!-- Gamified Counter -->
+<div class="inline-flex items-center gap-3 bg-tertiary-container/30 px-5 py-3 rounded-full mt-4">
+<span class="material-symbols-outlined text-primary fill-[1]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+<span class="font-headline font-bold text-on-tertiary-container">La comunidad ha invitado a 1,240 rondas</span>
+</div>
+</div>
+<div class="relative w-64 h-64 md:w-80 md:h-80 flex-shrink-0">
+<div class="absolute inset-0 bg-gradient-to-br from-primary-container to-tertiary-container rounded-full opacity-20 blur-3xl"></div>
+<img alt="Friendly Developer Illustration" class="relative z-10 w-full h-full object-contain filter drop-shadow-xl" data-alt="stylized vector illustration of a friendly developer with glasses holding a tall frosted beer mug, smiling, vibrant warm colors" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvagZ40oBdDd8nTXlCOxWgxDiTA953hw272tk3R-62mP0ZyDfeorGO8L9Oj99_BWuWJaMmaW50ZeWh0bgni66w134Dq9bL2ii2QAYLWcpKNeX9-sMdEk0WbjOmLYallCks-Nd8n5n-NkxZ8RiHM5-GajM0P3-jByK7oxwAZFBtJn3jrxfukM_mhUzgJuhWMFV0t5NBfvcEn3E8m95x2xd9Wo97TtIxvjbEhmVGitmjob2wc4L_-lS1xi5cusCqqRIUHlcnlB027pU"/>
+</div>
+</section>
+<!-- Donation Grid: Asymmetric & Bento Style -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+<!-- Tier 1: Caña -->
+<div class="md:col-span-5 bg-surface-container-highest rounded-[1.5rem] overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col">
+<div class="relative h-48">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="close up of a small glass of light golden lager beer with a perfect white foam head on a wooden table" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDO4SLBIFv2RnCMVTS_nyOFYaYjn3Ft3rcJYhaViwJbwIPITATnIeR3xZ5-RB89YhSIdzbDrExDT7YgDIOpBjx4yElEQmmF5uepXQBDgV5hgaDdI6ga1ONb5oLkAHzraz3UDZgRrdgU0qjtnhGFVqcUmbg--Ui8jN7sdOO6pk91sCwo45z9ZTpF1J042HVKL-9XQZZgpv4l98E5IaOVb0L1GRwwzmtCoBaxZrZdh5vWE4adldNNJ0A0f-09KJa2Pf5u9hvRxvUwTIU"/>
+<div class="absolute top-4 right-4 bg-primary text-white font-headline font-bold px-3 py-1 rounded-full text-sm">1.99€</div>
+</div>
+<div class="p-6 space-y-3 flex-1 flex flex-col justify-between">
+<div>
+<h3 class="font-headline font-bold text-xl text-on-secondary-fixed">Caña de Lager Clásica</h3>
+<p class="text-sm text-on-surface-variant font-medium">Un pequeño impulso para el desarrollo diario.</p>
+</div>
+<button class="w-full bg-surface-container-lowest text-primary font-bold py-3 rounded-xl hover:bg-primary hover:text-white transition-colors duration-200 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-sm">sports_bar</span>
+                        ¡Invitar!
+                    </button>
+</div>
+</div>
+<!-- Tier 2: IPA -->
+<div class="md:col-span-7 bg-primary-container/20 rounded-[1.5rem] overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col md:flex-row">
+<div class="relative w-full md:w-1/2 h-56 md:h-full">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="a tall pint glass filled with hazy orange craft IPA beer featuring thick creamy foam and condensation on the glass" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA8McMYt8Ii8drvBs4Z3-65I_Y2Boiq_McwOldq38LnG8xzxR80dnjhWRkB-Dp3oWBu3cr_8SjzvUnYL1JbP9j5fbcEv1tdrqtFt67OHgEyJqCxN8XN_PR9IdSxfXnWPay2n5NfEyx54SGixXYAGFYKoAav2cQyuTLhP63ww0crZjONOztvYbHFwtTgTcfDrrVvW5bjUscuPml5D6J0en_7jE1l_qm6os6ZLE9ZObiPl9Lj0utTUYtUtkQFetm8OzVIsbo7H6Kls2k"/>
+</div>
+<div class="p-8 flex-1 flex flex-col justify-center space-y-4">
+<div class="flex justify-between items-start">
+<h3 class="font-headline font-extrabold text-2xl text-on-secondary-fixed leading-tight">Pinta de IPA Artesanal</h3>
+<span class="bg-primary px-3 py-1 rounded-full text-white font-bold text-sm">4.99€</span>
+</div>
+<p class="text-on-surface-variant">Lúpulo extra para programar nuevas funcionalidades con amargor elegante.</p>
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-white font-bold py-4 rounded-xl shadow-lg hover:scale-[1.02] transition-transform active:scale-95 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">payments</span>
+                        Pagar Ronda
+                    </button>
+</div>
+</div>
+<!-- Tier 3: Stout -->
+<div class="md:col-span-7 bg-secondary-container/20 rounded-[1.5rem] overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col md:flex-row-reverse">
+<div class="relative w-full md:w-1/2 h-56 md:h-full">
+<img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" data-alt="a dark glass bottle and a glass of thick black stout beer with chocolate brown foam on a dark atmospheric background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC20Ff-dsWG3vXvkT4ciK9HYXKiweJxm3KiJ1JyImnGY3YKqjrCJuMP2gVt38-Kv04WDYtiDqnJ5Mdofrt2xwcPF494qiqjKtRAPKbaMviYsxot3HM1qKWVDA2Jbq0E6jOw4pCfeGeMcGEZ1blh7m_U863KyMEOyp-7WwJ16zlPnnL1w-Fz4ZuSIC0Wty8HHuXXDjK5CMmx-7DTscU6EkCI6TGIyKWqMs9NO2vUqX3DQKgamqUOEm5ThVtpzQ62iaa418sCp1vtNa8"/>
+</div>
+<div class="p-8 flex-1 flex flex-col justify-center space-y-4">
+<div class="flex justify-between items-start">
+<h3 class="font-headline font-extrabold text-2xl text-on-secondary-fixed leading-tight">Botella de Stout Envejecida</h3>
+<span class="bg-primary px-3 py-1 rounded-full text-white font-bold text-sm">9.99€</span>
+</div>
+<p class="text-on-surface-variant">Para esos bugs difíciles que requieren la paciencia de un maestro cervecero.</p>
+<button class="w-full bg-surface-container-highest text-on-secondary-fixed font-bold py-4 rounded-xl hover:bg-secondary hover:text-white transition-all duration-200 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined">stars</span>
+                        Convertirse en Mecenas
+                    </button>
+</div>
+</div>
+<!-- Tier 4: Barril -->
+<div class="md:col-span-5 relative bg-stone-900 rounded-[1.5rem] overflow-hidden group hover:shadow-2xl transition-all duration-300 p-8 flex flex-col justify-end min-h-[320px]">
+<div class="absolute inset-0">
+<img class="w-full h-full object-cover opacity-50 group-hover:scale-110 transition-transform duration-1000" data-alt="rustic wooden beer barrels stacked in a dimly lit cellar with warm amber highlights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADzMcMWwag9ewKDVCVn1yOiQitO4Z58j1BU6jylDRuSKohnz5EfG2AS3GqtLk3FTOGo-jonlrRy3x5_eyNVyZqcTo-i-6PZ8himmoWZyd0julU2y8h54xegZozUGVg1rXAITCY4p5JhxhB4Y5fTWTy15rFwRirH1z4CpTqMR27vk5OpL3Iupisq7p0a-MGuBN6XRlMBBlod3e7MniQtuPRL_wfStuQL_0k4KPw0S0rsR1lEz7oGXWFSDvqT7XZBTMnoBHitf38hxk"/>
+<div class="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-900/40 to-transparent"></div>
+</div>
+<div class="relative z-10 space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="font-headline font-black text-white text-3xl italic tracking-tighter">Barril Completo</h3>
+<span class="text-primary-container font-black text-xl">49.99€</span>
+</div>
+<p class="text-stone-300 text-sm font-medium">Leyenda absoluta. Patrocinas un servidor entero durante un mes.</p>
+<button class="w-full bg-primary-container text-on-primary-container font-black py-4 rounded-xl shadow-[0_0_20px_rgba(255,191,0,0.4)] hover:bg-white hover:text-primary transition-all duration-300 flex items-center justify-center gap-2 uppercase tracking-widest text-xs">
+<span class="material-symbols-outlined">workspace_premium</span>
+                        Donación Legendaria
+                    </button>
+</div>
+</div>
+</div>
+<!-- Feedback Section -->
+<section class="mt-16 text-center space-y-4">
+<p class="text-on-surface-variant font-medium italic">"Cada ronda ayuda a mantener los servidores fríos y el código limpio. ¡Salud!"</p>
+<div class="flex justify-center gap-4 text-primary opacity-60">
+<span class="material-symbols-outlined">sentiment_very_satisfied</span>
+<span class="material-symbols-outlined">volunteer_activism</span>
+<span class="material-symbols-outlined">verified</span>
+</div>
+</section>
+</main>
+<!-- BottomNavBar Shell -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-4 pb-6 pt-3 bg-[#faf9f5]/90 backdrop-blur-xl dark:bg-stone-950/90 z-50 rounded-t-[1.5rem] shadow-[0px_-8px_24px_rgba(41,24,10,0.04)]">
+<a class="flex flex-col items-center justify-center text-[#29180a]/60 dark:text-stone-500 px-5 py-2 hover:text-[#795900] dark:hover:text-[#ffbf00] transition-transform duration-300 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined">map</span>
+<span class="font-['Plus_Jakarta_Sans'] font-semibold text-[10px] uppercase tracking-tighter mt-1">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#29180a]/60 dark:text-stone-500 px-5 py-2 hover:text-[#795900] dark:hover:text-[#ffbf00] transition-transform duration-300 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-['Plus_Jakarta_Sans'] font-semibold text-[10px] uppercase tracking-tighter mt-1">Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#29180a]/60 dark:text-stone-500 px-5 py-2 hover:text-[#795900] dark:hover:text-[#ffbf00] transition-transform duration-300 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined">center_focus_strong</span>
+<span class="font-['Plus_Jakarta_Sans'] font-semibold text-[10px] uppercase tracking-tighter mt-1">Scan</span>
+</a>
+<!-- Profile is active for this account/settings-related page -->
+<a class="flex flex-col items-center justify-center bg-gradient-to-br from-[#795900] to-[#ffbf00] text-white rounded-[1.5rem] px-5 py-2 shadow-lg transition-transform duration-300 active:translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-['Plus_Jakarta_Sans'] font-semibold text-[10px] uppercase tracking-tighter mt-1">Profile</span>
+</a>
+</nav>
+</body></html>

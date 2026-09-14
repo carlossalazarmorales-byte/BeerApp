@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BrewMap Discovery</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e9e8e4",
+                        "on-primary-container": "#6d5000",
+                        "outline": "#827660",
+                        "on-background": "#1b1c1a",
+                        "surface-tint": "#795900",
+                        "primary-fixed-dim": "#fbbc00",
+                        "tertiary": "#735c00",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary-container": "#fbd9c2",
+                        "primary": "#795900",
+                        "on-tertiary-container": "#675200",
+                        "tertiary-fixed-dim": "#e9c349",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#594231",
+                        "on-tertiary-fixed-variant": "#574500",
+                        "surface-dim": "#dbdad6",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#e1c0aa",
+                        "inverse-primary": "#fbbc00",
+                        "on-secondary-container": "#775d4c",
+                        "surface-container-highest": "#e3e2df",
+                        "on-surface": "#1b1c1a",
+                        "on-tertiary-fixed": "#241a00",
+                        "secondary": "#725948",
+                        "on-secondary-fixed": "#29180a",
+                        "surface-container-low": "#f4f4f0",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#ecc54b",
+                        "on-primary-fixed": "#261a00",
+                        "surface": "#faf9f5",
+                        "surface-bright": "#faf9f5",
+                        "error": "#ba1a1a",
+                        "error-container": "#ffdad6",
+                        "on-surface-variant": "#504532",
+                        "primary-fixed": "#ffdfa0",
+                        "background": "#faf9f5",
+                        "primary-container": "#ffbf00",
+                        "on-error-container": "#93000a",
+                        "on-primary": "#ffffff",
+                        "outline-variant": "#d4c5ab",
+                        "on-primary-fixed-variant": "#5c4300",
+                        "surface-variant": "#e3e2df",
+                        "surface-container": "#efeeea",
+                        "tertiary-fixed": "#ffe088",
+                        "inverse-surface": "#2f312e",
+                        "secondary-fixed": "#fedcc5",
+                        "inverse-on-surface": "#f2f1ed"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Plus Jakarta Sans"],
+                        "body": ["Inter"],
+                        "label": ["Plus Jakarta Sans"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(227, 226, 223, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .tonal-shift-bg {
+            background-color: #faf9f5;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .active-pill {
+            background: linear-gradient(135deg, #795900, #ffbf00);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body min-h-screen pb-32">
+<!-- TopAppBar -->
+<header class="bg-[#faf9f5] dark:bg-[#29180a] docked full-width top-0 z-50 flex justify-between items-center px-6 h-16 w-full sticky">
+<div class="flex items-center gap-4">
+<button class="text-[#29180a] dark:text-[#f4f4f0] hover:bg-[#f4f4f0] dark:hover:bg-[#3d2b1f] rounded-full transition-colors p-2 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</div>
+<h1 class="text-2xl font-black text-[#795900] dark:text-[#ffbf00] tracking-tighter font-headline">BrewMap</h1>
+<div class="flex items-center gap-4">
+<button class="text-[#29180a] dark:text-[#f4f4f0] hover:bg-[#f4f4f0] dark:hover:bg-[#3d2b1f] rounded-full transition-colors p-2 flex items-center justify-center">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+</div>
+</header>
+<main class="px-6 pt-6">
+<!-- Editorial Header -->
+<div class="mb-8">
+<p class="text-on-primary-fixed-variant font-headline font-bold uppercase tracking-[0.2em] text-[10px] mb-2">The Collection</p>
+<h2 class="text-4xl font-headline font-extrabold text-on-secondary-fixed tracking-tight leading-none mb-4">World Classics</h2>
+<p class="text-on-surface-variant text-sm max-w-[280px]">Curating the legends of the craft. How many have you mastered?</p>
+</div>
+<!-- Filter Chips Section -->
+<div class="flex gap-3 overflow-x-auto pb-6 no-scrollbar">
+<button class="px-6 py-2.5 rounded-full active-pill text-white font-headline text-xs font-bold tracking-wider shadow-md shadow-primary/20 whitespace-nowrap">Todo</button>
+<button class="px-6 py-2.5 rounded-full bg-surface-container-high text-on-surface-variant font-headline text-xs font-bold tracking-wider hover:bg-surface-container-highest transition-colors whitespace-nowrap">Probadas</button>
+<button class="px-6 py-2.5 rounded-full bg-surface-container-high text-on-surface-variant font-headline text-xs font-bold tracking-wider hover:bg-surface-container-highest transition-colors whitespace-nowrap">Por descubrir</button>
+</div>
+<!-- Discovery List -->
+<div class="space-y-6">
+<!-- Card 1: Guinness (Unlocked) -->
+<div class="relative flex items-center bg-surface-container-low rounded-3xl p-4 overflow-hidden group">
+<div class="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative">
+<img class="w-full h-full object-cover" data-alt="close-up of a classic dark Guinness stout with its iconic thick white foam head in a traditional tulip glass" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuNuDINgDZKf4lB_fz7UOcZ9MqD9vA-YctnKV-lYFywVwJNjlA8r1TxnUZg3YmQlci_wCD32C3ARyPy1EYMdxnNFgON-uSSfssMP-GZIC4o1232VhiqpOftrG2PWEHEYdBQKFLO64bPj8gV6kFyBsVFEGAj_j27OpBotCL4Os6R9wiXf6XspQxNKlhDX-ZScalMDy5vHcR-c3fDPDvVJBYC_UnDzbZGPh9CGSHjqxEc53g4sMugIztBDwETADhvKccB8UlVa8WnjQ"/>
+<div class="absolute inset-0 bg-primary/20"></div>
+<div class="absolute top-1 right-1 bg-primary text-white p-1 rounded-full shadow-lg">
+<span class="material-symbols-outlined !text-[14px]" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</div>
+<div class="ml-5 flex-1">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Ireland</p>
+<h3 class="text-xl font-headline font-bold text-on-secondary-fixed">Guinness</h3>
+<p class="text-on-surface-variant text-xs font-medium">Dry Stout</p>
+</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant mr-2" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 2: Heineken (Locked) -->
+<div class="relative flex items-center bg-surface-container-low rounded-3xl p-4 overflow-hidden opacity-80">
+<div class="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative grayscale">
+<img class="w-full h-full object-cover" data-alt="classic green glass bottle of Heineken lager with water droplets, isolated on a simple neutral background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCKkLGxP8rCvZYm31ZLRw_ECkhHxa98s_6BRi-4EId3rrby7hOu8i9E8-0982iTWiMRGhXfK2ECZFRCh_Isq4Rn6ku6ZB3evz8UV0RxgKpDBbc5_4UuPQIhwbP1T5oQ7Ldrz_U_w0R-aJgozYIwUzD7poDigfrXNYCGUg_HmnwS8D3N62Cu56UayKmcjCUXHJ6iGN-DPKc9P_bXk9bkz0VVxXS9AX4uloO-4UgeiU3aMvGWqgcKsgVuu7icWjJ7v403zxJxKgUvwI4"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+<span class="material-symbols-outlined text-white/80 !text-2xl" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+</div>
+<div class="ml-5 flex-1">
+<p class="text-[10px] font-bold text-outline uppercase tracking-widest mb-1">Netherlands</p>
+<h3 class="text-xl font-headline font-bold text-on-surface/60">Heineken</h3>
+<p class="text-on-surface-variant/60 text-xs font-medium">Pale Lager</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant mr-2" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 3: Erdinger (Unlocked) -->
+<div class="relative flex items-center bg-surface-container-low rounded-3xl p-4 overflow-hidden">
+<div class="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative">
+<img class="w-full h-full object-cover" data-alt="tall wheat beer glass filled with cloudy German Weissbier featuring a large frothy head of foam" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDcWJUCQjDwENf2XLPivspANLQ7dopkgYiJFwsvj5BSZ2V_vHGD928r4nGARzANsYjED2E3MBnc54RCSZspbH0fP2guXzL9IF-o0IIDwC1dJ4IgkC342S3qD29RHND2X4Borq7pm3njz4pTLLprV3QU646mwPPv1fE_QVKA1W_bnORXK9TqY9Oswv3uOJM6huH6KzhuLW0GqkOGiSCV99ZUqnFosnx46qLF5kSVfDM92jPqJ-pY6-f3x4rcu9aTz9DDcT4dZKZEwgk"/>
+<div class="absolute inset-0 bg-primary/10"></div>
+<div class="absolute top-1 right-1 bg-primary text-white p-1 rounded-full shadow-lg">
+<span class="material-symbols-outlined !text-[14px]" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</div>
+<div class="ml-5 flex-1">
+<p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Germany</p>
+<h3 class="text-xl font-headline font-bold text-on-secondary-fixed">Erdinger</h3>
+<p class="text-on-surface-variant text-xs font-medium">Weissbier</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant mr-2" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 4: Stella Artois (Locked) -->
+<div class="relative flex items-center bg-surface-container-low rounded-3xl p-4 overflow-hidden opacity-80">
+<div class="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative grayscale">
+<img class="w-full h-full object-cover" data-alt="elegant chalice glass of Stella Artois beer with golden liquid and crisp carbonation bubbles" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDmlc3XRDlVKgnf5ele1C7NfEEzvpb5QxZK8NzQQSjErwK8gH4ftsYw4q9C4ZaEZ1a3yBlj716CH4_h-l9kDlPJmepwkwldthPNcH7fLCf01uu2mhNkxFifBE54igVHQuertxBbn4RDhT7rz3nl7ATSfMw2fZI_SKsnviJJ3YU_lKMoJCXfUx7txV8RJBmsO-09axNrmPPMEn5RZ3_ZMZv6N_ncoZ0sxWVzeaVysZyzF5fS_HY59XIF2qJ9bKpB4A6zyC5HPnAeIak"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+<span class="material-symbols-outlined text-white/80 !text-2xl" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+</div>
+<div class="ml-5 flex-1">
+<p class="text-[10px] font-bold text-outline uppercase tracking-widest mb-1">Belgium</p>
+<h3 class="text-xl font-headline font-bold text-on-surface/60">Stella Artois</h3>
+<p class="text-on-surface-variant/60 text-xs font-medium">Pilsner</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant mr-2" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 5: Corona Extra (Unlocked) -->
+<div class="relative flex items-center bg-surface-container-low rounded-3xl p-4 overflow-hidden">
+<div class="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative">
+<img class="w-full h-full object-cover" data-alt="Corona beer bottle with a lime wedge tucked in the neck, sitting on a sun-drenched beach wooden table" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqK6SsBe9TAuwm1HuNrCoGw9xvc3wrwG1tw2XnMUq_cPQbeQx-CPdMnwVyjQrhKuUTMifhekdhe39J02p4P7aWpsYwvR7Osaq6LBG_jc7WmvQZJWfPW7QLPRo94O47AP4AExSvXV56ZT2G7PPnX915syf_GYkABySfGxpD0PfURI8m1KB3FLBoK4cZM25eLui8nLPnmUrhkmiu77oOaXdILdSRL6tZ8eFpWConMxIKQjbv4_Vt79AvYMBR3BJ5xu6ho7fwhb3BcgE"/>
+<div class="absolute inset-0 bg-primary/10"></div>
+<div class="absolute top-1 right-1 bg-primary text-white p-1 rounded-full shadow-lg">
+<span class="material-symbols-outlined !text-[14px]" data-icon="check" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+</div>
+<div class="ml-5 flex-1">
+<p class="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Mexico</p>
+<h3 class="text-xl font-headline font-bold text-on-secondary-fixed">Corona</h3>
+<p class="text-on-surface-variant text-xs font-medium">Pale Lager</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant mr-2" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 6: Sapporo (Locked) -->
+<div class="relative flex items-center bg-surface-container-low rounded-3xl p-4 overflow-hidden opacity-80">
+<div class="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative grayscale">
+<img class="w-full h-full object-cover" data-alt="Japanese Sapporo beer in a cold glass, showing a crisp and clean appearance typical of Japanese rice lagers" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCE5d8RbaWcAXEO2Dm3suEdzmghJEXdBJqcRUd5tydjcPf32z893sHrWMNxPJaMMftGl8wRYoiTDaOkPL45Z0thbCcolgpeuOncF2Yd9k_fj4wCP-ZP5ZzCuP78UUi2dIz2Xo-KifuOjUGrE-gG5c1psUAP5WNI_nFNTK4hgheoJ_g7EFhzqAbVQJcNj3xii1aP5QMJg8PQ202iz1nGW9k-cjzTTcIXn7syfYGkmQsuP_j99bq7W_gbEZ_fuouDHPSz59Nu1BTDBzA"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+<span class="material-symbols-outlined text-white/80 !text-2xl" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+</div>
+<div class="ml-5 flex-1">
+<p class="text-[10px] font-bold text-outline uppercase tracking-widest mb-1">Japan</p>
+<h3 class="text-xl font-headline font-bold text-on-surface/60">Sapporo</h3>
+<p class="text-on-surface-variant/60 text-xs font-medium">Rice Lager</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant mr-2" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Card 7: Pilsner Urquell (Locked) -->
+<div class="relative flex items-center bg-surface-container-low rounded-3xl p-4 overflow-hidden opacity-80">
+<div class="w-24 h-24 rounded-2xl overflow-hidden shrink-0 relative grayscale">
+<img class="w-full h-full object-cover" data-alt="golden Czech pilsner beer with a perfect thick foam crown in a traditional mug" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCAam8qxNtWOFcjIgYByDW6ZLdC3PANcPMR0cpuSIaktPSs_RMfNJlDrcKlBthr9uu7swHWnyBw5hBZ2luPmQqxXZhI4HNvTN1weMR083ZpkDZ-aay29X4X7eXFI1tP8U1sM8mR6OS0c2BtycQzrmOMuhR9yK0fMUnoCjea6nT5geUCion0BkBuxcu4xx8og8B4bX_hdHnZalQbf0NKb2wLFUbd27ESzhddL-GnJWsqPSJhMhqHFF-29y1vLMvuvLove8QU-Z6qLY8"/>
+<div class="absolute inset-0 bg-black/40 flex items-center justify-center">
+<span class="material-symbols-outlined text-white/80 !text-2xl" data-icon="lock" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+</div>
+<div class="ml-5 flex-1">
+<p class="text-[10px] font-bold text-outline uppercase tracking-widest mb-1">Czech Republic</p>
+<h3 class="text-xl font-headline font-bold text-on-surface/60">Pilsner Urquell</h3>
+<p class="text-on-surface-variant/60 text-xs font-medium">Pilsner</p>
+</div>
+<span class="material-symbols-outlined text-outline-variant mr-2" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-8 bg-[#faf9f5]/80 dark:bg-[#29180a]/80 backdrop-blur-xl shadow-[0px_-12px_32px_rgba(41,24,10,0.06)] rounded-t-[2rem]">
+<a class="flex flex-col items-center justify-center text-[#29180a]/60 dark:text-[#f4f4f0]/60 px-5 py-2 hover:text-[#795900] dark:hover:text-[#ffbf00]" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="public">public</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-gradient-to-br from-[#795900] to-[#ffbf00] text-white rounded-[1.5rem] px-5 py-2 shadow-lg shadow-[#795900]/20 translate-y-[-2px]" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="sports_bar" style="font-variation-settings: 'FILL' 1;">sports_bar</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest">Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#29180a]/60 dark:text-[#f4f4f0]/60 px-5 py-2 hover:text-[#795900] dark:hover:text-[#ffbf00]" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="add_circle">add_circle</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest">Scan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#29180a]/60 dark:text-[#f4f4f0]/60 px-5 py-2 hover:text-[#795900] dark:hover:text-[#ffbf00]" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest">Profile</span>
+</a>
+</nav>
+</body></html>

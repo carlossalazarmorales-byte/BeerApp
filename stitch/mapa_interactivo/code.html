@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#e9e8e4",
+                    "on-primary-container": "#6d5000",
+                    "outline": "#827660",
+                    "on-background": "#1b1c1a",
+                    "surface-tint": "#795900",
+                    "primary-fixed-dim": "#fbbc00",
+                    "tertiary": "#735c00",
+                    "surface-container-lowest": "#ffffff",
+                    "secondary-container": "#fbd9c2",
+                    "primary": "#795900",
+                    "on-tertiary-container": "#675200",
+                    "tertiary-fixed-dim": "#e9c349",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-fixed-variant": "#594231",
+                    "on-tertiary-fixed-variant": "#574500",
+                    "surface-dim": "#dbdad6",
+                    "on-error": "#ffffff",
+                    "secondary-fixed-dim": "#e1c0aa",
+                    "inverse-primary": "#fbbc00",
+                    "on-secondary-container": "#775d4c",
+                    "surface-container-highest": "#e3e2df",
+                    "on-surface": "#1b1c1a",
+                    "on-tertiary-fixed": "#241a00",
+                    "secondary": "#725948",
+                    "on-secondary-fixed": "#29180a",
+                    "surface-container-low": "#f4f4f0",
+                    "on-tertiary": "#ffffff",
+                    "tertiary-container": "#ecc54b",
+                    "on-primary-fixed": "#261a00",
+                    "surface": "#faf9f5",
+                    "surface-bright": "#faf9f5",
+                    "error": "#ba1a1a",
+                    "error-container": "#ffdad6",
+                    "on-surface-variant": "#504532",
+                    "primary-fixed": "#ffdfa0",
+                    "background": "#faf9f5",
+                    "primary-container": "#ffbf00",
+                    "on-error-container": "#93000a",
+                    "on-primary": "#ffffff",
+                    "outline-variant": "#d4c5ab",
+                    "on-primary-fixed-variant": "#5c4300",
+                    "surface-variant": "#e3e2df",
+                    "surface-container": "#efeeea",
+                    "tertiary-fixed": "#ffe088",
+                    "inverse-surface": "#2f312e",
+                    "secondary-fixed": "#fedcc5",
+                    "inverse-on-surface": "#f2f1ed"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "headline": ["Plus Jakarta Sans"],
+                    "body": ["Inter"],
+                    "label": ["Plus Jakarta Sans"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-shift { background-color: rgba(250, 249, 245, 0.8); }
+        .tonal-shift-bg { background-color: #faf9f5; }
+        .glass-panel {
+            backdrop-filter: blur(12px);
+            background: rgba(244, 244, 240, 0.7);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface font-body text-on-surface antialiased overflow-hidden">
+<header class="bg-[#faf9f5] dark:bg-[#29180a] docked full-width top-0 z-50 flex justify-between items-center px-6 h-16 w-full fixed">
+<div class="flex items-center gap-4">
+<button class="text-[#795900] dark:text-[#ffbf00] hover:bg-[#f4f4f0] dark:hover:bg-[#3d2b1f] rounded-full transition-colors p-2 active:scale-95 duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">search</span>
+</button>
+</div>
+<h1 class="text-2xl font-black text-[#795900] dark:text-[#ffbf00] tracking-tighter font-['Plus_Jakarta_Sans']">BrewMap</h1>
+<div class="flex items-center gap-2">
+<button class="text-[#795900] dark:text-[#ffbf00] hover:bg-[#f4f4f0] dark:hover:bg-[#3d2b1f] rounded-full transition-colors p-2 active:scale-95 duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+</button>
+</div>
+</header>
+<main class="relative h-screen w-full flex items-center justify-center bg-[#faf9f5]">
+<div class="absolute inset-0 z-0 bg-gradient-to-b from-[#f4f4f0] to-[#faf9f5]">
+<img alt="World Map Visualization" class="w-full h-full object-cover opacity-20 grayscale brightness-125" data-alt="A highly detailed, stylized 3D map of the world with soft golden illumination and subtle topographical textures on a neutral background." data-location="World" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYYRfH7O31bcib66XR54Y30Q8d6iXunwLNf3osjRKEMH0XOVx-ftBUcvyh50uid8h_3FIsTGs_VDctaFYvGFm8YnI2fpniAbm8fpNbquWD3GBA9Ncbw8xkrYGdeL9T7VoBr6EvjN-tqv9xHE0hOnmtEo5lr8QBv_UoakNLGH5rM3CE71FD2v1d0EtHIPp8ApEvUkh1deUDWCAtPzIZ8PDcAf2VgwWvnqejCgW0DaH2SOadnlDXfp9TyKKQcsaTMGQm4UZ8q5-mKX8"/>
+</div>
+<div class="relative z-10 w-full h-full max-w-6xl mx-auto flex items-center justify-center px-4">
+<div class="relative w-[340px] h-[340px] md:w-[600px] md:h-[600px] rounded-full shadow-[0px_0px_100px_rgba(121,89,0,0.15)] overflow-hidden bg-gradient-to-br from-[#f4f4f0] to-[#e9e8e4] border-[12px] border-white/50">
+<img alt="Simulated Globe" class="w-full h-full object-cover mix-blend-multiply opacity-80" data-alt="Close-up of a premium, high-quality 3D globe visualization showing continents with soft amber glow and glass-like water surfaces." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCD0FkBuw7NF_N5BZxTo8Ola1lVB_cv2_3mXZ1loZc4CvZNnBBmwJbGQflgvqodeutMYdplDlxfLqLl2ynMQ9ZVxVJoX8Jre-M9oUCtAo__rFIJ80x_U9v_HeCX0Fu2etoaVDMRnX1qVrcWGbDppYEU9nYzlt3ZYZHrNh3bqUB1YrxpobzbprDi4AqszM8zXEGPUh-Ts1EBqbLkjOO14x6VN596iiPDdTTEf0796_SWE4bXPcoV3HeI9WV1VGXooHnwJahOWRFqm0o"/>
+<div class="absolute top-[20%] left-[25%] group cursor-pointer">
+<div class="relative flex flex-col items-center">
+<div class="p-2 bg-gradient-to-br from-[#795900] to-[#ffbf00] rounded-full shadow-lg border-2 border-white transform transition-transform group-hover:scale-110">
+<span class="material-symbols-outlined text-white text-lg" style="font-variation-settings: 'FILL' 1;">sports_bar</span>
+</div>
+<div class="mt-2 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-widest text-[#795900] shadow-sm">Belgium</div>
+</div>
+</div>
+<div class="absolute top-[45%] left-[55%] group cursor-pointer">
+<div class="relative flex flex-col items-center">
+<div class="p-2 bg-gradient-to-br from-[#795900] to-[#ffbf00] rounded-full shadow-lg border-2 border-white transform transition-transform group-hover:scale-110">
+<span class="material-symbols-outlined text-white text-lg" style="font-variation-settings: 'FILL' 1;">local_drink</span>
+</div>
+<div class="mt-2 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-[10px] font-bold uppercase tracking-widest text-[#795900] shadow-sm">Germany</div>
+</div>
+</div>
+<div class="absolute top-[35%] left-[15%] group opacity-40">
+<div class="p-2 bg-[#dbdad6] rounded-full border-2 border-white/50">
+<span class="material-symbols-outlined text-white text-lg" style="font-variation-settings: 'FILL' 1;">liquor</span>
+</div>
+</div>
+<div class="absolute top-[60%] left-[30%] group opacity-40">
+<div class="p-2 bg-[#dbdad6] rounded-full border-2 border-white/50">
+<span class="material-symbols-outlined text-white text-lg" style="font-variation-settings: 'FILL' 1;">wine_bar</span>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute top-24 left-1/2 -translate-x-1/2 z-30 w-full max-w-md px-6">
+<div class="glass-panel rounded-full px-6 py-4 flex items-center gap-3 shadow-xl shadow-[#29180a]/5">
+<span class="material-symbols-outlined text-[#795900]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-on-surface placeholder-on-surface-variant w-full font-medium" placeholder="Search a region or brewery..." type="text"/>
+</div>
+</div>
+<div class="absolute top-44 left-1/2 -translate-x-1/2 z-30">
+<div class="bg-tertiary-container text-on-tertiary-container px-4 py-1.5 rounded-full flex items-center gap-2 shadow-md border border-[#795900]/10">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">location_on</span>
+<span class="text-[11px] font-extrabold uppercase tracking-widest font-['Plus_Jakarta_Sans']">Current Range: Novato</span>
+</div>
+</div>
+<div class="absolute bottom-32 left-8 z-30 hidden md:block">
+<div class="bg-white/80 backdrop-blur-xl p-6 rounded-[2rem] shadow-2xl border border-white/50 max-w-[240px]">
+<p class="text-[10px] font-extrabold uppercase tracking-widest text-on-surface-variant mb-4">Discovery Status</p>
+<div class="space-y-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-primary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[#795900]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">12 Unlocked</p>
+<p class="text-[11px] text-on-surface-variant">Rare Draughts</p>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center">
+<span class="material-symbols-outlined text-outline" style="font-variation-settings: 'FILL' 0;">lock</span>
+</div>
+<div>
+<p class="text-sm font-bold text-on-surface">84 Locked</p>
+<p class="text-[11px] text-on-surface-variant">Across Europe</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-3 pb-8 bg-[#faf9f5]/80 dark:bg-[#29180a]/80 backdrop-blur-xl rounded-t-[2rem] shadow-[0px_-12px_32px_rgba(41,24,10,0.06)]">
+<a class="flex flex-col items-center justify-center bg-gradient-to-br from-[#795900] to-[#ffbf00] text-white rounded-[1.5rem] px-5 py-2 shadow-lg shadow-[#795900]/20 translate-y-[-2px] transition-transform duration-300" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">public</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Map</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#29180a]/60 dark:text-[#f4f4f0]/60 px-5 py-2 hover:text-[#795900] dark:hover:text-[#ffbf00]" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">sports_bar</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Discover</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#29180a]/60 dark:text-[#f4f4f0]/60 px-5 py-2 hover:text-[#795900] dark:hover:text-[#ffbf00]" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">add_circle</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Scan</span>
+</a>
+<a class="flex flex-col items-center justify-center text-[#29180a]/60 dark:text-[#f4f4f0]/60 px-5 py-2 hover:text-[#795900] dark:hover:text-[#ffbf00]" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="font-['Plus_Jakarta_Sans'] text-[11px] font-bold uppercase tracking-widest mt-1">Profile</span>
+</a>
+</nav>
+</body></html>
