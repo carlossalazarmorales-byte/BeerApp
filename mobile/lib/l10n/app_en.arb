@@ -52,6 +52,106 @@
   "@profileScreenDescription": {
     "description": "Placeholder description for the Profile screen."
   },
+  "profileScreenGreeting": "Signed in as {name}.",
+  "@profileScreenGreeting": {
+    "description": "Profile screen subtitle once a real signed-in user/profile exists.",
+    "placeholders": {
+      "name": {"type": "String"}
+    }
+  },
+
+  "welcomeSubtitle": "Discover, collect, and remember every beer you try.",
+  "@welcomeSubtitle": {
+    "description": "Subtitle shown on the welcome/landing screen."
+  },
+  "welcomeAgeStatement": "I confirm I am of legal drinking age in my jurisdiction.",
+  "@welcomeAgeStatement": {
+    "description": "Required adult-audience acknowledgement checkbox label on the welcome screen."
+  },
+  "welcomeCreateAccount": "Create an account",
+  "@welcomeCreateAccount": {
+    "description": "Welcome screen button leading to sign-up."
+  },
+  "welcomeSignIn": "I already have an account",
+  "@welcomeSignIn": {
+    "description": "Welcome screen button leading to sign-in."
+  },
+  "continueWithGoogle": "Continue with Google",
+  "@continueWithGoogle": {
+    "description": "Google sign-in button label, shown on the welcome and sign-in screens."
+  },
+
+  "signInTitle": "Sign in",
+  "@signInTitle": {"description": "Sign-in screen title."},
+  "signInSubmit": "Sign in",
+  "@signInSubmit": {"description": "Sign-in screen submit button label."},
+  "signInForgotPassword": "Forgot password?",
+  "@signInForgotPassword": {"description": "Link to the forgot-password screen."},
+  "signInNoAccount": "Don't have an account? Sign up",
+  "@signInNoAccount": {"description": "Link to the sign-up screen."},
+
+  "signUpTitle": "Create your account",
+  "@signUpTitle": {"description": "Sign-up screen title."},
+  "signUpSubmit": "Create account",
+  "@signUpSubmit": {"description": "Sign-up screen submit button label."},
+  "signUpHaveAccount": "Already have an account? Sign in",
+  "@signUpHaveAccount": {"description": "Link to the sign-in screen."},
+
+  "checkEmailTitle": "Check your email",
+  "@checkEmailTitle": {"description": "Post-signup, pre-confirmation screen title."},
+  "checkEmailMessage": "We sent you a confirmation link. Tap it to finish creating your account.",
+  "@checkEmailMessage": {"description": "Post-signup, pre-confirmation screen body."},
+  "checkEmailBackToSignIn": "Back to sign in",
+  "@checkEmailBackToSignIn": {"description": "Link back to sign-in from the check-email screen."},
+
+  "forgotPasswordTitle": "Reset your password",
+  "@forgotPasswordTitle": {"description": "Forgot-password screen title."},
+  "forgotPasswordDescription": "Enter your email and we'll send you a link to reset your password.",
+  "@forgotPasswordDescription": {"description": "Forgot-password screen instructions."},
+  "forgotPasswordSubmit": "Send reset link",
+  "@forgotPasswordSubmit": {"description": "Forgot-password screen submit button label."},
+  "forgotPasswordConfirmation": "If an account exists for that email, we've sent a password reset link.",
+  "@forgotPasswordConfirmation": {
+    "description": "Shown after submitting the forgot-password form, regardless of whether the email exists (avoids account enumeration)."
+  },
+  "forgotPasswordBackToSignIn": "Back to sign in",
+  "@forgotPasswordBackToSignIn": {"description": "Link back to sign-in after requesting a password reset."},
+
+  "resetPasswordTitle": "Choose a new password",
+  "@resetPasswordTitle": {"description": "Reset-password screen title, reached via the emailed link."},
+  "resetPasswordSubmit": "Update password",
+  "@resetPasswordSubmit": {"description": "Reset-password screen submit button label."},
+
+  "completeProfileTitle": "Choose a username",
+  "@completeProfileTitle": {"description": "Complete-profile screen title, shown only for OAuth sign-ups without a username."},
+  "completeProfileDescription": "Pick a username to finish setting up your BeerApp account.",
+  "@completeProfileDescription": {"description": "Complete-profile screen instructions."},
+  "completeProfileSubmit": "Save username",
+  "@completeProfileSubmit": {"description": "Complete-profile screen submit button label."},
+
+  "emailHint": "Email",
+  "@emailHint": {"description": "Placeholder for an email input field."},
+  "passwordHint": "Password",
+  "@passwordHint": {"description": "Placeholder for a password input field."},
+  "usernameHint": "Username",
+  "@usernameHint": {"description": "Placeholder for a username input field."},
+
+  "emailInvalidError": "Enter a valid email address.",
+  "@emailInvalidError": {"description": "Client-side email field validation error."},
+  "passwordRequiredError": "Enter your password.",
+  "@passwordRequiredError": {"description": "Client-side password field validation error on sign-in."},
+  "passwordTooShortError": "Password must be at least 8 characters.",
+  "@passwordTooShortError": {"description": "Client-side password field validation error on sign-up/reset."},
+  "usernameInvalidError": "Usernames must be 3-20 characters: lowercase letters, numbers, and underscores only.",
+  "@usernameInvalidError": {"description": "Client-side username field validation error; mirrors the database CHECK constraint."},
+  "usernameTakenError": "That username is already taken.",
+  "@usernameTakenError": {"description": "Shown when the database's unique constraint rejects a username."},
+  "authInvalidCredentialsError": "Invalid email or password.",
+  "@authInvalidCredentialsError": {"description": "Generic sign-in failure message; never distinguishes which field was wrong (avoids account enumeration)."},
+  "authGenericError": "Something went wrong. Please try again.",
+  "@authGenericError": {"description": "Generic fallback error for auth actions, used instead of showing a raw backend error message."},
+  "googleSignInUnavailableError": "Google sign-in isn't available yet.",
+  "@googleSignInUnavailableError": {"description": "Shown when Google Sign-In is tapped before the provider is configured (Phase 2 Step F)."},
 
   "loadingStateMessage": "Loading…",
   "@loadingStateMessage": {

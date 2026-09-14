@@ -11,6 +11,11 @@ class AppTextField extends StatelessWidget {
     this.leadingIcon,
     this.obscureText = false,
     this.onChanged,
+    this.validator,
+    this.errorText,
+    this.keyboardType,
+    this.textInputAction,
+    this.autofillHints,
   });
 
   final TextEditingController? controller;
@@ -18,6 +23,14 @@ class AppTextField extends StatelessWidget {
   final IconData? leadingIcon;
   final bool obscureText;
   final ValueChanged<String>? onChanged;
+  final FormFieldValidator<String>? validator;
+
+  /// A server-side error (e.g. "username taken") to show alongside/instead
+  /// of [validator]'s client-side result.
+  final String? errorText;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final Iterable<String>? autofillHints;
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +38,13 @@ class AppTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       onChanged: onChanged,
+      validator: validator,
+      keyboardType: keyboardType,
+      textInputAction: textInputAction,
+      autofillHints: autofillHints,
       decoration: InputDecoration(
         hintText: hintText,
+        errorText: errorText,
         prefixIcon: leadingIcon == null ? null : Icon(leadingIcon),
       ),
     );

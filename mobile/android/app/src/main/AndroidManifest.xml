@@ -1,4 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required to reach Supabase's REST/Auth APIs. Already present in the
+         debug/profile manifests via the Flutter template; needed here too
+         since this is the manifest a release build uses. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="beerapp"
         android:name="${applicationName}"
@@ -23,6 +27,20 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Supabase Auth deep link (email confirmation, password
+                 reset, OAuth return) — see mobile/lib/core/config/env.dart
+                 (authRedirectUrl) and docs/DATABASE.md. This is a custom
+                 URI scheme, not an http/https App Link, so android:autoVerify
+                 is intentionally omitted: autoVerify is Android App Links
+                 verification for http/https only and does not apply here. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data
+                    android:scheme="com.carlossalazarmorales.beerapp"
+                    android:host="login-callback"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

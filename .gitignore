@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+mobile/config/dev.json
+!mobile/config/dev.example.json
 
 # Python
 __pycache__/

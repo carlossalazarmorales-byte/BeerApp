@@ -170,6 +170,228 @@ abstract class AppLocalizations {
   /// **'Manage your profile, achievements and preferences.'**
   String get profileScreenDescription;
 
+  /// Profile screen subtitle once a real signed-in user/profile exists.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as {name}.'**
+  String profileScreenGreeting(String name);
+
+  /// Subtitle shown on the welcome/landing screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover, collect, and remember every beer you try.'**
+  String get welcomeSubtitle;
+
+  /// Required adult-audience acknowledgement checkbox label on the welcome screen.
+  ///
+  /// In en, this message translates to:
+  /// **'I confirm I am of legal drinking age in my jurisdiction.'**
+  String get welcomeAgeStatement;
+
+  /// Welcome screen button leading to sign-up.
+  ///
+  /// In en, this message translates to:
+  /// **'Create an account'**
+  String get welcomeCreateAccount;
+
+  /// Welcome screen button leading to sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'I already have an account'**
+  String get welcomeSignIn;
+
+  /// Google sign-in button label, shown on the welcome and sign-in screens.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue with Google'**
+  String get continueWithGoogle;
+
+  /// Sign-in screen title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get signInTitle;
+
+  /// Sign-in screen submit button label.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get signInSubmit;
+
+  /// Link to the forgot-password screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot password?'**
+  String get signInForgotPassword;
+
+  /// Link to the sign-up screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t have an account? Sign up'**
+  String get signInNoAccount;
+
+  /// Sign-up screen title.
+  ///
+  /// In en, this message translates to:
+  /// **'Create your account'**
+  String get signUpTitle;
+
+  /// Sign-up screen submit button label.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get signUpSubmit;
+
+  /// Link to the sign-in screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Already have an account? Sign in'**
+  String get signUpHaveAccount;
+
+  /// Post-signup, pre-confirmation screen title.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email'**
+  String get checkEmailTitle;
+
+  /// Post-signup, pre-confirmation screen body.
+  ///
+  /// In en, this message translates to:
+  /// **'We sent you a confirmation link. Tap it to finish creating your account.'**
+  String get checkEmailMessage;
+
+  /// Link back to sign-in from the check-email screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to sign in'**
+  String get checkEmailBackToSignIn;
+
+  /// Forgot-password screen title.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset your password'**
+  String get forgotPasswordTitle;
+
+  /// Forgot-password screen instructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your email and we\'ll send you a link to reset your password.'**
+  String get forgotPasswordDescription;
+
+  /// Forgot-password screen submit button label.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reset link'**
+  String get forgotPasswordSubmit;
+
+  /// Shown after submitting the forgot-password form, regardless of whether the email exists (avoids account enumeration).
+  ///
+  /// In en, this message translates to:
+  /// **'If an account exists for that email, we\'ve sent a password reset link.'**
+  String get forgotPasswordConfirmation;
+
+  /// Link back to sign-in after requesting a password reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to sign in'**
+  String get forgotPasswordBackToSignIn;
+
+  /// Reset-password screen title, reached via the emailed link.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a new password'**
+  String get resetPasswordTitle;
+
+  /// Reset-password screen submit button label.
+  ///
+  /// In en, this message translates to:
+  /// **'Update password'**
+  String get resetPasswordSubmit;
+
+  /// Complete-profile screen title, shown only for OAuth sign-ups without a username.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a username'**
+  String get completeProfileTitle;
+
+  /// Complete-profile screen instructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a username to finish setting up your BeerApp account.'**
+  String get completeProfileDescription;
+
+  /// Complete-profile screen submit button label.
+  ///
+  /// In en, this message translates to:
+  /// **'Save username'**
+  String get completeProfileSubmit;
+
+  /// Placeholder for an email input field.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get emailHint;
+
+  /// Placeholder for a password input field.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get passwordHint;
+
+  /// Placeholder for a username input field.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get usernameHint;
+
+  /// Client-side email field validation error.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid email address.'**
+  String get emailInvalidError;
+
+  /// Client-side password field validation error on sign-in.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password.'**
+  String get passwordRequiredError;
+
+  /// Client-side password field validation error on sign-up/reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Password must be at least 8 characters.'**
+  String get passwordTooShortError;
+
+  /// Client-side username field validation error; mirrors the database CHECK constraint.
+  ///
+  /// In en, this message translates to:
+  /// **'Usernames must be 3-20 characters: lowercase letters, numbers, and underscores only.'**
+  String get usernameInvalidError;
+
+  /// Shown when the database's unique constraint rejects a username.
+  ///
+  /// In en, this message translates to:
+  /// **'That username is already taken.'**
+  String get usernameTakenError;
+
+  /// Generic sign-in failure message; never distinguishes which field was wrong (avoids account enumeration).
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid email or password.'**
+  String get authInvalidCredentialsError;
+
+  /// Generic fallback error for auth actions, used instead of showing a raw backend error message.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get authGenericError;
+
+  /// Shown when Google Sign-In is tapped before the provider is configured (Phase 2 Step F).
+  ///
+  /// In en, this message translates to:
+  /// **'Google sign-in isn\'t available yet.'**
+  String get googleSignInUnavailableError;
+
   /// Accessible label announced while a loading state is shown.
   ///
   /// In en, this message translates to:

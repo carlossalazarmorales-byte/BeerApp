@@ -16,6 +16,52 @@
   "scanScreenDescription": "Escanea la etiqueta de una cerveza para añadirla a tu colección en segundos.",
   "collectionScreenDescription": "Lleva el registro de cada cerveza que has probado y valorado.",
   "profileScreenDescription": "Gestiona tu perfil, logros y preferencias.",
+  "profileScreenGreeting": "Sesión iniciada como {name}.",
+
+  "welcomeSubtitle": "Descubre, colecciona y recuerda cada cerveza que pruebes.",
+  "welcomeAgeStatement": "Confirmo que tengo la edad legal para consumir alcohol en mi jurisdicción.",
+  "welcomeCreateAccount": "Crear una cuenta",
+  "welcomeSignIn": "Ya tengo una cuenta",
+  "continueWithGoogle": "Continuar con Google",
+
+  "signInTitle": "Iniciar sesión",
+  "signInSubmit": "Iniciar sesión",
+  "signInForgotPassword": "¿Olvidaste tu contraseña?",
+  "signInNoAccount": "¿No tienes una cuenta? Regístrate",
+
+  "signUpTitle": "Crea tu cuenta",
+  "signUpSubmit": "Crear cuenta",
+  "signUpHaveAccount": "¿Ya tienes una cuenta? Inicia sesión",
+
+  "checkEmailTitle": "Revisa tu correo",
+  "checkEmailMessage": "Te enviamos un enlace de confirmación. Tócalo para terminar de crear tu cuenta.",
+  "checkEmailBackToSignIn": "Volver a iniciar sesión",
+
+  "forgotPasswordTitle": "Restablece tu contraseña",
+  "forgotPasswordDescription": "Ingresa tu correo y te enviaremos un enlace para restablecer tu contraseña.",
+  "forgotPasswordSubmit": "Enviar enlace",
+  "forgotPasswordConfirmation": "Si existe una cuenta con ese correo, te hemos enviado un enlace para restablecer la contraseña.",
+  "forgotPasswordBackToSignIn": "Volver a iniciar sesión",
+
+  "resetPasswordTitle": "Elige una nueva contraseña",
+  "resetPasswordSubmit": "Actualizar contraseña",
+
+  "completeProfileTitle": "Elige un nombre de usuario",
+  "completeProfileDescription": "Elige un nombre de usuario para terminar de configurar tu cuenta de BeerApp.",
+  "completeProfileSubmit": "Guardar nombre de usuario",
+
+  "emailHint": "Correo electrónico",
+  "passwordHint": "Contraseña",
+  "usernameHint": "Nombre de usuario",
+
+  "emailInvalidError": "Ingresa un correo electrónico válido.",
+  "passwordRequiredError": "Ingresa tu contraseña.",
+  "passwordTooShortError": "La contraseña debe tener al menos 8 caracteres.",
+  "usernameInvalidError": "El nombre de usuario debe tener 3-20 caracteres: minúsculas, números y guiones bajos únicamente.",
+  "usernameTakenError": "Ese nombre de usuario ya está en uso.",
+  "authInvalidCredentialsError": "Correo o contraseña inválidos.",
+  "authGenericError": "Algo salió mal. Inténtalo de nuevo.",
+  "googleSignInUnavailableError": "El inicio de sesión con Google todavía no está disponible.",
 
   "loadingStateMessage": "Cargando…",
   "emptyStateDefaultMessage": "Todavía no hay nada aquí.",

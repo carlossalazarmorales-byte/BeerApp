@@ -1,3 +1,5 @@
+import 'package:beerapp/core/auth/auth_scope.dart';
+import 'package:beerapp/features/auth/presentation/auth_controller.dart';
 import 'package:beerapp/features/collection/presentation/collection_screen.dart';
 import 'package:beerapp/features/discover/presentation/discover_screen.dart';
 import 'package:beerapp/features/map/presentation/map_screen.dart';
@@ -7,11 +9,22 @@ import 'package:beerapp/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../fakes/fake_auth_repository.dart';
+import '../fakes/fake_profile_repository.dart';
+
+/// [ProfileScreen] reads [AuthScope.of], so every case is wrapped with one —
+/// harmless for the other 4 screens, which don't use it.
 Widget _wrap(Widget child) {
-  return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: child,
+  return AuthScope(
+    controller: AuthController(
+      authRepository: FakeAuthRepository(),
+      profileRepository: FakeProfileRepository(),
+    ),
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 
