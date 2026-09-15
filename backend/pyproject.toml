@@ -4,3 +4,14 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
+
+[tool.pytest.ini_options]
+# Default run is fully offline/deterministic: no live Supabase project, no
+# live JWKS endpoint, no internet, no real database. Integration tests are
+# opt-in only, via `pytest -m integration`, and require their own
+# INTEGRATION_DATABASE_URL -- never DATABASE_URL or SEED_DATABASE_URL. See
+# docs/DATABASE.md.
+addopts = "-m 'not integration'"
+markers = [
+    "integration: requires INTEGRATION_DATABASE_URL and network access; excluded by default",
+]

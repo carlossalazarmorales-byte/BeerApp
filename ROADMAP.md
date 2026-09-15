@@ -118,29 +118,40 @@ Exit criteria:
 
 Goal: create the core beer catalog data model.
 
+> **Scope note (2026-09-15, see `docs/DECISIONS.md`)**: `user_beer_logs`,
+> `favorites`, and `wishlist` below are **deferred to Phase 6 (Logging a
+> Beer) / Phase 7 (Personal Collection)** — they're user-owned entities that
+> belong with the features that create them, not built speculatively ahead
+> of those phases. Phase 3 delivered `users/profiles` (Phase 2),
+> `countries`, `beer_styles`, `breweries`, `beers`, the protected backend
+> foundation (config, JWT verification, DB access, repository/service
+> layers), and — moved forward from Phase 4 as allowed foundational work —
+> the six catalog read endpoints listed there.
+
 Tables/entities:
 
-- [ ] users / profiles
-- [ ] countries
-- [ ] beer_styles
-- [ ] breweries
-- [ ] beers
-- [ ] user_beer_logs
-- [ ] favorites
-- [ ] wishlist
+- [x] users / profiles (Phase 2)
+- [x] countries
+- [x] beer_styles
+- [x] breweries
+- [x] beers
+- [ ] user_beer_logs — deferred to Phase 6
+- [ ] favorites — deferred to Phase 7
+- [ ] wishlist — deferred to Phase 7
 
 Tasks:
 
-- [ ] Define database schema
-- [ ] Add constraints
-- [ ] Add indexes
-- [ ] Add foreign keys
-- [ ] Add migrations
-- [ ] Add seed data
-- [ ] Document entity relationships
-- [ ] Create backend repository layer
-- [ ] Create backend service layer
-- [ ] Create initial API schemas
+- [x] Define database schema
+- [x] Add constraints
+- [x] Add indexes
+- [x] Add foreign keys
+- [x] Add migrations
+- [x] Add seed data (run against the dev project and confirmed idempotent —
+      see `docs/DECISIONS.md`)
+- [x] Document entity relationships
+- [x] Create backend repository layer
+- [x] Create backend service layer
+- [x] Create initial API schemas
 
 Exit criteria:
 
@@ -153,14 +164,20 @@ Exit criteria:
 
 Goal: allow users to browse real catalog data.
 
+> **Scope note (2026-09-15, see `docs/DECISIONS.md`)**: the API tasks below
+> were already built in Phase 3 as part of proving the protected backend
+> end-to-end (`GET /countries`, `/beer-styles`, `/breweries[/{id}]`,
+> `/beers[/{id}]` — see `docs/API.md`). Phase 4 consumes and polishes them
+> in the Flutter UI rather than rebuilding them.
+
 Tasks:
 
-- [ ] Beer list API
-- [ ] Pagination
-- [ ] Beer detail API
-- [ ] Brewery relation
-- [ ] Style relation
-- [ ] Country relation
+- [x] Beer list API (built in Phase 3)
+- [x] Pagination (built in Phase 3)
+- [x] Beer detail API (built in Phase 3)
+- [x] Brewery relation (built in Phase 3)
+- [x] Style relation (built in Phase 3)
+- [x] Country relation (built in Phase 3)
 - [ ] Beer cards
 - [ ] Beer detail screen
 - [ ] Loading states

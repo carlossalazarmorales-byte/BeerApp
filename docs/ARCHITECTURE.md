@@ -22,28 +22,40 @@ scaffolded empty ahead of time.
 
 ## Backend (`/backend`)
 
-FastAPI app. Target layering per `CLAUDE.md`:
+FastAPI app. Layering per `CLAUDE.md`, built out in Phase 3:
 
 ```
 backend/app/
   routes/         # thin HTTP layer — request/response only
   schemas/        # Pydantic request/response models
   services/       # business logic
-  repositories/   # persistence access
-  models/         # ORM / persistence models
-  config.py       # environment-driven settings
+  repositories/   # persistence access, hand-written parameterized SQL
+  auth/           # JWKS fetch/cache, JWT verification, get_current_user dependency
+  dependencies.py # pool -> repository -> service wiring, overridable per layer in tests
+  db.py           # asyncpg connection pool
+  errors.py       # exception -> JSON error envelope mapping
+  config.py       # environment-driven settings (pydantic-settings)
 ```
 
-Currently the app is a single `app/main.py` exposing `GET /health`. The layered
-split above will be introduced once real endpoints exist — splitting it now for
-one endpoint would be premature.
+No `models/` (ORM) layer: the backend talks to Postgres directly via `asyncpg`
+and hand-written SQL in `repositories/`, not an ORM — see `docs/DECISIONS.md`.
+Pydantic models in `schemas/` are the only "model" layer, and describe API
+shapes, not persistence.
 
 ## Data flow
 
 Mobile → FastAPI (REST) → PostgreSQL (via Supabase). Supabase Auth issues the
 session token the mobile app attaches to API requests; the backend verifies it
-and enforces authorization server-side (see `PRODUCT.md` §27). Supabase Storage
-holds images referenced by URL from catalog/user records.
+locally (JWKS-based JWT verification, `app/auth/`) and enforces authorization
+server-side (see `PRODUCT.md` §27). The mobile app never queries Postgres/
+PostgREST directly for catalog data — FastAPI is the only read path, per
+`docs/DATABASE.md`. Supabase Storage holds images referenced by URL from
+catalog/user records.
+
+The backend's own Postgres connection (`DATABASE_URL`) is a dedicated,
+least-privilege role (`beerapp_backend`, `SELECT`-only on the catalog tables)
+rather than the project's admin credentials — see `docs/DATABASE.md` for the
+full role model and `docs/DECISIONS.md` for the rationale.
 
 ## Global catalog vs. personal data
 
