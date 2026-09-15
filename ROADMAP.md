@@ -178,20 +178,36 @@ Tasks:
 - [x] Brewery relation (built in Phase 3)
 - [x] Style relation (built in Phase 3)
 - [x] Country relation (built in Phase 3)
-- [ ] Beer cards
-- [ ] Beer detail screen
-- [ ] Loading states
-- [ ] Empty states
-- [ ] Error states
-- [ ] Beer imagery fallback
-- [ ] Favorite action
-- [ ] Wishlist action
+- [x] Beer cards
+- [x] Beer detail screen
+- [x] Loading states
+- [x] Empty states
+- [x] Error states
+- [x] Beer imagery fallback
+
+> **Scope note (2026-09-15, see `docs/DECISIONS.md`)**: `Favorite action` and
+> `Wishlist action` are deferred to Phase 7 (`Personal Collection`), which
+> already tracks the underlying `Favorites`/`Wishlist` tasks — there is no
+> `favorites`/`wishlist` table or endpoint yet (Phase 3's scope note above).
+> Phase 4 does not add favorites, wishlist, ratings, reviews, logging,
+> achievements, the scanner, the map, recommendations, or social features.
 
 Exit criteria:
 
 - User can browse beers
 - User can open a beer
 - Beer details are loaded from backend/database
+
+> **Completion note (2026-09-15, see `docs/DECISIONS.md`)**: Phase 4 is
+> complete, verified via a live run on the Android emulator against a local
+> FastAPI backend and a real Supabase project — sign-in, the Discover tab
+> loading all seeded beers through FastAPI (style/country resolved),
+> opening a beer detail screen (brewery/style/country/ABV/IBU rendering,
+> bottom nav hidden), back restoring the Discover list's prior state, and
+> pull-to-refresh, all working with no raw backend error ever shown. This
+> run also completes Phase 3's previously-pending live authenticated
+> smoke test (Supabase Auth → JWT → FastAPI JWKS verification → Postgres →
+> JSON → Flutter render, end-to-end).
 
 ---
 

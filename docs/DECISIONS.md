@@ -301,3 +301,49 @@ regression). Also added the Phase 3 dependencies: `asyncpg`, `PyJWT`,
 transitively before this phase — now genuinely relied on directly by
 `app/config.py`), and `httpx` (same — already present transitively via
 FastAPI/Starlette, now relied on directly by `app/auth/jwks.py`).
+
+## 2026-09-15 — Phase 4: `http` promoted to a direct mobile dependency, no `dio`
+
+Phase 4 is the first phase where the Flutter app talks to the FastAPI
+backend at all (previously it only talked to Supabase). `http` was already
+present transitively (pulled in by `supabase_flutter`), so promoting it to a
+direct dependency (`mobile/pubspec.yaml`) costs nothing new in the
+dependency tree. `dio` was considered and rejected: nothing in `ApiClient`
+(`mobile/lib/core/network/`) needs interceptor chains, automatic retries, or
+request cancellation beyond what's hand-rolled, and `http` ships
+`package:http/testing.dart`'s `MockClient`, which covers the test story
+(`test/core/network/api_client_test.dart`,
+`test/features/catalog/data/api_catalog_repository_test.dart`) without an
+extra dependency.
+
+## 2026-09-15 — Phase 4: mobile catalog parsing tolerates Decimal-as-string, matching this backend's actual serialization
+
+The live Android smoke test reached FastAPI successfully (200s on
+`/beer-styles` and `/beers` in the Uvicorn log) but Discover still showed
+the generic localized catalog error. Root cause: Pydantic v2 serializes
+`Decimal` fields to JSON as **strings**, not bare numbers, to preserve
+precision — verified directly against this backend's own schema classes
+(`BeerOut`, `BreweryOut`, `BeerStyleOut`), across `model_dump_json()`,
+`model_dump(mode="json")`, and FastAPI's `jsonable_encoder` (all three
+agree, e.g. `{"abv":"4.20"}`, not `{"abv":4.2}`). `int` fields (`ibu`) and
+`bool` fields (`verified`) are unaffected. The Flutter models
+(`mobile/lib/features/catalog/domain/models/{beer,brewery,beer_style}.dart`)
+parsed `abv`/`latitude`/`longitude`/`typical_abv_min`/`typical_abv_max` with
+a strict `as num?` cast, which throws whenever a row has a non-null value
+for one of these fields — a `TypeError`, not an `ApiException`, so it fell
+through to the generic error message rather than a specific one.
+
+This is not a backend defect (Pydantic's string-encoding of `Decimal` is
+correct, standard behavior — a `Decimal → float → JSON number` conversion
+is the one that would actually lose precision), so the backend contract
+was not changed. Fixed client-side: added
+`mobile/lib/features/catalog/domain/models/json_parsing.dart`
+(`parseNullableDouble`), which accepts either a bare JSON number or a
+numeric string, and switched the three affected models to use it. Also
+added `kDebugMode`-guarded diagnostic logging
+(`mobile/lib/features/catalog/presentation/catalog_debug_log.dart`) around
+the catch blocks in `BeerListController`/`BeerDetailController` — exception
+type, message, and stack trace only, never tokens/headers/secrets, never
+shown in the UI, never active in release builds. Regression tests
+(`test/features/catalog/models/{json_parsing,beer,brewery,beer_style}_test.dart`)
+use the exact string-form JSON confirmed above.
