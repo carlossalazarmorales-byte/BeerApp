@@ -17,6 +17,13 @@ abstract final class Env {
     'GOOGLE_SERVER_CLIENT_ID',
   );
 
+  /// Base URL of the FastAPI backend catalog reads go through -- never the
+  /// Supabase project URL. On the Android emulator this is
+  /// `http://10.0.2.2:8000` (the emulator's alias for the host machine's
+  /// `localhost`); see `mobile/android/app/src/debug/res/xml/` for the
+  /// matching debug-only cleartext allowance.
+  static const String apiBaseUrl = String.fromEnvironment('API_BASE_URL');
+
   /// The deep-link URL Supabase redirects to after email confirmation and
   /// password-reset links, and that Android's intent-filter matches (see
   /// `AndroidManifest.xml`). Fixed by the app's package name, not
@@ -40,6 +47,12 @@ abstract final class Env {
         'Missing Supabase configuration. Run with '
         '--dart-define-from-file=config/dev.json '
         '(copy mobile/config/dev.example.json first).',
+      );
+    }
+    if (apiBaseUrl.isEmpty) {
+      throw StateError(
+        'Missing API_BASE_URL configuration. Add it to '
+        'mobile/config/dev.json (see mobile/config/dev.example.json).',
       );
     }
   }

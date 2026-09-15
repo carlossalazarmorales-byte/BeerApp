@@ -194,4 +194,41 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get errorStateRetryLabel => 'Reintentar';
+
+  @override
+  String get catalogErrorUnauthorized =>
+      'Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.';
+
+  @override
+  String get catalogErrorServiceUnavailable =>
+      'El catálogo de cervezas no está disponible temporalmente. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get catalogErrorNetwork =>
+      'Revisa tu conexión a internet e inténtalo de nuevo.';
+
+  @override
+  String get catalogErrorNotFound => 'No se pudo encontrar esta cerveza.';
+
+  @override
+  String get catalogErrorGeneric =>
+      'No pudimos cargar el catálogo de cervezas. Inténtalo de nuevo.';
+
+  @override
+  String get beerDetailBreweryLabel => 'Cervecería';
+
+  @override
+  String get beerDetailStyleLabel => 'Estilo';
+
+  @override
+  String get beerDetailAbvLabel => 'ABV';
+
+  @override
+  String get beerDetailIbuLabel => 'IBU';
+
+  @override
+  String get beerDetailDescriptionLabel => 'Descripción';
+
+  @override
+  String get beerDetailVerifiedBadge => 'Verificada';
 }

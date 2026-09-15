@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Debug-build-only cleartext allowance for the Android emulator's loopback
+  alias, so the app can reach a FastAPI backend running on the host
+  machine's localhost during development. Referenced only from
+  android/app/src/debug/AndroidManifest.xml; release builds compile from
+  src/main/ (+ src/release/ if any) and never see this file, so cleartext
+  stays impossible outside debug and production API traffic stays
+  HTTPS-only.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

@@ -433,6 +433,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get errorStateRetryLabel;
+
+  /// Shown when a catalog request fails because there is no usable authenticated session.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again to continue.'**
+  String get catalogErrorUnauthorized;
+
+  /// Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503).
+  ///
+  /// In en, this message translates to:
+  /// **'The beer catalog is temporarily unavailable. Please try again in a moment.'**
+  String get catalogErrorServiceUnavailable;
+
+  /// Shown when a catalog request fails due to no network connectivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get catalogErrorNetwork;
+
+  /// Shown when a beer detail request returns 404.
+  ///
+  /// In en, this message translates to:
+  /// **'This beer could not be found.'**
+  String get catalogErrorNotFound;
+
+  /// Fallback error message for catalog requests, used instead of showing a raw backend error message.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load the beer catalog. Please try again.'**
+  String get catalogErrorGeneric;
+
+  /// Label for the brewery field on the beer detail screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewery'**
+  String get beerDetailBreweryLabel;
+
+  /// Label for the beer style field on the beer detail screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get beerDetailStyleLabel;
+
+  /// Label for the alcohol-by-volume stat on the beer detail screen.
+  ///
+  /// In en, this message translates to:
+  /// **'ABV'**
+  String get beerDetailAbvLabel;
+
+  /// Label for the bitterness (IBU) stat on the beer detail screen.
+  ///
+  /// In en, this message translates to:
+  /// **'IBU'**
+  String get beerDetailIbuLabel;
+
+  /// Label for the description section on the beer detail screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get beerDetailDescriptionLabel;
+
+  /// Badge shown on a beer/brewery whose catalog data has been verified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get beerDetailVerifiedBadge;
 }
 
 class _AppLocalizationsDelegate

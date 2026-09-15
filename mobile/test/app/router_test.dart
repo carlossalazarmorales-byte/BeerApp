@@ -1,4 +1,5 @@
 import 'package:beerapp/app/app.dart';
+import 'package:beerapp/app/app_routes.dart';
 import 'package:beerapp/app/router.dart';
 import 'package:beerapp/core/onboarding/age_gate_controller.dart';
 import 'package:beerapp/design_system/components/navigation/bottom_nav_bar.dart';
@@ -9,6 +10,10 @@ import 'package:beerapp/features/auth/presentation/complete_profile_screen.dart'
 import 'package:beerapp/features/auth/presentation/profile_unavailable_screen.dart';
 import 'package:beerapp/features/auth/presentation/sign_in_screen.dart';
 import 'package:beerapp/features/auth/presentation/welcome_screen.dart';
+import 'package:beerapp/features/catalog/domain/models/beer.dart';
+import 'package:beerapp/features/catalog/domain/models/brewery.dart';
+import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
+import 'package:beerapp/features/catalog/presentation/beer_detail/beer_detail_screen.dart';
 import 'package:beerapp/features/map/presentation/map_screen.dart';
 import 'package:beerapp/features/profile/presentation/profile_screen.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +22,7 @@ import 'package:go_router/go_router.dart';
 
 import '../fakes/fake_age_gate_storage.dart';
 import '../fakes/fake_auth_repository.dart';
+import '../fakes/fake_catalog_repository.dart';
 import '../fakes/fake_profile_repository.dart';
 
 Finder _navLabel(String label) =>
@@ -43,6 +49,7 @@ class _Harness {
     if (initialProfileError != null) {
       profileRepository.getProfileError = initialProfileError;
     }
+    final catalogRepository = FakeCatalogRepository();
 
     final ageGateController = AgeGateController(
       storage: FakeAgeGateStorage(initiallyAcknowledged: ageAcknowledged),
@@ -56,11 +63,13 @@ class _Harness {
       profileRepository: profileRepository,
       authController: authController,
       ageGateController: ageGateController,
+      catalogRepository: catalogRepository,
     );
 
     return _Harness._(
       authRepository: authRepository,
       profileRepository: profileRepository,
+      catalogRepository: catalogRepository,
       ageGateController: ageGateController,
       authController: authController,
       router: router,
@@ -70,6 +79,7 @@ class _Harness {
   _Harness._({
     required this.authRepository,
     required this.profileRepository,
+    required this.catalogRepository,
     required this.ageGateController,
     required this.authController,
     required this.router,
@@ -77,6 +87,7 @@ class _Harness {
 
   final FakeAuthRepository authRepository;
   final FakeProfileRepository profileRepository;
+  final FakeCatalogRepository catalogRepository;
   final AgeGateController ageGateController;
   final AuthController authController;
   final GoRouter router;
@@ -219,6 +230,72 @@ void main() {
 
       final mapScreenAfter = tester.widget(find.byType(MapScreen));
       expect(identical(mapScreenBefore, mapScreenAfter), isTrue);
+    },
+  );
+
+  testWidgets(
+    'beer detail is a full-screen route above the shell: hides the bottom '
+    'nav and preserves Discover state on pop',
+    (tester) async {
+      final harness = _Harness(
+        ageAcknowledged: true,
+        initialUser: const AppUser(id: 'email-user-id'),
+        initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
+      );
+      harness.catalogRepository
+        ..beersByPage[1] = const PagedResult(
+          items: [
+            Beer(
+              id: 'beer-1',
+              officialName: 'Test Pale Ale',
+              breweryId: 'brewery-1',
+              verified: false,
+            ),
+          ],
+          page: 1,
+          pageSize: 20,
+          total: 1,
+        )
+        ..beersById['beer-1'] = const Beer(
+          id: 'beer-1',
+          officialName: 'Test Pale Ale',
+          breweryId: 'brewery-1',
+          verified: false,
+        )
+        ..breweriesById['brewery-1'] = const Brewery(
+          id: 'brewery-1',
+          name: 'Test Brewery',
+          countryId: 'country-1',
+          verified: false,
+        );
+
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      harness.router.go('/discover');
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BottomNavBar), findsOneWidget);
+      expect(find.text('Test Pale Ale'), findsOneWidget);
+
+      harness.router.push(AppRoutes.beerDetailPath('beer-1'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BeerDetailScreen), findsOneWidget);
+      expect(
+        find.byType(BottomNavBar),
+        findsNothing,
+        reason: 'beer detail is a full-screen route above the shell',
+      );
+
+      harness.router.pop();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BeerDetailScreen), findsNothing);
+      expect(find.byType(BottomNavBar), findsOneWidget);
+      // The Discover branch's own Navigator (and its already-loaded list)
+      // was never torn down while covered by the detail route.
+      expect(find.text('Test Pale Ale'), findsOneWidget);
     },
   );
 }

@@ -17,4 +17,12 @@ abstract final class AppRoutes {
 
   /// The authenticated shell's default destination (Map tab).
   static const String home = '/map';
+
+  /// Beer detail. Declared as a top-level route (not nested inside the
+  /// Discover tab's `StatefulShellBranch`) so it builds on the root
+  /// navigator, full-screen above the bottom-nav shell, rather than staying
+  /// on the Discover branch's own nested navigator.
+  static const String beerDetail = '/discover/beers/:beerId';
+
+  static String beerDetailPath(String beerId) => '/discover/beers/$beerId';
 }

@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
 import 'app/router.dart';
 import 'core/auth/auth_deep_link_handler.dart';
 import 'core/config/env.dart';
+import 'core/network/api_client.dart';
+import 'core/network/supabase_access_token_provider.dart';
+import 'core/network/supabase_session_source.dart';
 import 'core/onboarding/age_gate_controller.dart';
 import 'features/auth/data/google_auth_client.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/data/supabase_profile_repository.dart';
 import 'features/auth/presentation/auth_controller.dart';
+import 'features/catalog/data/api_catalog_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -46,11 +51,27 @@ Future<void> main() async {
     profileRepository: profileRepository,
   );
   final ageGateController = AgeGateController();
+
+  // Owned for the process's entire lifetime, the same lifecycle as
+  // Supabase.instance.client -- intentionally never closed, since a Flutter
+  // mobile app runs no cleanup code at process teardown.
+  final httpClient = http.Client();
+  final accessTokenProvider = SupabaseAccessTokenProvider(
+    SupabaseSessionSource(Supabase.instance.client),
+  );
+  final apiClient = ApiClient(
+    httpClient: httpClient,
+    baseUrl: Env.apiBaseUrl,
+    accessTokenProvider: accessTokenProvider,
+  );
+  final catalogRepository = ApiCatalogRepository(apiClient);
+
   final router = createRouter(
     authRepository: authRepository,
     profileRepository: profileRepository,
     authController: authController,
     ageGateController: ageGateController,
+    catalogRepository: catalogRepository,
   );
 
   // Constructed only now that AuthController's onAuthStateChange listener

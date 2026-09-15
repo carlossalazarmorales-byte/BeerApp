@@ -70,5 +70,18 @@
   "loadingStateMessage": "Cargando…",
   "emptyStateDefaultMessage": "Todavía no hay nada aquí.",
   "errorStateDefaultMessage": "Algo salió mal.",
-  "errorStateRetryLabel": "Reintentar"
+  "errorStateRetryLabel": "Reintentar",
+
+  "catalogErrorUnauthorized": "Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.",
+  "catalogErrorServiceUnavailable": "El catálogo de cervezas no está disponible temporalmente. Inténtalo de nuevo en un momento.",
+  "catalogErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
+  "catalogErrorNotFound": "No se pudo encontrar esta cerveza.",
+  "catalogErrorGeneric": "No pudimos cargar el catálogo de cervezas. Inténtalo de nuevo.",
+
+  "beerDetailBreweryLabel": "Cervecería",
+  "beerDetailStyleLabel": "Estilo",
+  "beerDetailAbvLabel": "ABV",
+  "beerDetailIbuLabel": "IBU",
+  "beerDetailDescriptionLabel": "Descripción",
+  "beerDetailVerifiedBadge": "Verificada"
 }

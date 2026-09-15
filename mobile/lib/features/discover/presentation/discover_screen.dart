@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 
-import '../../../l10n/generated/app_localizations.dart';
-import '../../../shared/widgets/placeholder_screen.dart';
+import '../../catalog/domain/catalog_repository.dart';
+import '../../catalog/presentation/beer_list/beer_list_screen.dart';
 
-/// Placeholder for the Discover destination. Real catalog browsing arrives
-/// once the beer catalog exists (a later phase) — this only establishes
-/// the nav destination.
+/// The Discover destination: real catalog browsing via [BeerListScreen].
+/// Kept as a thin wrapper (rather than folding the list directly into the
+/// route builder) so this is the one place the Discover tab's identity is
+/// established, independent of how the catalog feature is implemented --
+/// Phase 5 (Search and Discover) will add filters/sections here without
+/// touching `features/catalog/`.
 class DiscoverScreen extends StatelessWidget {
-  const DiscoverScreen({super.key});
+  const DiscoverScreen({required this.catalogRepository, super.key});
+
+  final CatalogRepository catalogRepository;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context);
-    return PlaceholderScreen(
-      title: l10n.navDiscover,
-      description: l10n.discoverScreenDescription,
-      icon: Icons.explore_outlined,
-    );
+    return BeerListScreen(repository: catalogRepository);
   }
 }

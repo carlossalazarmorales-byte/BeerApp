@@ -15,6 +15,13 @@ dependencies:
   go_router: ^18.0.1
   google_sign_in: ^7.2.0
   shared_preferences: ^2.5.5
+  # Already pulled in transitively by supabase_flutter; made direct because
+  # ApiClient (core/network/) now calls it directly to talk to the FastAPI
+  # backend -- see docs/DECISIONS.md. No dio: nothing here needs interceptor
+  # chains/retries beyond what's hand-rolled, and http already ships
+  # package:http/testing.dart's MockClient, covering the test story with no
+  # extra dependency.
+  http: ^1.5.0
   # Already pulled in transitively by supabase_flutter (its automatic deep
   # link detection uses it internally) -- made direct because we now also
   # call it ourselves (see core/auth/auth_deep_link_handler.dart), and a

@@ -193,4 +193,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorStateRetryLabel => 'Retry';
+
+  @override
+  String get catalogErrorUnauthorized =>
+      'Your session has expired. Please sign in again to continue.';
+
+  @override
+  String get catalogErrorServiceUnavailable =>
+      'The beer catalog is temporarily unavailable. Please try again in a moment.';
+
+  @override
+  String get catalogErrorNetwork =>
+      'Check your internet connection and try again.';
+
+  @override
+  String get catalogErrorNotFound => 'This beer could not be found.';
+
+  @override
+  String get catalogErrorGeneric =>
+      'We couldn\'t load the beer catalog. Please try again.';
+
+  @override
+  String get beerDetailBreweryLabel => 'Brewery';
+
+  @override
+  String get beerDetailStyleLabel => 'Style';
+
+  @override
+  String get beerDetailAbvLabel => 'ABV';
+
+  @override
+  String get beerDetailIbuLabel => 'IBU';
+
+  @override
+  String get beerDetailDescriptionLabel => 'Description';
+
+  @override
+  String get beerDetailVerifiedBadge => 'Verified';
 }

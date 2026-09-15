@@ -13,6 +13,8 @@ import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/auth/presentation/sign_in_screen.dart';
 import '../features/auth/presentation/sign_up_screen.dart';
 import '../features/auth/presentation/welcome_screen.dart';
+import '../features/catalog/domain/catalog_repository.dart';
+import '../features/catalog/presentation/beer_detail/beer_detail_screen.dart';
 import '../features/collection/presentation/collection_screen.dart';
 import '../features/discover/presentation/discover_screen.dart';
 import '../features/map/presentation/map_screen.dart';
@@ -87,6 +89,7 @@ GoRouter createRouter({
   required ProfileRepository profileRepository,
   required AuthController authController,
   required AgeGateController ageGateController,
+  required CatalogRepository catalogRepository,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
@@ -136,6 +139,18 @@ GoRouter createRouter({
         path: AppRoutes.profileUnavailable,
         builder: (context, state) => const ProfileUnavailableScreen(),
       ),
+      // Declared as a top-level route, not nested inside the Discover
+      // branch's `routes` below, so it builds on the root navigator --
+      // full-screen above the bottom-nav shell, hiding it, while the
+      // Discover branch's own navigator (and BeerListScreen's scroll
+      // position) stays untouched underneath.
+      GoRoute(
+        path: AppRoutes.beerDetail,
+        builder: (context, state) => BeerDetailScreen(
+          repository: catalogRepository,
+          beerId: state.pathParameters['beerId']!,
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>
             AppShell(navigationShell: navigationShell),
@@ -152,7 +167,8 @@ GoRouter createRouter({
             routes: [
               GoRoute(
                 path: '/discover',
-                builder: (context, state) => const DiscoverScreen(),
+                builder: (context, state) =>
+                    DiscoverScreen(catalogRepository: catalogRepository),
               ),
             ],
           ),

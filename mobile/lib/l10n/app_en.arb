@@ -179,5 +179,39 @@
   "errorStateRetryLabel": "Retry",
   "@errorStateRetryLabel": {
     "description": "Label for the retry button shown by the reusable error state."
-  }
+  },
+
+  "catalogErrorUnauthorized": "Your session has expired. Please sign in again to continue.",
+  "@catalogErrorUnauthorized": {
+    "description": "Shown when a catalog request fails because there is no usable authenticated session."
+  },
+  "catalogErrorServiceUnavailable": "The beer catalog is temporarily unavailable. Please try again in a moment.",
+  "@catalogErrorServiceUnavailable": {
+    "description": "Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503)."
+  },
+  "catalogErrorNetwork": "Check your internet connection and try again.",
+  "@catalogErrorNetwork": {
+    "description": "Shown when a catalog request fails due to no network connectivity."
+  },
+  "catalogErrorNotFound": "This beer could not be found.",
+  "@catalogErrorNotFound": {
+    "description": "Shown when a beer detail request returns 404."
+  },
+  "catalogErrorGeneric": "We couldn't load the beer catalog. Please try again.",
+  "@catalogErrorGeneric": {
+    "description": "Fallback error message for catalog requests, used instead of showing a raw backend error message."
+  },
+
+  "beerDetailBreweryLabel": "Brewery",
+  "@beerDetailBreweryLabel": {"description": "Label for the brewery field on the beer detail screen."},
+  "beerDetailStyleLabel": "Style",
+  "@beerDetailStyleLabel": {"description": "Label for the beer style field on the beer detail screen."},
+  "beerDetailAbvLabel": "ABV",
+  "@beerDetailAbvLabel": {"description": "Label for the alcohol-by-volume stat on the beer detail screen."},
+  "beerDetailIbuLabel": "IBU",
+  "@beerDetailIbuLabel": {"description": "Label for the bitterness (IBU) stat on the beer detail screen."},
+  "beerDetailDescriptionLabel": "Description",
+  "@beerDetailDescriptionLabel": {"description": "Label for the description section on the beer detail screen."},
+  "beerDetailVerifiedBadge": "Verified",
+  "@beerDetailVerifiedBadge": {"description": "Badge shown on a beer/brewery whose catalog data has been verified."}
 }
