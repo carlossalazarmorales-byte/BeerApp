@@ -8,6 +8,15 @@ abstract final class Env {
     'SUPABASE_PUBLISHABLE_KEY',
   );
 
+  /// The Google Cloud **Web** OAuth client ID, passed as `serverClientId` to
+  /// `GoogleSignIn.instance.initialize()`. Empty is a valid dev state (no
+  /// hard [validate] failure) — it routes Google sign-in to
+  /// `UnconfiguredGoogleAuthClient` instead of calling `initialize()` with a
+  /// blank ID.
+  static const String googleServerClientId = String.fromEnvironment(
+    'GOOGLE_SERVER_CLIENT_ID',
+  );
+
   /// The deep-link URL Supabase redirects to after email confirmation and
   /// password-reset links, and that Android's intent-filter matches (see
   /// `AndroidManifest.xml`). Fixed by the app's package name, not

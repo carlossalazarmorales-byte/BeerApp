@@ -43,4 +43,29 @@ void main() {
       expect(find.text("Google sign-in isn't available yet."), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'cancelling the Google account picker resets silently, with no error '
+    'message shown',
+    (tester) async {
+      final authRepository = FakeAuthRepository()
+        ..errorToThrow = const AuthFailure(AuthFailureCode.cancelled);
+
+      await tester.pumpWidget(_wrap(authRepository));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(CheckboxListTile));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Continue with Google'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      expect(find.text("Google sign-in isn't available yet."), findsNothing);
+      expect(
+        find.text('Something went wrong. Please try again.'),
+        findsNothing,
+      );
+    },
+  );
 }

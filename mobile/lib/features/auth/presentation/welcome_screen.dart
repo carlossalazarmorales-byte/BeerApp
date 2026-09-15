@@ -40,6 +40,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       await widget.authRepository.signInWithGoogle();
     } on AuthFailure catch (failure) {
       if (!mounted) return;
+      if (failure.code == AuthFailureCode.cancelled) {
+        // User dismissed the account picker — not an error, reset silently.
+        setState(() => _errorMessage = null);
+        return;
+      }
       final l10n = AppLocalizations.of(context);
       setState(() {
         _errorMessage = failure.code == AuthFailureCode.providerNotConfigured

@@ -1,9 +1,27 @@
 import 'dart:async';
 
+import 'package:beerapp/features/auth/data/google_auth_client.dart';
 import 'package:beerapp/features/auth/data/supabase_auth_repository.dart';
 import 'package:beerapp/features/auth/domain/auth_models.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// A [SupabaseClient] can be constructed standalone (no network call, no
+/// Supabase.initialize()) — used as a placeholder wherever a test needs one
+/// but never actually reaches it (signInWithGoogle() throws before touching
+/// the client).
+SupabaseClient _placeholderClient() =>
+    SupabaseClient('https://example.supabase.co', 'placeholder-key');
+
+class _ThrowingGoogleAuthClient implements GoogleAuthClient {
+  _ThrowingGoogleAuthClient(this.error);
+
+  final Object error;
+
+  @override
+  Future<GoogleAuthTokens> signIn() => Future<GoogleAuthTokens>.error(error);
+}
 
 void main() {
   test('mapAuthStateStream forwards stream errors unmodified -- it must not '
@@ -28,31 +46,6 @@ void main() {
 
     await source.close();
   });
-
-  test(
-    'signInWithGoogle() throws a controlled providerNotConfigured AuthFailure, '
-    'not UnimplementedError, and needs no real credentials',
-    () async {
-      // A SupabaseClient can be constructed standalone (no network call,
-      // no Supabase.initialize()) — these values are placeholders never
-      // actually used, since signInWithGoogle() throws before touching
-      // the client.
-      final repository = SupabaseAuthRepository(
-        SupabaseClient('https://example.supabase.co', 'placeholder-key'),
-      );
-
-      await expectLater(
-        repository.signInWithGoogle,
-        throwsA(
-          isA<AuthFailure>().having(
-            (failure) => failure.code,
-            'code',
-            AuthFailureCode.providerNotConfigured,
-          ),
-        ),
-      );
-    },
-  );
 
   test(
     'mapUpdatePasswordError maps the structured same_password error code '
@@ -86,5 +79,149 @@ void main() {
       SupabaseAuthRepository.mapUpdatePasswordError(uncoded),
       AuthFailureCode.weakPassword,
     );
+  });
+
+  group('signInWithGoogle()', () {
+    test('throws providerNotConfigured when Google is not configured, without '
+        'needing real Google credentials', () async {
+      final repository = SupabaseAuthRepository(
+        _placeholderClient(),
+        googleAuthClient: const UnconfiguredGoogleAuthClient(),
+      );
+
+      await expectLater(
+        repository.signInWithGoogle,
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.code,
+            'code',
+            AuthFailureCode.providerNotConfigured,
+          ),
+        ),
+      );
+    });
+
+    test('propagates a cancelled AuthFailure from the Google auth client '
+        'unchanged -- the canceled-picker scenario', () async {
+      final repository = SupabaseAuthRepository(
+        _placeholderClient(),
+        googleAuthClient: _ThrowingGoogleAuthClient(
+          const AuthFailure(AuthFailureCode.cancelled),
+        ),
+      );
+
+      await expectLater(
+        repository.signInWithGoogle,
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.code,
+            'code',
+            AuthFailureCode.cancelled,
+          ),
+        ),
+      );
+    });
+  });
+
+  group('GoogleSignInAuthClient.mapGoogleSignInError', () {
+    test('maps the canceled code to AuthFailureCode.cancelled', () {
+      const error = GoogleSignInException(
+        code: GoogleSignInExceptionCode.canceled,
+        description: 'user canceled',
+      );
+
+      expect(
+        GoogleSignInAuthClient.mapGoogleSignInError(error),
+        AuthFailureCode.cancelled,
+      );
+    });
+
+    test('maps any other code to AuthFailureCode.unknown', () {
+      const error = GoogleSignInException(
+        code: GoogleSignInExceptionCode.unknownError,
+        description: 'something else went wrong',
+      );
+
+      expect(
+        GoogleSignInAuthClient.mapGoogleSignInError(error),
+        AuthFailureCode.unknown,
+      );
+    });
+
+    test('maps canceled the same way regardless of which step in the '
+        'authenticate/authorize sequence raised it -- signIn() wraps '
+        'authenticate(), authorizationForScopes(), and authorizeScopes() in '
+        'one try/catch, all funneled through this single mapping function', () {
+      const fromAuthorizeScopes = GoogleSignInException(
+        code: GoogleSignInExceptionCode.canceled,
+        description: 'user canceled the authorization prompt',
+      );
+
+      expect(
+        GoogleSignInAuthClient.mapGoogleSignInError(fromAuthorizeScopes),
+        AuthFailureCode.cancelled,
+      );
+    });
+  });
+
+  group('GoogleSignInAuthClient.requireTokens', () {
+    test('returns tokens when both are present', () {
+      final tokens = GoogleSignInAuthClient.requireTokens(
+        idToken: 'id-token',
+        accessToken: 'access-token',
+      );
+
+      expect(tokens.idToken, 'id-token');
+      expect(tokens.accessToken, 'access-token');
+    });
+
+    test('throws AuthFailure(unknown) when the ID token is missing', () {
+      expect(
+        () => GoogleSignInAuthClient.requireTokens(
+          idToken: null,
+          accessToken: 'access-token',
+        ),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.code,
+            'code',
+            AuthFailureCode.unknown,
+          ),
+        ),
+      );
+    });
+
+    test('throws AuthFailure(unknown) when the access token is missing', () {
+      expect(
+        () => GoogleSignInAuthClient.requireTokens(
+          idToken: 'id-token',
+          accessToken: null,
+        ),
+        throwsA(
+          isA<AuthFailure>().having(
+            (failure) => failure.code,
+            'code',
+            AuthFailureCode.unknown,
+          ),
+        ),
+      );
+    });
+
+    test('throws AuthFailure(unknown) when either token is empty', () {
+      expect(
+        () => GoogleSignInAuthClient.requireTokens(
+          idToken: '',
+          accessToken: 'access-token',
+        ),
+        throwsA(isA<AuthFailure>()),
+      );
+      expect(
+        () => GoogleSignInAuthClient.requireTokens(
+          idToken: 'id-token',
+          accessToken: '',
+        ),
+        throwsA(isA<AuthFailure>()),
+      );
+    });
   });
 }

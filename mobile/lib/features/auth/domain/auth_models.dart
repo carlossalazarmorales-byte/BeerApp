@@ -27,6 +27,10 @@ enum AuthFailureCode {
   /// [unknown] so the UI can show "not available yet" instead of a generic
   /// error.
   providerNotConfigured,
+
+  /// The user dismissed the Google account picker. Distinct from [unknown]
+  /// so the UI can reset silently instead of showing an error message.
+  cancelled,
   unknown,
 }
 

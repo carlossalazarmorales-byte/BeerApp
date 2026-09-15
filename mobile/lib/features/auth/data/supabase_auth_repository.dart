@@ -4,11 +4,13 @@ import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 import '../../../core/config/env.dart';
 import '../domain/auth_models.dart';
 import '../domain/auth_repository.dart';
+import 'google_auth_client.dart';
 
 class SupabaseAuthRepository implements AuthRepository {
-  SupabaseAuthRepository(this._client);
+  SupabaseAuthRepository(this._client, {required this._googleAuthClient});
 
   final supabase.SupabaseClient _client;
+  final GoogleAuthClient _googleAuthClient;
 
   @override
   AppUser? get currentUser {
@@ -131,10 +133,15 @@ class SupabaseAuthRepository implements AuthRepository {
 
   @override
   Future<void> signInWithGoogle() async {
-    // Implemented in execution-order Step F, once Google Cloud OAuth
-    // credentials are configured (see docs/DECISIONS.md). A controlled
-    // AuthFailure rather than UnimplementedError so the UI can show a
-    // clear "not available yet" message instead of a generic error.
-    throw const AuthFailure(AuthFailureCode.providerNotConfigured);
+    final tokens = await _googleAuthClient.signIn();
+    try {
+      await _client.auth.signInWithIdToken(
+        provider: supabase.OAuthProvider.google,
+        idToken: tokens.idToken,
+        accessToken: tokens.accessToken,
+      );
+    } on supabase.AuthException catch (_) {
+      throw const AuthFailure(AuthFailureCode.unknown);
+    }
   }
 }

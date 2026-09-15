@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
@@ -6,6 +7,7 @@ import 'app/router.dart';
 import 'core/auth/auth_deep_link_handler.dart';
 import 'core/config/env.dart';
 import 'core/onboarding/age_gate_controller.dart';
+import 'features/auth/data/google_auth_client.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/data/supabase_profile_repository.dart';
 import 'features/auth/presentation/auth_controller.dart';
@@ -24,7 +26,20 @@ Future<void> main() async {
     authOptions: const FlutterAuthClientOptions(detectSessionInUri: false),
   );
 
-  final authRepository = SupabaseAuthRepository(Supabase.instance.client);
+  final GoogleAuthClient googleAuthClient;
+  if (Env.googleServerClientId.isEmpty) {
+    googleAuthClient = const UnconfiguredGoogleAuthClient();
+  } else {
+    await GoogleSignIn.instance.initialize(
+      serverClientId: Env.googleServerClientId,
+    );
+    googleAuthClient = GoogleSignInAuthClient(GoogleSignIn.instance);
+  }
+
+  final authRepository = SupabaseAuthRepository(
+    Supabase.instance.client,
+    googleAuthClient: googleAuthClient,
+  );
   final profileRepository = SupabaseProfileRepository(Supabase.instance.client);
   final authController = AuthController(
     authRepository: authRepository,

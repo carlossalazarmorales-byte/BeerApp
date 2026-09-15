@@ -72,6 +72,11 @@ class _SignInScreenState extends State<SignInScreen> {
       await widget.authRepository.signInWithGoogle();
     } on AuthFailure catch (failure) {
       if (!mounted) return;
+      if (failure.code == AuthFailureCode.cancelled) {
+        // User dismissed the account picker — not an error, reset silently.
+        setState(() => _errorMessage = null);
+        return;
+      }
       setState(
         () => _errorMessage =
             failure.code == AuthFailureCode.providerNotConfigured
