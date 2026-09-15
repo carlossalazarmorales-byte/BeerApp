@@ -94,5 +94,39 @@
   "beerDetailAbvLabel": "ABV",
   "beerDetailIbuLabel": "IBU",
   "beerDetailDescriptionLabel": "Descripción",
-  "beerDetailVerifiedBadge": "Verificada"
+  "beerDetailVerifiedBadge": "Verificada",
+
+  "cancelAction": "Cancelar",
+
+  "beerDetailLogAction": "Registrar esta cerveza",
+  "beerLogSectionTitle": "Tus registros",
+  "beerLogEmptyMessage": "Todavía no has registrado esta cerveza.",
+  "beerLogLoadMoreAction": "Cargar más",
+
+  "beerLogFormTitleCreate": "Registrar esta cerveza",
+  "beerLogFormTitleEdit": "Editar registro",
+  "beerLogRatingLabel": "Valoración",
+  "beerLogRatingStarSemanticLabel": "Valorar {rating} de 5",
+  "beerLogAddDetailsAction": "Añadir detalles",
+  "beerLogReviewHint": "Reseña (opcional)",
+  "beerLogServingNoteHint": "Nota de la cata (opcional)",
+  "beerLogPriceHint": "Precio (opcional)",
+  "beerLogCurrencyHint": "Moneda, p. ej. USD",
+  "beerLogVenueHint": "Lugar (opcional)",
+  "beerLogServingVolumeLabel": "Volumen de la ración (ml)",
+  "beerLogSaveAction": "Guardar",
+
+  "beerLogDeleteAction": "Eliminar",
+  "beerLogDeleteConfirmTitle": "¿Eliminar este registro?",
+  "beerLogDeleteConfirmMessage": "Esta acción no se puede deshacer.",
+
+  "beerLogSavedConfirmation": "Registro guardado.",
+  "beerLogDeletedConfirmation": "Registro eliminado.",
+
+  "beerLogErrorUnauthorized": "Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.",
+  "beerLogErrorServiceUnavailable": "Esto no está disponible en este momento. Inténtalo de nuevo en un momento.",
+  "beerLogErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
+  "beerLogErrorNotFound": "No se pudo encontrar este registro.",
+  "beerLogErrorInvalidRequest": "Revisa la fecha y los campos de precio/moneda e inténtalo de nuevo.",
+  "beerLogErrorGeneric": "No pudimos guardar tu registro. Inténtalo de nuevo."
 }

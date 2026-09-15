@@ -35,6 +35,18 @@ class NotFoundApiException extends ApiException {
   });
 }
 
+/// 400 — a structurally valid request that's semantically wrong given the
+/// resource's current state (e.g. a future `consumed_at`, or a price/
+/// currency combination a PATCH would leave inconsistent). First introduced
+/// for beer logs -- no Phase 3 catalog endpoint has such a case.
+class InvalidRequestApiException extends ApiException {
+  const InvalidRequestApiException({
+    required super.message,
+    super.statusCode,
+    super.code,
+  });
+}
+
 /// 422 — malformed request shape (bad UUID, out-of-range page/page_size).
 class ValidationApiException extends ApiException {
   const ValidationApiException({

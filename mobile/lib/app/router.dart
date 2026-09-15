@@ -17,6 +17,7 @@ import '../features/catalog/domain/catalog_repository.dart';
 import '../features/catalog/presentation/beer_detail/beer_detail_screen.dart';
 import '../features/collection/presentation/collection_screen.dart';
 import '../features/discover/presentation/discover_screen.dart';
+import '../features/logging/domain/log_repository.dart';
 import '../features/map/presentation/map_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
@@ -90,6 +91,7 @@ GoRouter createRouter({
   required AuthController authController,
   required AgeGateController ageGateController,
   required CatalogRepository catalogRepository,
+  required LogRepository logRepository,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
@@ -148,6 +150,7 @@ GoRouter createRouter({
         path: AppRoutes.beerDetail,
         builder: (context, state) => BeerDetailScreen(
           repository: catalogRepository,
+          logRepository: logRepository,
           beerId: state.pathParameters['beerId']!,
         ),
       ),

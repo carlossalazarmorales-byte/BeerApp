@@ -260,4 +260,95 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get beerDetailVerifiedBadge => 'Verified';
+
+  @override
+  String get cancelAction => 'Cancel';
+
+  @override
+  String get beerDetailLogAction => 'Log this beer';
+
+  @override
+  String get beerLogSectionTitle => 'Your logs';
+
+  @override
+  String get beerLogEmptyMessage => 'You haven\'t logged this beer yet.';
+
+  @override
+  String get beerLogLoadMoreAction => 'Load more';
+
+  @override
+  String get beerLogFormTitleCreate => 'Log this beer';
+
+  @override
+  String get beerLogFormTitleEdit => 'Edit log';
+
+  @override
+  String get beerLogRatingLabel => 'Rating';
+
+  @override
+  String beerLogRatingStarSemanticLabel(int rating) {
+    return 'Rate $rating out of 5';
+  }
+
+  @override
+  String get beerLogAddDetailsAction => 'Add details';
+
+  @override
+  String get beerLogReviewHint => 'Review (optional)';
+
+  @override
+  String get beerLogServingNoteHint => 'Serving note (optional)';
+
+  @override
+  String get beerLogPriceHint => 'Price (optional)';
+
+  @override
+  String get beerLogCurrencyHint => 'Currency, e.g. USD';
+
+  @override
+  String get beerLogVenueHint => 'Venue (optional)';
+
+  @override
+  String get beerLogServingVolumeLabel => 'Serving volume (ml)';
+
+  @override
+  String get beerLogSaveAction => 'Save';
+
+  @override
+  String get beerLogDeleteAction => 'Delete';
+
+  @override
+  String get beerLogDeleteConfirmTitle => 'Delete this log?';
+
+  @override
+  String get beerLogDeleteConfirmMessage => 'This can\'t be undone.';
+
+  @override
+  String get beerLogSavedConfirmation => 'Log saved.';
+
+  @override
+  String get beerLogDeletedConfirmation => 'Log deleted.';
+
+  @override
+  String get beerLogErrorUnauthorized =>
+      'Your session has expired. Please sign in again to continue.';
+
+  @override
+  String get beerLogErrorServiceUnavailable =>
+      'This isn\'t available right now. Please try again in a moment.';
+
+  @override
+  String get beerLogErrorNetwork =>
+      'Check your internet connection and try again.';
+
+  @override
+  String get beerLogErrorNotFound => 'This log could not be found.';
+
+  @override
+  String get beerLogErrorInvalidRequest =>
+      'Check the date and price/currency fields and try again.';
+
+  @override
+  String get beerLogErrorGeneric =>
+      'We couldn\'t save your log. Please try again.';
 }

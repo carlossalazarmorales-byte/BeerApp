@@ -78,3 +78,22 @@ favorite, wishlist, or drinking history is never stored on those records — it
 lives in a separate user-owned `User Beer Log` entity referencing the catalog
 beer by id. This separation must hold at the database, API, and mobile-model
 level.
+
+`public.user_beer_logs` (Phase 6) is the first concrete instance of this:
+it's the first user-owned table, and it follows the catalog's **API-only**
+model, not `profiles`'s direct-Supabase model — mobile never queries it via
+Supabase/PostgREST, only through FastAPI's `/beer-logs` endpoints, using the
+`beerapp_backend` role (`docs/DATABASE.md`, `docs/DECISIONS.md`). This was a
+deliberate choice, not the only option: `profiles` (Phase 2) is also
+user-owned but *is* read/written directly from the mobile app via
+`supabase_flutter`, under `auth.uid()`-scoped RLS — that pattern works
+because a PostgREST request genuinely carries the end user's own session.
+FastAPI's connection to Postgres does not; it's one fixed role
+(`beerapp_backend`) for the life of the pool, with no per-request identity
+Postgres can see on its own. So per-user isolation on `user_beer_logs` is
+enforced by **two** layers instead: the repository's explicit
+`WHERE user_id = $1` filtering, and a transaction-scoped RLS policy keyed on
+`app.user_id` (a Postgres setting the backend sets from the verified JWT's
+`sub` claim at the start of each transaction) — never `auth.uid()`, and
+never a blanket `USING (true)` policy. See `docs/DATABASE.md`'s
+`user_beer_logs` section for the exact mechanism.

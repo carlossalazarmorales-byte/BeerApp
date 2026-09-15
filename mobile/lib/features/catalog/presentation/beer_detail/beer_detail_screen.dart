@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../design_system/components/buttons/primary_button.dart';
 import '../../../../design_system/components/cards/app_card.dart';
 import '../../../../design_system/components/states/error_state.dart';
 import '../../../../design_system/components/states/loading_state.dart';
@@ -8,21 +9,26 @@ import '../../../../design_system/tokens/app_radii.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../design_system/tokens/app_typography.dart';
 import '../../../../l10n/generated/app_localizations.dart';
+import '../../../logging/domain/log_repository.dart';
+import '../../../logging/presentation/beer_log/beer_log_controller.dart';
+import '../../../logging/presentation/beer_log/log_form_sheet.dart';
+import '../../../logging/presentation/beer_log/log_list_section.dart';
 import '../../domain/catalog_repository.dart';
 import '../catalog_error_text.dart';
 import 'beer_detail_controller.dart';
 
 /// Full-screen beer detail, pushed above the bottom-nav shell (see
-/// app/router.dart). No rating/review/favorite/wishlist/log UI -- explicitly
-/// out of scope for this phase.
+/// app/router.dart).
 class BeerDetailScreen extends StatefulWidget {
   const BeerDetailScreen({
     required this.repository,
+    required this.logRepository,
     required this.beerId,
     super.key,
   });
 
   final CatalogRepository repository;
+  final LogRepository logRepository;
   final String beerId;
 
   @override
@@ -34,17 +40,34 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
     repository: widget.repository,
     beerId: widget.beerId,
   );
+  late final BeerLogController _logController = BeerLogController(
+    repository: widget.logRepository,
+    beerId: widget.beerId,
+  );
 
   @override
   void initState() {
     super.initState();
     _controller.load();
+    _logController.load();
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _logController.dispose();
     super.dispose();
+  }
+
+  Future<void> _openLogForm() async {
+    final saved = await LogFormSheet.show(context, controller: _logController);
+    if (saved == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context).beerLogSavedConfirmation),
+        ),
+      );
+    }
   }
 
   @override
@@ -52,9 +75,11 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
     // The AppBar title (the beer's name, once loaded) must rebuild on the
     // same notifications as the body -- both live inside this one
     // ListenableBuilder rather than splitting it out, so the title isn't
-    // stuck showing its initial (pre-load) value.
+    // stuck showing its initial (pre-load) value. Merged with
+    // _logController too, so the "Your logs" section rebuilds from the
+    // same single listenable.
     return ListenableBuilder(
-      listenable: _controller,
+      listenable: Listenable.merge([_controller, _logController]),
       builder: (context, _) => Scaffold(
         appBar: AppBar(title: Text(_controller.beer?.officialName ?? '')),
         body: _buildBody(context),
@@ -159,6 +184,16 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
                   const SizedBox(height: AppSpacing.xs),
                   Text(beer.description!, style: AppTypography.bodyMedium),
                 ],
+                const SizedBox(height: AppSpacing.xl),
+                SizedBox(
+                  width: double.infinity,
+                  child: PrimaryButton(
+                    label: l10n.beerDetailLogAction,
+                    onPressed: _openLogForm,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                LogListSection(controller: _logController),
               ],
             ),
           ),

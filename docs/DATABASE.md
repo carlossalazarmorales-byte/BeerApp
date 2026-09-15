@@ -1,10 +1,11 @@
 # Database
 
-PostgreSQL, hosted via Supabase. As of Phase 3, six tables exist:
-`public.profiles` (Phase 2) and the Phase 3 catalog tables `public.countries`,
-`public.beer_styles`, `public.breweries`, `public.beers`, plus two roles
-(`beerapp_backend`, `beerapp_seed`) that gate access to the catalog tables.
-Migrations live under `supabase/migrations/`.
+PostgreSQL, hosted via Supabase. As of Phase 6, seven tables exist:
+`public.profiles` (Phase 2), the Phase 3 catalog tables `public.countries`,
+`public.beer_styles`, `public.breweries`, `public.beers`, and the Phase 6
+user-owned `public.user_beer_logs`, plus two roles (`beerapp_backend`,
+`beerapp_seed`) that gate access to the catalog tables (and, since Phase 6,
+`user_beer_logs` too). Migrations live under `supabase/migrations/`.
 
 ## Planned approach
 
@@ -106,18 +107,90 @@ free text on `breweries`/`beers`, exactly as `PRODUCT.md` §7 lists it. See
 All FKs are `ON DELETE RESTRICT` (the default) — deleting a country/brewery/
 style with dependents fails loudly rather than silently orphaning or cascading.
 
+## `public.user_beer_logs` (Phase 6)
+
+The first user-owned entity referencing the catalog — a personal record of
+having tried/reviewed a beer, distinct from the global `public.beers` row it
+points to (`CLAUDE.md`'s Data Model Rule). A user may log the same beer
+multiple times — there is deliberately no `unique(user_id, beer_id)`.
+
+| column | type | notes |
+|---|---|---|
+| `id` | `uuid primary key default gen_random_uuid()` | |
+| `user_id` | `uuid not null references auth.users(id) on delete cascade` | owner identity FK — cascades like `profiles.id`, unlike the catalog's `RESTRICT` convention, since the referenced row is the log's own owner, not a shared catalog entity |
+| `beer_id` | `uuid not null references beers(id) on delete restrict` | shared catalog reference — `RESTRICT` matches every other FK onto the catalog |
+| `rating` | `smallint`, nullable | `1–5` |
+| `review` | `text`, nullable | |
+| `consumed_at` | `timestamptz not null default now()` | resolved explicitly by the service when omitted (see `docs/API.md`); the DB default is a safety net, not relied upon by the app path |
+| `serving_note` | `text`, nullable | |
+| `price` / `currency` | `numeric(10,2)` / `text`, nullable | paired (both null or both set); `currency` matches `^[A-Z]{3}$` |
+| `venue_name` | `text`, nullable | |
+| `serving_volume_ml` | `integer`, nullable | canonical unit is milliliters (`PRODUCT.md` §24); `> 0` when present, no invented upper bound; **never populated automatically** — see `docs/DECISIONS.md` for the scoped product exception this field represents |
+| `created_at` / `updated_at` | `timestamptz` | as above, same shared `private.set_updated_at()` trigger, unchanged |
+
+Two composite indexes, chosen to match the app's actual query patterns (both
+end in `consumed_at desc, id desc` — `id` is the stable tie-breaker so
+pagination stays deterministic when two logs share a `consumed_at`):
+
+- `(user_id, consumed_at desc, id desc)` — the caller's general log history
+  (Phase 7).
+- `(user_id, beer_id, consumed_at desc, id desc)` — Beer Detail's per-beer
+  history; its leftmost columns also cover a plain `(user_id, beer_id)`
+  lookup, so no separate index exists for that.
+
+**RLS — request-scoped, not `USING (true)`.** Unlike the catalog tables
+(where a blanket `USING (true)` policy for `beerapp_backend` is fine, since
+every row is equally readable by any authenticated user), `user_beer_logs`
+needs real per-user isolation. The policy compares each row's `user_id`
+against a transaction-local Postgres setting, `app.user_id`, that the backend
+sets via `select set_config('app.user_id', <verified JWT sub>, true)` at the
+start of every `user_beer_logs` transaction
+(`backend/app/repositories/beer_logs.py`'s `BeerLogRepository._scoped`):
+
+```sql
+create policy backend_owns_rows on public.user_beer_logs
+  for all
+  to beerapp_backend
+  using (user_id = nullif(current_setting('app.user_id', true), '')::uuid)
+  with check (user_id = nullif(current_setting('app.user_id', true), '')::uuid);
+```
+
+`nullif(..., '')` matters: `current_setting('app.user_id', true)` returns
+`NULL` when never set, but a cleared/reset custom GUC can read back as an
+empty string depending on session state — casting `''` straight to `uuid`
+raises an error rather than cleanly denying access. Normalizing both cases to
+`NULL` first means the comparison always evaluates to `NULL` (never `TRUE`,
+never an error) when there's no request identity, so an absent/cleared
+identity **fails closed** — denies all rows — rather than granting blanket
+access or raising a 500. The repository still filters `where user_id = $N`
+explicitly on every query in addition to this policy: the RLS policy is a
+backstop that makes an isolation bug in the SQL non-exploitable, not a
+replacement for careful queries. Verified directly (including deliberately
+unfiltered/cross-identity queries a correct repository would never write) by
+`backend/tests/integration/test_user_beer_logs_rls.py`.
+
+`beerapp_backend` gets `SELECT`/`INSERT`/`UPDATE`/`DELETE` scoped to this one
+table — the running API's first write endpoint anywhere in the backend. It
+remains `SELECT`-only on the four catalog tables; this grant is least-privilege,
+not a broadening of catalog access.
+
 ## Access model (RLS + roles)
 
 Catalog access is **API-only**: the mobile app never queries these four
 tables through Supabase PostgREST directly, not even as an authenticated
 user. This is enforced at the database level, not just by convention:
 
-| role | catalog privileges |
-|---|---|
-| `anon` | none |
-| `authenticated` | none |
-| `beerapp_backend` | `SELECT` only, all four catalog tables — the running FastAPI app's connection (`DATABASE_URL`) |
-| `beerapp_seed` | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, all four catalog tables — `backend/scripts/seed_catalog.py` only (`SEED_DATABASE_URL`), never the running API |
+| role | catalog privileges | `user_beer_logs` privileges |
+|---|---|---|
+| `anon` | none | none |
+| `authenticated` | none | none |
+| `beerapp_backend` | `SELECT` only, all four catalog tables — the running FastAPI app's connection (`DATABASE_URL`) | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, own rows only per the request-scoped RLS policy above (Phase 6) |
+| `beerapp_seed` | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, all four catalog tables — `backend/scripts/seed_catalog.py` only (`SEED_DATABASE_URL`), never the running API | none |
+
+Per-user ownership on `user_beer_logs` is enforced by the repository's
+explicit `WHERE user_id = $1` filtering plus the transaction-scoped RLS
+policy above — not by `auth.uid()` (there is no PostgREST session here,
+unlike `profiles`) and not by a blanket `USING (true)` policy.
 
 RLS is enabled on all four tables. `anon`/`authenticated` have **no policies
 at all** on them (deny-by-default) plus an explicit `REVOKE ALL` at the table
@@ -186,3 +259,12 @@ and the `beerapp_backend` privilege boundary, against `INTEGRATION_DATABASE_URL`
 (constraint tests, rolled back per test) and `DATABASE_URL` (role/grant
 tests — safe to use directly since that role has no write privilege at all).
 Neither is `SEED_DATABASE_URL`.
+
+`user_beer_logs`' RLS test (`test_user_beer_logs_rls.py`) deliberately issues
+unfiltered and cross-identity SQL a correct repository would never write, and
+therefore **must only run against a disposable `INTEGRATION_DATABASE_URL`**,
+never `DATABASE_URL`/`SEED_DATABASE_URL` or the shared dev project — this is
+a hard rule, not a preference, since the whole point of those tests is
+exercising SQL shapes that would be unsafe against real data. It expects
+that database's connecting role to be able to `SET ROLE beerapp_backend`
+(a superuser, or a role explicitly `GRANT`ed membership).

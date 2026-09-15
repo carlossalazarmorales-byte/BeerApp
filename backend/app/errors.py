@@ -8,6 +8,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 logger = logging.getLogger("app.errors")
 
 _STATUS_CODES = {
+    status.HTTP_400_BAD_REQUEST: "invalid_request",
     status.HTTP_401_UNAUTHORIZED: "unauthorized",
     status.HTTP_404_NOT_FOUND: "not_found",
     status.HTTP_422_UNPROCESSABLE_CONTENT: "validation_error",
@@ -16,16 +17,26 @@ _STATUS_CODES = {
 
 
 class NotFoundError(Exception):
-    """Raised by a service when a requested catalog entity doesn't exist."""
+    """Raised by a service when a requested entity doesn't exist, or exists
+    but isn't owned by the caller -- the two cases are deliberately
+    indistinguishable to the client (see beer_logs).
+    """
+
+
+class InvalidRequestError(Exception):
+    """Raised by a service for a request that is structurally valid but
+    semantically wrong given the resource's current state (e.g. a future
+    consumed_at, or a price/currency pairing that would result from a PATCH
+    on a beer log). First real use of the 400 status -- Phase 3's read-only
+    endpoints had no such case.
+    """
 
 
 def _envelope(code: str, message: str) -> dict:
     return {"error": {"code": code, "message": message}}
 
 
-async def http_exception_handler(
-    request: Request, exc: StarletteHTTPException
-) -> JSONResponse:
+async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     code = _STATUS_CODES.get(exc.status_code, "error")
     return JSONResponse(
         status_code=exc.status_code,
@@ -55,15 +66,20 @@ async def not_found_handler(request: Request, exc: NotFoundError) -> JSONRespons
     )
 
 
+async def invalid_request_handler(request: Request, exc: InvalidRequestError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content=_envelope("invalid_request", str(exc)),
+    )
+
+
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # Catches asyncpg/httpx and any other infrastructure failure. JWT
     # verification failures never reach this handler -- they're caught and
     # converted to 401 inside app.auth itself, and JWKS network failures are
     # raised there as an explicit 503 HTTPException. Raw driver/library
     # exceptions and stack traces never reach the client.
-    logger.exception(
-        "Unhandled error while processing %s %s", request.method, request.url.path
-    )
+    logger.exception("Unhandled error while processing %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content=_envelope("internal_error", "An unexpected error occurred."),
@@ -74,4 +90,5 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(NotFoundError, not_found_handler)
+    app.add_exception_handler(InvalidRequestError, invalid_request_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)

@@ -263,4 +263,95 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get beerDetailVerifiedBadge => 'Verificada';
+
+  @override
+  String get cancelAction => 'Cancelar';
+
+  @override
+  String get beerDetailLogAction => 'Registrar esta cerveza';
+
+  @override
+  String get beerLogSectionTitle => 'Tus registros';
+
+  @override
+  String get beerLogEmptyMessage => 'Todavía no has registrado esta cerveza.';
+
+  @override
+  String get beerLogLoadMoreAction => 'Cargar más';
+
+  @override
+  String get beerLogFormTitleCreate => 'Registrar esta cerveza';
+
+  @override
+  String get beerLogFormTitleEdit => 'Editar registro';
+
+  @override
+  String get beerLogRatingLabel => 'Valoración';
+
+  @override
+  String beerLogRatingStarSemanticLabel(int rating) {
+    return 'Valorar $rating de 5';
+  }
+
+  @override
+  String get beerLogAddDetailsAction => 'Añadir detalles';
+
+  @override
+  String get beerLogReviewHint => 'Reseña (opcional)';
+
+  @override
+  String get beerLogServingNoteHint => 'Nota de la cata (opcional)';
+
+  @override
+  String get beerLogPriceHint => 'Precio (opcional)';
+
+  @override
+  String get beerLogCurrencyHint => 'Moneda, p. ej. USD';
+
+  @override
+  String get beerLogVenueHint => 'Lugar (opcional)';
+
+  @override
+  String get beerLogServingVolumeLabel => 'Volumen de la ración (ml)';
+
+  @override
+  String get beerLogSaveAction => 'Guardar';
+
+  @override
+  String get beerLogDeleteAction => 'Eliminar';
+
+  @override
+  String get beerLogDeleteConfirmTitle => '¿Eliminar este registro?';
+
+  @override
+  String get beerLogDeleteConfirmMessage => 'Esta acción no se puede deshacer.';
+
+  @override
+  String get beerLogSavedConfirmation => 'Registro guardado.';
+
+  @override
+  String get beerLogDeletedConfirmation => 'Registro eliminado.';
+
+  @override
+  String get beerLogErrorUnauthorized =>
+      'Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.';
+
+  @override
+  String get beerLogErrorServiceUnavailable =>
+      'Esto no está disponible en este momento. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get beerLogErrorNetwork =>
+      'Revisa tu conexión a internet e inténtalo de nuevo.';
+
+  @override
+  String get beerLogErrorNotFound => 'No se pudo encontrar este registro.';
+
+  @override
+  String get beerLogErrorInvalidRequest =>
+      'Revisa la fecha y los campos de precio/moneda e inténtalo de nuevo.';
+
+  @override
+  String get beerLogErrorGeneric =>
+      'No pudimos guardar tu registro. Inténtalo de nuevo.';
 }

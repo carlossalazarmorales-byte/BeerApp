@@ -23,6 +23,7 @@ import 'package:go_router/go_router.dart';
 import '../fakes/fake_age_gate_storage.dart';
 import '../fakes/fake_auth_repository.dart';
 import '../fakes/fake_catalog_repository.dart';
+import '../fakes/fake_log_repository.dart';
 import '../fakes/fake_profile_repository.dart';
 
 Finder _navLabel(String label) =>
@@ -64,6 +65,7 @@ class _Harness {
       authController: authController,
       ageGateController: ageGateController,
       catalogRepository: catalogRepository,
+      logRepository: FakeLogRepository(),
     );
 
     return _Harness._(

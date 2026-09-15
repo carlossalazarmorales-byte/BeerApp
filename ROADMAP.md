@@ -135,7 +135,7 @@ Tables/entities:
 - [x] beer_styles
 - [x] breweries
 - [x] beers
-- [ ] user_beer_logs — deferred to Phase 6
+- [x] user_beer_logs — built in Phase 6, see that phase's entry
 - [ ] favorites — deferred to Phase 7
 - [ ] wishlist — deferred to Phase 7
 
@@ -274,27 +274,59 @@ Goal: complete the main user action.
 
 Tasks:
 
-- [ ] Create beer log endpoint
-- [ ] Edit beer log
-- [ ] Delete beer log
-- [ ] Rating input
-- [ ] Optional review
-- [ ] Consumption date
-- [ ] Optional serving note
-- [ ] Price
-- [ ] Currency
-- [ ] Venue
-- [ ] Optional location
-- [ ] Optional photo
-- [ ] Quick-log flow
-- [ ] Detailed-log flow
-- [ ] Update collection state after logging
+- [x] Create beer log endpoint
+- [x] Edit beer log
+- [x] Delete beer log
+- [x] Rating input
+- [x] Optional review
+- [x] Consumption date
+- [x] Optional serving note
+- [x] Price
+- [x] Currency
+- [x] Venue
+- [ ] Optional location — deferred: no device-geolocation permission flow this phase; `venue_name` free text covers "where" for now. See `docs/DECISIONS.md`.
+- [ ] Optional photo — deferred: no Supabase Storage wiring this phase. See `docs/DECISIONS.md`.
+- [x] Quick-log flow
+- [x] Detailed-log flow
+- [ ] Update collection state after logging — deferred to Phase 7: this task most naturally reads as "the Collection screen reflects a newly-created log," which requires a Collection screen that doesn't exist yet (Phase 7's own first task). Phase 6 makes the underlying data queryable and correct (`GET /beer-logs`, ordered/paginated) so Phase 7 can build that screen without any API change, but no visible collection state is actually updated by anything in Phase 6.
+
+Also implemented, beyond the original task list, as a scoped product
+exception (see `docs/DECISIONS.md`): an optional `serving_volume_ml` field,
+purely for a future neutral "recorded volume" statistic — never a
+consumption-tracking mechanic.
 
 Exit criteria:
 
-- User can log a beer in a few taps
-- A beer may have multiple user logs
-- Personal data persists correctly
+- [x] User can log a beer in a few taps — confirmed on a real device (Android emulator) against the real local FastAPI backend and the real `beerapp-dev` Supabase project.
+- [x] A beer may have multiple user logs — verified both by automated tests (no `unique(user_id, beer_id)`, `POST` never upserts) and live: the same beer logged twice produced two independent entries, and deleting one did not affect the other.
+- [x] Personal data persists correctly — confirmed live: a created log persists after leaving and reopening Beer Detail, detailed fields (review/serving note/price/currency/venue) persist, a partial edit preserves untouched fields, and `serving_volume_ml` can be both set and explicitly cleared.
+
+**Completion note (2026-09-15)**: automated suites pass — the default
+backend suite (`pytest`, excludes `@pytest.mark.integration`) and the
+default Flutter suite (`flutter test`) both pass in full, 89 backend tests
+and 166 Flutter tests, `flutter analyze` and `dart format` clean. The two
+Phase 6 migrations (`20260915120600_create_user_beer_logs_table.sql`,
+`20260915120700_grant_beerapp_backend_user_beer_logs.sql`) were applied to
+`beerapp-dev` via `supabase db push`, confirmed by `supabase migration list`
+(both `local`/`remote` match) and a clean `supabase db lint --linked`.
+
+**Live Android smoke test — passed**, against the real local FastAPI
+backend and the real `beerapp-dev` Supabase project: empty state; creating
+a log; persistence across leaving/reopening Beer Detail; a beer logged
+multiple times as independent entries; detailed fields persisting; a
+partial edit preserving untouched fields; `serving_volume_ml` set and
+explicitly cleared; deleting one log leaving others untouched; pagination/
+"Load more"; a second test account unable to see the first account's logs
+(RLS isolation confirmed live, not just in the automated RLS test); no raw
+backend error text/stack traces; no unexpected 500s.
+
+**Still not run**: `backend/tests/integration/` (including
+`test_user_beer_logs_rls.py`) — `INTEGRATION_DATABASE_URL` is not
+configured in this environment, so those tests skip rather than run. This
+does not block the exit criteria above (the live smoke test independently
+confirmed the same RLS isolation property against real infrastructure), but
+the integration suite should still be run against a disposable database
+before relying on it as an ongoing regression guard.
 
 ---
 

@@ -234,5 +234,72 @@
   "beerDetailDescriptionLabel": "Description",
   "@beerDetailDescriptionLabel": {"description": "Label for the description section on the beer detail screen."},
   "beerDetailVerifiedBadge": "Verified",
-  "@beerDetailVerifiedBadge": {"description": "Badge shown on a beer/brewery whose catalog data has been verified."}
+  "@beerDetailVerifiedBadge": {"description": "Badge shown on a beer/brewery whose catalog data has been verified."},
+
+  "cancelAction": "Cancel",
+  "@cancelAction": {"description": "Generic label for a dialog's cancel action."},
+
+  "beerDetailLogAction": "Log this beer",
+  "@beerDetailLogAction": {"description": "Button on the beer detail screen that opens the log-entry form."},
+  "beerLogSectionTitle": "Your logs",
+  "@beerLogSectionTitle": {"description": "Heading for the list of the current user's own logs for a beer, on the beer detail screen."},
+  "beerLogEmptyMessage": "You haven't logged this beer yet.",
+  "@beerLogEmptyMessage": {"description": "Shown in place of the log list when the current user has no logs for this beer."},
+  "beerLogLoadMoreAction": "Load more",
+  "@beerLogLoadMoreAction": {"description": "Button that fetches the next page of the user's logs for a beer."},
+
+  "beerLogFormTitleCreate": "Log this beer",
+  "@beerLogFormTitleCreate": {"description": "Title of the bottom sheet used to create a new beer log."},
+  "beerLogFormTitleEdit": "Edit log",
+  "@beerLogFormTitleEdit": {"description": "Title of the bottom sheet used to edit an existing beer log."},
+  "beerLogRatingLabel": "Rating",
+  "@beerLogRatingLabel": {"description": "Label above the 1-5 rating input in the log form."},
+  "beerLogRatingStarSemanticLabel": "Rate {rating} out of 5",
+  "@beerLogRatingStarSemanticLabel": {
+    "description": "Accessible label for one star in the rating input.",
+    "placeholders": {
+      "rating": {"type": "int"}
+    }
+  },
+  "beerLogAddDetailsAction": "Add details",
+  "@beerLogAddDetailsAction": {"description": "Expands the log form beyond the quick rating-only path to show the optional detail fields."},
+  "beerLogReviewHint": "Review (optional)",
+  "@beerLogReviewHint": {"description": "Placeholder for the optional review text field in the log form."},
+  "beerLogServingNoteHint": "Serving note (optional)",
+  "@beerLogServingNoteHint": {"description": "Placeholder for the optional serving-note text field in the log form."},
+  "beerLogPriceHint": "Price (optional)",
+  "@beerLogPriceHint": {"description": "Placeholder for the optional price field in the log form."},
+  "beerLogCurrencyHint": "Currency, e.g. USD",
+  "@beerLogCurrencyHint": {"description": "Placeholder for the optional 3-letter currency code field in the log form."},
+  "beerLogVenueHint": "Venue (optional)",
+  "@beerLogVenueHint": {"description": "Placeholder for the optional venue name field in the log form."},
+  "beerLogServingVolumeLabel": "Serving volume (ml)",
+  "@beerLogServingVolumeLabel": {"description": "Label/placeholder for the optional serving-volume field in the log form. Deliberately neutral -- no example value or consumption-oriented copy."},
+  "beerLogSaveAction": "Save",
+  "@beerLogSaveAction": {"description": "Submit button label for the log form."},
+
+  "beerLogDeleteAction": "Delete",
+  "@beerLogDeleteAction": {"description": "Action that deletes an existing beer log."},
+  "beerLogDeleteConfirmTitle": "Delete this log?",
+  "@beerLogDeleteConfirmTitle": {"description": "Confirmation dialog title before deleting a beer log."},
+  "beerLogDeleteConfirmMessage": "This can't be undone.",
+  "@beerLogDeleteConfirmMessage": {"description": "Confirmation dialog body before deleting a beer log."},
+
+  "beerLogSavedConfirmation": "Log saved.",
+  "@beerLogSavedConfirmation": {"description": "Snackbar shown after successfully creating or editing a beer log."},
+  "beerLogDeletedConfirmation": "Log deleted.",
+  "@beerLogDeletedConfirmation": {"description": "Snackbar shown after successfully deleting a beer log."},
+
+  "beerLogErrorUnauthorized": "Your session has expired. Please sign in again to continue.",
+  "@beerLogErrorUnauthorized": {"description": "Shown when a beer log request fails because there is no usable authenticated session."},
+  "beerLogErrorServiceUnavailable": "This isn't available right now. Please try again in a moment.",
+  "@beerLogErrorServiceUnavailable": {"description": "Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503)."},
+  "beerLogErrorNetwork": "Check your internet connection and try again.",
+  "@beerLogErrorNetwork": {"description": "Shown when a beer log request fails due to no network connectivity."},
+  "beerLogErrorNotFound": "This log could not be found.",
+  "@beerLogErrorNotFound": {"description": "Shown when a beer log request returns 404 (missing or not owned by the current user)."},
+  "beerLogErrorInvalidRequest": "Check the date and price/currency fields and try again.",
+  "@beerLogErrorInvalidRequest": {"description": "Shown when a beer log request returns 400 (e.g. a future consumption date, or a price/currency combination that isn't valid)."},
+  "beerLogErrorGeneric": "We couldn't save your log. Please try again.",
+  "@beerLogErrorGeneric": {"description": "Fallback error message for beer log requests, used instead of showing a raw backend error message."}
 }

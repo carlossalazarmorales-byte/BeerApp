@@ -16,6 +16,7 @@ import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/data/supabase_profile_repository.dart';
 import 'features/auth/presentation/auth_controller.dart';
 import 'features/catalog/data/api_catalog_repository.dart';
+import 'features/logging/data/api_log_repository.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -65,6 +66,7 @@ Future<void> main() async {
     accessTokenProvider: accessTokenProvider,
   );
   final catalogRepository = ApiCatalogRepository(apiClient);
+  final logRepository = ApiLogRepository(apiClient);
 
   final router = createRouter(
     authRepository: authRepository,
@@ -72,6 +74,7 @@ Future<void> main() async {
     authController: authController,
     ageGateController: ageGateController,
     catalogRepository: catalogRepository,
+    logRepository: logRepository,
   );
 
   // Constructed only now that AuthController's onAuthStateChange listener

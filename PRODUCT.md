@@ -242,10 +242,11 @@ Example fields:
 - optional serving_note
 - optional price
 - currency
-- latitude
-- longitude
+- optional serving_volume_ml (added Phase 6; canonical unit milliliters, never inferred — see `docs/DECISIONS.md`)
+- latitude (deferred — not built in Phase 6)
+- longitude (deferred — not built in Phase 6)
 - venue_name
-- photo
+- photo (deferred — not built in Phase 6)
 - created_at
 - updated_at
 
@@ -461,10 +462,18 @@ Potential statistics:
 - Monthly activity
 - Yearly activity
 - Amount spent on recorded purchases
+- Recorded volume (sum of each log's optional `serving_volume_ml`, added in
+  Phase 6 — see `docs/DECISIONS.md`)
 
 Statistics should be based on explicit user data.
 
 Calculated statistics should be reproducible from stored logs whenever possible.
+
+"Recorded volume" must be labeled and documented as a sum over *logs that
+included a volume*, never as a claim about total real-world consumption —
+logs with no recorded volume are expected and common. This is descriptive
+data, not a target, streak, or leaderboard input; see §3's Responsible
+Product Design rules, which apply to this statistic exactly as to any other.
 
 ---
 

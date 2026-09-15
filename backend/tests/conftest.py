@@ -28,10 +28,23 @@ def authenticated():
     exercising the real JWT verification logic -- that's covered in
     isolation by tests/auth/test_verifier.py.
     """
-    app.dependency_overrides[get_current_user] = (
-        lambda: "11111111-1111-1111-1111-111111111111"
-    )
+    app.dependency_overrides[get_current_user] = lambda: "11111111-1111-1111-1111-111111111111"
     yield
+    app.dependency_overrides.pop(get_current_user, None)
+
+
+@pytest.fixture
+def authenticated_as():
+    """Like `authenticated`, but lets a test choose which user id
+    get_current_user returns -- used by ownership-isolation tests that need
+    to act as two different users within the same test (e.g. create a beer
+    log as user A, then attempt to read/edit/delete it as user B).
+    """
+
+    def _apply(user_id: str) -> None:
+        app.dependency_overrides[get_current_user] = lambda: user_id
+
+    yield _apply
     app.dependency_overrides.pop(get_current_user, None)
 
 

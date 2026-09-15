@@ -28,14 +28,19 @@ verifies tokens Supabase already issued.
 - **401** — missing/invalid/expired bearer token; includes
   `WWW-Authenticate: Bearer`. Raised entirely inside `app/auth/` — a bad
   token never reaches the generic infrastructure error handler.
-- **404** — a well-typed resource id that doesn't exist.
+- **404** — a well-typed resource id that doesn't exist. For a user-owned
+  resource (beer logs), also covers "exists, but isn't yours" — deliberately
+  indistinguishable from "doesn't exist" at all, never a 403, so a client
+  can't use the status code to probe for another user's data.
 - **422** — malformed UUIDs, invalid typed query/path parameters,
   out-of-range `page`/`page_size`, and any other request-shape validation
   FastAPI/Pydantic owns. This is the default outcome for "the input didn't
   parse."
-- **400** — reserved for a semantic error that is structurally valid but
-  logically invalid. None of Phase 3's endpoints currently have such a case;
-  no custom validation was written just to produce one.
+- **400** — a semantic error that is structurally valid but logically
+  invalid given the resource's current state. Unused through Phase 3–5;
+  Phase 6's beer logs are the first real cases: a future `consumed_at`
+  (create or update), and a PATCH that would leave `price`/`currency`
+  inconsistent (see the beer-logs section below).
 - **503** — the JWKS endpoint itself is unreachable (an infrastructure
   failure, not a bad token).
 - **500** — any other unhandled infrastructure failure (`asyncpg`, `httpx`).
@@ -90,3 +95,40 @@ field, not its brewery's country. A beer with no `country_id` set won't be
 found by searching its brewery's country name. Not a regression — no country
 search existed before Phase 5 — but worth knowing when a search doesn't
 surface an expected result.
+
+## Beer logs (`/beer-logs`, Phase 6)
+
+The first user-owned resource and the first write endpoints anywhere in the
+API. `user_id` is never a request field on any of these — it always comes
+from the verified JWT's `sub` claim (`get_current_user`), and the create
+schema structurally forbids an `extra` `user_id` key rather than silently
+ignoring one.
+
+| method | path | notes |
+|---|---|---|
+| POST | `/beer-logs` | create a log for the current user; always inserts a new row — never an upsert, even for a beer already logged (a user may log the same beer multiple times) |
+| GET | `/beer-logs` | `?beer_id=&page=&page_size=`, always scoped to the caller — there is no `user_id` query param at all; results ordered `consumed_at DESC, id DESC` (deterministic — `id` breaks ties when two logs share a `consumed_at`), wrapped in the standard `Page` envelope |
+| GET | `/beer-logs/{id}` | 404 if missing or not owned |
+| PATCH | `/beer-logs/{id}` | partial update; 404 if missing or not owned |
+| DELETE | `/beer-logs/{id}` | 204, 404 if missing or not owned |
+
+Request/response fields: `beer_id` (create-only, required), `rating`
+(1–5), `review`, `consumed_at`, `serving_note`, `price`, `currency`
+(3-letter code), `venue_name`, `serving_volume_ml` (milliliters, `> 0`,
+never inferred — see `docs/DECISIONS.md`). All optional beyond `beer_id`.
+
+**PATCH semantics**: omitting a field leaves it unchanged; explicitly
+sending `null` clears it (where the column allows — `consumed_at` cannot be
+cleared, since it's `NOT NULL`). An empty PATCH body is rejected as 422. The
+`price`/`currency` pairing (both set or both cleared) is validated against
+the **resulting** state — the existing row's values overlaid with the
+patch — not just the two fields present in the request, so e.g. patching
+only `review` on a log that already has a price never re-triggers the
+pairing check, but clearing only `currency` while `price` stays set is
+rejected (400) unless `price` is cleared in the same request.
+
+**`consumed_at` must be timezone-aware.** A value with no UTC offset is
+rejected as 422 (not the ambiguous "maybe midnight UTC, maybe local time"
+naive datetime) on both create and update. An aware value in the future is
+a 400, on both create and update. Omitted on create, it defaults to the
+server's current time.

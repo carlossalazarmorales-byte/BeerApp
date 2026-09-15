@@ -33,3 +33,30 @@ def test_beerapp_backend_cannot_insert_countries(backend_role_dsn):
             await conn.close()
 
     asyncio.run(body())
+
+
+def test_beerapp_backend_has_full_grants_on_user_beer_logs(backend_role_dsn):
+    """Table-privilege check only (information_schema), independent of RLS
+    row visibility -- Phase 6 is the first write endpoint, so unlike the
+    catalog tables above, beerapp_backend needs SELECT/INSERT/UPDATE/DELETE
+    here, scoped to this one table (still SELECT-only on the four catalog
+    tables). The row-level behavior those grants combine with (the
+    transaction-scoped app.user_id RLS policy) is exercised end-to-end in
+    tests/integration/test_user_beer_logs_rls.py -- this test only confirms
+    the grants themselves exist.
+    """
+
+    async def body() -> None:
+        conn = await asyncpg.connect(**parse_dsn_kwargs(backend_role_dsn), ssl="require")
+        try:
+            rows = await conn.fetch(
+                "select privilege_type from information_schema.role_table_grants "
+                "where table_schema = 'public' and table_name = 'user_beer_logs' "
+                "and grantee = 'beerapp_backend'"
+            )
+            privileges = {row["privilege_type"] for row in rows}
+            assert privileges == {"SELECT", "INSERT", "UPDATE", "DELETE"}
+        finally:
+            await conn.close()
+
+    asyncio.run(body())

@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../fakes/fake_catalog_repository.dart';
+import '../../../fakes/fake_log_repository.dart';
 
 Widget _wrap(Widget child) {
   return MaterialApp(
@@ -59,7 +60,13 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _wrap(BeerDetailScreen(repository: repository, beerId: 'beer-1')),
+        _wrap(
+          BeerDetailScreen(
+            repository: repository,
+            logRepository: FakeLogRepository(),
+            beerId: 'beer-1',
+          ),
+        ),
       );
       await tester.pump();
 
@@ -87,7 +94,13 @@ void main() {
         ..getBeerError = Exception('backend hiccup');
 
       await tester.pumpWidget(
-        _wrap(BeerDetailScreen(repository: repository, beerId: 'beer-1')),
+        _wrap(
+          BeerDetailScreen(
+            repository: repository,
+            logRepository: FakeLogRepository(),
+            beerId: 'beer-1',
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -113,7 +126,13 @@ void main() {
         );
 
       await tester.pumpWidget(
-        _wrap(BeerDetailScreen(repository: repository, beerId: 'beer-1')),
+        _wrap(
+          BeerDetailScreen(
+            repository: repository,
+            logRepository: FakeLogRepository(),
+            beerId: 'beer-1',
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -134,7 +153,13 @@ void main() {
         );
 
       await tester.pumpWidget(
-        _wrap(BeerDetailScreen(repository: repository, beerId: 'beer-1')),
+        _wrap(
+          BeerDetailScreen(
+            repository: repository,
+            logRepository: FakeLogRepository(),
+            beerId: 'beer-1',
+          ),
+        ),
       );
       await tester.pumpAndSettle();
 
@@ -145,4 +170,99 @@ void main() {
       expect(find.textContaining(rawMessage), findsNothing);
     },
   );
+
+  testWidgets('shows a "Log this beer" button and an empty log-list message', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        BeerDetailScreen(
+          repository: _seededRepository(),
+          logRepository: FakeLogRepository(),
+          beerId: 'beer-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Log this beer'), findsOneWidget);
+    expect(find.text('You haven\'t logged this beer yet.'), findsOneWidget);
+  });
+
+  testWidgets(
+    'tapping the log button opens the form, and a quick-log submission shows the new entry and a confirmation',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          BeerDetailScreen(
+            repository: _seededRepository(),
+            logRepository: FakeLogRepository(),
+            beerId: 'beer-1',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Log this beer'));
+      await tester.tap(find.text('Log this beer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Save'), findsOneWidget);
+
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log saved.'), findsOneWidget);
+      expect(find.text('You haven\'t logged this beer yet.'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'a beer-log failure shows a localized message, never the raw backend text, and never blocks the beer content',
+    (tester) async {
+      const rawMessage = 'relation "user_beer_logs" does not exist';
+      final logRepository = FakeLogRepository()
+        ..getLogsError = const ApiException(
+          message: rawMessage,
+          statusCode: 500,
+          code: 'internal_error',
+        );
+
+      await tester.pumpWidget(
+        _wrap(
+          BeerDetailScreen(
+            repository: _seededRepository(),
+            logRepository: logRepository,
+            beerId: 'beer-1',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Beer content still renders even though the log section failed.
+      expect(find.text('Test Stout'), findsNWidgets(2));
+      expect(find.textContaining(rawMessage), findsNothing);
+      expect(
+        find.text('We couldn\'t save your log. Please try again.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('"Load more" is hidden when there is only one page of logs', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(
+        BeerDetailScreen(
+          repository: _seededRepository(),
+          logRepository: FakeLogRepository(),
+          beerId: 'beer-1',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Load more'), findsNothing);
+  });
 }

@@ -542,3 +542,171 @@ Recorded explicitly because these are easy to conflate:
   against a real dev database (with `INTEGRATION_DATABASE_URL` set) before
   relying on it as a regression guard, since it has not actually been
   confirmed passing yet.
+
+## 2026-09-15 — Phase 6: `user_beer_logs` follows the catalog's API-only pattern, not `profiles`'s
+
+Two precedents already existed for a user-owned table: `profiles` (Phase 2,
+read/written directly from the mobile app via `supabase_flutter`, protected
+by `auth.uid()`-scoped RLS) and the catalog tables (Phase 3, API-only,
+`beerapp_backend`-mediated, RLS deny-by-default for `authenticated`).
+`user_beer_logs` deliberately follows the **catalog's** pattern: mobile
+talks to `/beer-logs` through FastAPI only, never Supabase/PostgREST
+directly. Reason: `profiles`'s pattern only works because a PostgREST
+request genuinely carries the end user's own session, which is what makes
+`auth.uid()` meaningful; FastAPI's own connection to Postgres is one fixed
+role (`beerapp_backend`) for the life of the pool, with no such per-request
+identity. Keeping one consistent "mobile talks to Postgres through FastAPI"
+story (rather than "sometimes direct, sometimes not, depending on the
+table") was judged more valuable than reusing `profiles`'s simpler RLS shape.
+See `docs/ARCHITECTURE.md`'s "Global catalog vs. personal data" and
+`docs/DATABASE.md`'s `user_beer_logs` section.
+
+## 2026-09-15 — Phase 6: request-scoped RLS (`app.user_id` + `nullif`), not `USING (true)`
+
+The first draft of `user_beer_logs`' RLS policy for `beerapp_backend` was a
+plain `USING (true)`, matching the catalog tables' shape. Rejected: unlike
+catalog data, `user_beer_logs` rows have a real per-row owner, and
+`USING (true)` would give `beerapp_backend` blanket access to every user's
+rows, making per-user isolation depend entirely on every repository query
+remembering `WHERE user_id = $1` — a single missing `WHERE` clause in a
+future change would leak or corrupt another user's data with nothing in the
+database stopping it. That is not real row-level security, just an extra
+step before trusting the application layer completely.
+
+Replaced with a policy comparing each row's `user_id` against a
+transaction-local Postgres setting, `app.user_id`, set via
+`select set_config('app.user_id', <verified JWT sub>, true)` at the start of
+every `user_beer_logs` transaction (`BeerLogRepository._scoped`, never
+`SET` at session level — the pool reuses physical connections across
+unrelated requests/users, and `SET LOCAL`/`set_config(..., true)` is
+automatically unset at `COMMIT`/`ROLLBACK`, exactly when a connection
+returns to the pool). `WITH CHECK` closes the write side: an `INSERT`/
+`UPDATE` that tried to assign a row to a different `user_id` is rejected by
+Postgres itself, independent of anything the repository code does. The
+repository still filters `WHERE user_id = $1` explicitly on every query —
+this is belt-and-suspenders, not either/or: the RLS policy exists to make an
+isolation bug in the SQL non-exploitable, not to replace careful queries.
+
+Second iteration: the policy's expression was `current_setting('app.user_id',
+true)::uuid`, not `nullif(current_setting('app.user_id', true), '')::uuid`.
+Rejected too — `current_setting(..., true)` returns `NULL` when the GUC was
+never set, but a custom (uncatalogued) GUC that's been cleared/reset can read
+back as an empty string rather than `NULL` depending on session state, and
+casting `''` straight to `uuid` raises "invalid input syntax for type uuid"
+— a 500, not a clean denial. `nullif(..., '')` normalizes both "never set"
+and "set to empty" to `NULL` before the cast, so an absent/cleared identity
+always fails closed (denies all rows) instead of erroring. Verified
+end-to-end, including the specific failure modes above, by
+`backend/tests/integration/test_user_beer_logs_rls.py` — which must only run
+against a disposable `INTEGRATION_DATABASE_URL`, never `DATABASE_URL`/
+`SEED_DATABASE_URL`, since it deliberately issues unfiltered/cross-identity
+SQL.
+
+## 2026-09-15 — Phase 6: `InvalidRequestError` / HTTP 400, first real use of the reserved status
+
+`docs/API.md` reserved 400 since Phase 3 for "a semantic error that's
+structurally valid but logically invalid," with no endpoint that actually
+needed it. Beer logs are the first: a future `consumed_at` (create or
+update), and a PATCH that would leave `price`/`currency` inconsistent when
+overlaid onto the existing row. Both are rejected by `app.errors
+.InvalidRequestError` → 400 (`"invalid_request"`), distinct from 422
+(malformed request *shape*, owned entirely by Pydantic/FastAPI) and from 404
+(missing/not-owned resource). The price/currency check specifically could
+not live in a Pydantic validator on `BeerLogUpdate` — validating "does this
+patch, applied to the current row, still satisfy the pairing invariant"
+needs the row's existing state, which a request schema doesn't have — so it
+lives in `BeerLogService.update_log` instead, after fetching the existing
+row for the ownership check anyway.
+
+## 2026-09-15 — Phase 6: a beer may be logged multiple times; no `unique(user_id, beer_id)`
+
+Explicit product decision, confirmed before implementation: `user_beer_logs`
+has no uniqueness constraint on `(user_id, beer_id)`. `POST /beer-logs`
+always creates a new row, never an upsert, even for a beer the user has
+already logged. This matches PRODUCT.md §7's explicit wording ("a user may
+log the same beer multiple times") and ROADMAP.md's Phase 6 exit criterion
+of the same name. The alternative considered (one canonical log per beer,
+`unique(user_id, beer_id)`, edit-in-place UI) was rejected because it would
+collapse "total logs" and "unique beers tried" into the same statistic for
+Phase 9 and feel more like a favorites toggle than a drinking journal — see
+the product/schema/UX trade-off table this decision was made from, in the
+Phase 6 planning record.
+
+## 2026-09-15 — Phase 6: `serving_volume_ml` — a scoped, explicit exception to "no volume"
+
+Phase 6's own kickoff instructions listed "volume consumed" among the
+consumption-tracking mechanics explicitly out of scope, consistent with
+CLAUDE.md's Responsible Product Design rules. Mid-phase, the product owner
+requested one narrow, deliberate exception: an optional `serving_volume_ml`
+column (canonical unit milliliters, nullable, `> 0` when present, **never**
+inferred or defaulted by the service), purely so a future Statistics phase
+can surface a neutral "recorded volume" figure alongside "total log
+entries" and "unique beers logged" — the same category of descriptive
+statistic as the already-planned `price`/`currency` fields.
+
+This is a scoped data-model exception, **not** a reversal of the
+Responsible Product Design rules: no goal, streak, leaderboard, challenge,
+record-to-beat, reward, or celebratory messaging may ever be attached to
+this value or to logging frequency, in this phase or any future one. Any
+future aggregate over it must be labeled "recorded volume" (or similar),
+never "consumption," and must make clear it only sums logs that happened to
+include a volume — logs with no `serving_volume_ml` are expected and common,
+so the aggregate is never a claim about complete real-world consumption.
+Recorded here explicitly so a future reader doesn't mistake this column's
+existence for permission to build a consumption-gamification feature on top
+of it.
+
+## 2026-09-15 — Phase 6: `consumed_at` must be timezone-aware; naive input is a clean 422
+
+Pydantic v2 parses an ISO datetime string with no UTC offset into a naive
+`datetime` rather than rejecting it. The initial `BeerLogCreate`/
+`BeerLogUpdate` design compared such a value directly against
+`datetime.now(UTC)` (aware) in the future-date check, which raises
+`TypeError: can't compare offset-naive and offset-aware datetimes` — an
+unhandled exception that would have surfaced as a raw 500 for a client that
+simply omitted a UTC offset, not a validation error. Fixed with a shared
+`field_validator` (`_require_aware_or_none`) on `consumed_at` in both
+schemas, run during parsing before either model's `mode="after"` checks —
+a naive value is now rejected as an ordinary 422, and every `consumed_at`
+that reaches `BeerLogService` is guaranteed timezone-aware, so the
+aware-vs-aware comparison there can never raise.
+
+## 2026-09-15 — Phase 6: `BeerLogUpdateInput`'s presence-tracking sentinel
+
+A plain Dart class with nullable named constructor parameters cannot
+distinguish `BeerLogUpdateInput(venueName: null)` (explicit clear) from
+`BeerLogUpdateInput()` (don't touch `venueName` at all) — both leave the
+field `null` with no way to tell which happened, which would silently break
+the PATCH semantics the backend actually implements (omitted vs. explicit
+null). Fixed by defaulting every constructor parameter to a private
+sentinel object (`_unset`) instead of `null`, so "the caller passed null"
+and "the caller passed nothing" stay distinguishable via `identical()`
+checks — `toPatchJson()` only emits a key for a field that isn't still
+`_unset`. Trade-off accepted deliberately: constructor parameters are typed
+`Object?` rather than their true type, so a wrong-typed argument fails at
+the internal cast in `toPatchJson()` rather than at the call site. A
+generic wrapper type (e.g. `PatchValue<T>`) would have preserved static
+typing but doesn't support the desired call-site syntax (a bare `null`
+literal meaning "clear"), and this codebase has no existing precedent for
+that kind of wrapper. Covered by an exact call-site-to-JSON test matrix in
+`test/features/logging/domain/models/beer_log_update_input_test.dart`.
+
+## 2026-09-15 — Phase 6: `BeerLogController`'s `loadMore` generation-ownership discipline
+
+A naive stale-request guard for pagination (capture a generation counter,
+discard a stale response's *data*) is not sufficient on its own: a stale
+request's `finally` block unconditionally resetting a shared loading flag
+(`isLoadingMore`) can stomp on a *different*, legitimately-in-flight newer
+request's claim on that same flag — the stale request doesn't know a newer
+one started and is still running. This exact shape of bug had already
+surfaced once during Phase 5's `DiscoverController` work, so Phase 6's
+`BeerLogController` treats it as a known risk class rather than something to
+rediscover: every method that starts a request checks
+`generation == _requestGeneration` again before mutating **any** shared
+state, including inside `finally`, and `load()` synchronously reclaims
+`isLoadingMore` the moment it bumps the generation (rather than waiting for
+a stale `loadMore()`'s own cleanup to eventually, incorrectly, do it).
+Regression-tested in `beer_log_controller_test.dart`'s stale-`loadMore`
+race test, which specifically asserts a late-arriving stale response
+corrupts neither the data nor a subsequent, currently-active request's
+loading state.

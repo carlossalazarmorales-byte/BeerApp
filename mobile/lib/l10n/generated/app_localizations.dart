@@ -559,6 +559,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Verified'**
   String get beerDetailVerifiedBadge;
+
+  /// Generic label for a dialog's cancel action.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancelAction;
+
+  /// Button on the beer detail screen that opens the log-entry form.
+  ///
+  /// In en, this message translates to:
+  /// **'Log this beer'**
+  String get beerDetailLogAction;
+
+  /// Heading for the list of the current user's own logs for a beer, on the beer detail screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Your logs'**
+  String get beerLogSectionTitle;
+
+  /// Shown in place of the log list when the current user has no logs for this beer.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t logged this beer yet.'**
+  String get beerLogEmptyMessage;
+
+  /// Button that fetches the next page of the user's logs for a beer.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get beerLogLoadMoreAction;
+
+  /// Title of the bottom sheet used to create a new beer log.
+  ///
+  /// In en, this message translates to:
+  /// **'Log this beer'**
+  String get beerLogFormTitleCreate;
+
+  /// Title of the bottom sheet used to edit an existing beer log.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit log'**
+  String get beerLogFormTitleEdit;
+
+  /// Label above the 1-5 rating input in the log form.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating'**
+  String get beerLogRatingLabel;
+
+  /// Accessible label for one star in the rating input.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate {rating} out of 5'**
+  String beerLogRatingStarSemanticLabel(int rating);
+
+  /// Expands the log form beyond the quick rating-only path to show the optional detail fields.
+  ///
+  /// In en, this message translates to:
+  /// **'Add details'**
+  String get beerLogAddDetailsAction;
+
+  /// Placeholder for the optional review text field in the log form.
+  ///
+  /// In en, this message translates to:
+  /// **'Review (optional)'**
+  String get beerLogReviewHint;
+
+  /// Placeholder for the optional serving-note text field in the log form.
+  ///
+  /// In en, this message translates to:
+  /// **'Serving note (optional)'**
+  String get beerLogServingNoteHint;
+
+  /// Placeholder for the optional price field in the log form.
+  ///
+  /// In en, this message translates to:
+  /// **'Price (optional)'**
+  String get beerLogPriceHint;
+
+  /// Placeholder for the optional 3-letter currency code field in the log form.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency, e.g. USD'**
+  String get beerLogCurrencyHint;
+
+  /// Placeholder for the optional venue name field in the log form.
+  ///
+  /// In en, this message translates to:
+  /// **'Venue (optional)'**
+  String get beerLogVenueHint;
+
+  /// Label/placeholder for the optional serving-volume field in the log form. Deliberately neutral -- no example value or consumption-oriented copy.
+  ///
+  /// In en, this message translates to:
+  /// **'Serving volume (ml)'**
+  String get beerLogServingVolumeLabel;
+
+  /// Submit button label for the log form.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get beerLogSaveAction;
+
+  /// Action that deletes an existing beer log.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get beerLogDeleteAction;
+
+  /// Confirmation dialog title before deleting a beer log.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this log?'**
+  String get beerLogDeleteConfirmTitle;
+
+  /// Confirmation dialog body before deleting a beer log.
+  ///
+  /// In en, this message translates to:
+  /// **'This can\'t be undone.'**
+  String get beerLogDeleteConfirmMessage;
+
+  /// Snackbar shown after successfully creating or editing a beer log.
+  ///
+  /// In en, this message translates to:
+  /// **'Log saved.'**
+  String get beerLogSavedConfirmation;
+
+  /// Snackbar shown after successfully deleting a beer log.
+  ///
+  /// In en, this message translates to:
+  /// **'Log deleted.'**
+  String get beerLogDeletedConfirmation;
+
+  /// Shown when a beer log request fails because there is no usable authenticated session.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again to continue.'**
+  String get beerLogErrorUnauthorized;
+
+  /// Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503).
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t available right now. Please try again in a moment.'**
+  String get beerLogErrorServiceUnavailable;
+
+  /// Shown when a beer log request fails due to no network connectivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get beerLogErrorNetwork;
+
+  /// Shown when a beer log request returns 404 (missing or not owned by the current user).
+  ///
+  /// In en, this message translates to:
+  /// **'This log could not be found.'**
+  String get beerLogErrorNotFound;
+
+  /// Shown when a beer log request returns 400 (e.g. a future consumption date, or a price/currency combination that isn't valid).
+  ///
+  /// In en, this message translates to:
+  /// **'Check the date and price/currency fields and try again.'**
+  String get beerLogErrorInvalidRequest;
+
+  /// Fallback error message for beer log requests, used instead of showing a raw backend error message.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t save your log. Please try again.'**
+  String get beerLogErrorGeneric;
 }
 
 class _AppLocalizationsDelegate
