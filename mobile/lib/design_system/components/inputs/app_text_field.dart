@@ -9,6 +9,7 @@ class AppTextField extends StatelessWidget {
     this.controller,
     this.hintText,
     this.leadingIcon,
+    this.suffixIcon,
     this.obscureText = false,
     this.onChanged,
     this.validator,
@@ -21,6 +22,9 @@ class AppTextField extends StatelessWidget {
   final TextEditingController? controller;
   final String? hintText;
   final IconData? leadingIcon;
+
+  /// A trailing action, e.g. a clear button on a search field.
+  final Widget? suffixIcon;
   final bool obscureText;
   final ValueChanged<String>? onChanged;
   final FormFieldValidator<String>? validator;
@@ -46,6 +50,7 @@ class AppTextField extends StatelessWidget {
         hintText: hintText,
         errorText: errorText,
         prefixIcon: leadingIcon == null ? null : Icon(leadingIcon),
+        suffixIcon: suffixIcon,
       ),
     );
   }

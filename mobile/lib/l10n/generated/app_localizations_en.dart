@@ -214,6 +214,36 @@ class AppLocalizationsEn extends AppLocalizations {
       'We couldn\'t load the beer catalog. Please try again.';
 
   @override
+  String get discoverSearchHint => 'Search beers, breweries, styles, countries';
+
+  @override
+  String get discoverSearchClearAction => 'Clear search';
+
+  @override
+  String get discoverFiltersAction => 'Filters';
+
+  @override
+  String get discoverFiltersSheetTitle => 'Filters';
+
+  @override
+  String get discoverFilterSectionStyle => 'Style';
+
+  @override
+  String get discoverFilterSectionCountry => 'Country';
+
+  @override
+  String get discoverFilterSectionBrewery => 'Brewery';
+
+  @override
+  String get discoverClearAllAction => 'Clear all';
+
+  @override
+  String get discoverShowResultsAction => 'Show results';
+
+  @override
+  String get discoverNoResultsMessage => 'No beers match your search.';
+
+  @override
   String get beerDetailBreweryLabel => 'Brewery';
 
   @override

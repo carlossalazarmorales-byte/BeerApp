@@ -215,6 +215,38 @@ class AppLocalizationsEs extends AppLocalizations {
       'No pudimos cargar el catálogo de cervezas. Inténtalo de nuevo.';
 
   @override
+  String get discoverSearchHint =>
+      'Busca cervezas, cervecerías, estilos, países';
+
+  @override
+  String get discoverSearchClearAction => 'Borrar búsqueda';
+
+  @override
+  String get discoverFiltersAction => 'Filtros';
+
+  @override
+  String get discoverFiltersSheetTitle => 'Filtros';
+
+  @override
+  String get discoverFilterSectionStyle => 'Estilo';
+
+  @override
+  String get discoverFilterSectionCountry => 'País';
+
+  @override
+  String get discoverFilterSectionBrewery => 'Cervecería';
+
+  @override
+  String get discoverClearAllAction => 'Borrar todo';
+
+  @override
+  String get discoverShowResultsAction => 'Mostrar resultados';
+
+  @override
+  String get discoverNoResultsMessage =>
+      'Ninguna cerveza coincide con tu búsqueda.';
+
+  @override
   String get beerDetailBreweryLabel => 'Cervecería';
 
   @override

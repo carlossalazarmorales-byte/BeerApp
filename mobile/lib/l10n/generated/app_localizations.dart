@@ -464,6 +464,66 @@ abstract class AppLocalizations {
   /// **'We couldn\'t load the beer catalog. Please try again.'**
   String get catalogErrorGeneric;
 
+  /// Placeholder text for the Discover search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search beers, breweries, styles, countries'**
+  String get discoverSearchHint;
+
+  /// Accessible label for the button that clears the Discover search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get discoverSearchClearAction;
+
+  /// Label for the chip/button that opens the Discover filters bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get discoverFiltersAction;
+
+  /// Title of the Discover filters bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get discoverFiltersSheetTitle;
+
+  /// Section label for the beer style filter in the Discover filters sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get discoverFilterSectionStyle;
+
+  /// Section label for the country filter in the Discover filters sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get discoverFilterSectionCountry;
+
+  /// Section label for the brewery filter in the Discover filters sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewery'**
+  String get discoverFilterSectionBrewery;
+
+  /// Action inside the Discover filters sheet that resets the in-progress filter selection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get discoverClearAllAction;
+
+  /// Action that applies the Discover filters sheet's selection and closes it.
+  ///
+  /// In en, this message translates to:
+  /// **'Show results'**
+  String get discoverShowResultsAction;
+
+  /// Shown when a Discover search/filter combination matches no beers.
+  ///
+  /// In en, this message translates to:
+  /// **'No beers match your search.'**
+  String get discoverNoResultsMessage;
+
   /// Label for the brewery field on the beer detail screen.
   ///
   /// In en, this message translates to:

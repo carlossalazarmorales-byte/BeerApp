@@ -142,8 +142,8 @@ GoRouter createRouter({
       // Declared as a top-level route, not nested inside the Discover
       // branch's `routes` below, so it builds on the root navigator --
       // full-screen above the bottom-nav shell, hiding it, while the
-      // Discover branch's own navigator (and BeerListScreen's scroll
-      // position) stays untouched underneath.
+      // Discover branch's own navigator (and DiscoverScreen's search/filter
+      // state and scroll position) stays untouched underneath.
       GoRoute(
         path: AppRoutes.beerDetail,
         builder: (context, state) => BeerDetailScreen(
@@ -168,7 +168,7 @@ GoRouter createRouter({
               GoRoute(
                 path: '/discover',
                 builder: (context, state) =>
-                    DiscoverScreen(catalogRepository: catalogRepository),
+                    DiscoverScreen(repository: catalogRepository),
               ),
             ],
           ),

@@ -78,6 +78,17 @@
   "catalogErrorNotFound": "No se pudo encontrar esta cerveza.",
   "catalogErrorGeneric": "No pudimos cargar el catálogo de cervezas. Inténtalo de nuevo.",
 
+  "discoverSearchHint": "Busca cervezas, cervecerías, estilos, países",
+  "discoverSearchClearAction": "Borrar búsqueda",
+  "discoverFiltersAction": "Filtros",
+  "discoverFiltersSheetTitle": "Filtros",
+  "discoverFilterSectionStyle": "Estilo",
+  "discoverFilterSectionCountry": "País",
+  "discoverFilterSectionBrewery": "Cervecería",
+  "discoverClearAllAction": "Borrar todo",
+  "discoverShowResultsAction": "Mostrar resultados",
+  "discoverNoResultsMessage": "Ninguna cerveza coincide con tu búsqueda.",
+
   "beerDetailBreweryLabel": "Cervecería",
   "beerDetailStyleLabel": "Estilo",
   "beerDetailAbvLabel": "ABV",

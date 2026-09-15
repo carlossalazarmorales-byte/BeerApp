@@ -58,7 +58,12 @@ class ApiCatalogRepository implements CatalogRepository {
     String? countryId,
     String? styleId,
     String? breweryId,
+    String? q,
   }) async {
+    // Trimmed as a courtesy; the backend normalizes independently and is the
+    // source of truth (see docs/API.md), so a whitespace-only value here is
+    // simply never sent rather than relied upon to be handled server-side.
+    final trimmedQ = q?.trim();
     final json = await _client.getJson(
       '/beers',
       query: {
@@ -67,6 +72,7 @@ class ApiCatalogRepository implements CatalogRepository {
         'country_id': ?countryId,
         'style_id': ?styleId,
         'brewery_id': ?breweryId,
+        if (trimmedQ != null && trimmedQ.isNotEmpty) 'q': trimmedQ,
       },
     ) as Map<String, dynamic>;
     return PagedResult.fromJson(json, Beer.fromJson);
@@ -83,5 +89,17 @@ class ApiCatalogRepository implements CatalogRepository {
     final json =
         await _client.getJson('/breweries/$id') as Map<String, dynamic>;
     return Brewery.fromJson(json);
+  }
+
+  @override
+  Future<PagedResult<Brewery>> getBreweries({
+    int page = 1,
+    int pageSize = 20,
+  }) async {
+    final json = await _client.getJson(
+      '/breweries',
+      query: {'page': '$page', 'page_size': '$pageSize'},
+    ) as Map<String, dynamic>;
+    return PagedResult.fromJson(json, Brewery.fromJson);
   }
 }

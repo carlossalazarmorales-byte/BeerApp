@@ -18,9 +18,15 @@ abstract class CatalogRepository {
     String? countryId,
     String? styleId,
     String? breweryId,
+    String? q,
   });
 
   Future<Beer> getBeer(String id);
 
   Future<Brewery> getBrewery(String id);
+
+  /// Paginated brewery listing, backed by `GET /breweries`. Added for
+  /// Discover's brewery filter -- distinct from [getBrewery], which fetches
+  /// a single brewery by id for the beer detail screen.
+  Future<PagedResult<Brewery>> getBreweries({int page = 1, int pageSize = 20});
 }
