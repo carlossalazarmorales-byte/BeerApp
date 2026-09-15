@@ -170,6 +170,12 @@ abstract class AppLocalizations {
   /// **'Manage your profile, achievements and preferences.'**
   String get profileScreenDescription;
 
+  /// Tooltip/label for the sign-out action on the Profile screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign out'**
+  String get logoutAction;
+
   /// Profile screen subtitle once a real signed-in user/profile exists.
   ///
   /// In en, this message translates to:
@@ -307,6 +313,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Update password'**
   String get resetPasswordSubmit;
+
+  /// Shown when Supabase Auth rejects a password update with the same_password error code.
+  ///
+  /// In en, this message translates to:
+  /// **'Your new password must be different from your current password.'**
+  String get passwordSameAsCurrentError;
+
+  /// Shown when a signed-in user's profile fails to load (network/server error) — distinct from an incomplete profile.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load your profile. Check your connection and try again.'**
+  String get profileUnavailableError;
 
   /// Complete-profile screen title, shown only for OAuth sign-ups without a username.
   ///

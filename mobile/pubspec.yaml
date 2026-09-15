@@ -15,6 +15,11 @@ dependencies:
   go_router: ^18.0.1
   google_sign_in: ^7.2.0
   shared_preferences: ^2.5.5
+  # Already pulled in transitively by supabase_flutter (its automatic deep
+  # link detection uses it internally) -- made direct because we now also
+  # call it ourselves (see core/auth/auth_deep_link_handler.dart), and a
+  # transitive dependency can be dropped or changed without notice.
+  app_links: ^7.2.1
 
 dev_dependencies:
   flutter_test:

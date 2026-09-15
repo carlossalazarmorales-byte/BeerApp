@@ -6,6 +6,7 @@ import 'package:beerapp/features/auth/domain/auth_models.dart';
 import 'package:beerapp/features/auth/domain/profile.dart';
 import 'package:beerapp/features/auth/presentation/auth_controller.dart';
 import 'package:beerapp/features/auth/presentation/complete_profile_screen.dart';
+import 'package:beerapp/features/auth/presentation/profile_unavailable_screen.dart';
 import 'package:beerapp/features/auth/presentation/sign_in_screen.dart';
 import 'package:beerapp/features/auth/presentation/welcome_screen.dart';
 import 'package:beerapp/features/map/presentation/map_screen.dart';
@@ -34,10 +35,14 @@ class _Harness {
     AppUser? initialUser,
     bool ageAcknowledged = false,
     Profile? initialProfile,
+    Object? initialProfileError,
   }) {
     final authRepository = FakeAuthRepository(initialUser: initialUser);
     final profileRepository = FakeProfileRepository();
     if (initialProfile != null) profileRepository.seed(initialProfile);
+    if (initialProfileError != null) {
+      profileRepository.getProfileError = initialProfileError;
+    }
 
     final ageGateController = AgeGateController(
       storage: FakeAgeGateStorage(initiallyAcknowledged: ageAcknowledged),
@@ -155,6 +160,39 @@ void main() {
       harness.router.go('/sign-in');
       await tester.pumpAndSettle();
       expect(find.byType(SignInScreen), findsNothing);
+      expect(find.byType(MapScreen), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'a profile-load failure is forced onto /profile-unavailable, never '
+    '/complete-profile, and retry recovers into the shell once it succeeds',
+    (tester) async {
+      final harness = _Harness(
+        ageAcknowledged: true,
+        initialUser: const AppUser(id: 'email-user-id'),
+        initialProfileError: Exception('network down'),
+      );
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProfileUnavailableScreen), findsOneWidget);
+      expect(find.byType(CompleteProfileScreen), findsNothing);
+
+      harness.router.go('/map');
+      await tester.pumpAndSettle();
+      expect(find.byType(MapScreen), findsNothing);
+      expect(find.byType(ProfileUnavailableScreen), findsOneWidget);
+
+      // Fix the underlying failure and seed the profile the fetch would
+      // have returned, then tap the screen's retry action.
+      harness.profileRepository.getProfileError = null;
+      harness.profileRepository.seed(
+        const Profile(id: 'email-user-id', username: 'hoppy'),
+      );
+      await tester.tap(find.text('Retry'));
+      await tester.pumpAndSettle();
+
       expect(find.byType(MapScreen), findsOneWidget);
     },
   );

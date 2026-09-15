@@ -10,10 +10,18 @@ class FakeProfileRepository implements ProfileRepository {
 
   ProfileFailureCode? setUsernameError;
 
+  /// Set by a test to simulate a transient network/Postgrest failure —
+  /// something the fake otherwise never does, unlike the real repository
+  /// against a live backend.
+  Object? getProfileError;
+
   void seed(Profile profile) => profiles[profile.id] = profile;
 
   @override
-  Future<Profile?> getProfile(String userId) async => profiles[userId];
+  Future<Profile?> getProfile(String userId) async {
+    if (getProfileError != null) throw getProfileError!;
+    return profiles[userId];
+  }
 
   @override
   Future<void> setUsername(String username) async {

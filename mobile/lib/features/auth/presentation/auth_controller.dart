@@ -13,8 +13,17 @@ enum AppAuthStatus {
   unauthenticated,
 
   /// Signed in, but `profiles.username` is null — the router forces
-  /// `/complete-profile` and nothing else until this resolves.
+  /// `/complete-profile` and nothing else until this resolves. This means
+  /// the profile loaded successfully and genuinely has no username yet
+  /// (an OAuth signup) — never confuse this with [authenticatedProfileUnavailable].
   authenticatedIncompleteProfile,
+
+  /// Signed in, but the profile row could not be loaded at all (a network
+  /// or Postgrest failure) — distinct from [authenticatedIncompleteProfile]
+  /// on purpose: a failed *request* says nothing about whether a username
+  /// exists, so it must never be treated as "needs completing". The router
+  /// forces a retryable error screen instead of `/complete-profile`.
+  authenticatedProfileUnavailable,
   authenticatedComplete,
 }
 
@@ -32,7 +41,16 @@ class AuthController extends ChangeNotifier {
   }) : _authRepository = authRepository,
        // ignore: prefer_initializing_formals
        _profileRepository = profileRepository {
-    _subscription = _authRepository.events.listen(_onAuthEvent);
+    _subscription = _authRepository.events.listen(
+      _onAuthEvent,
+      onError: (Object error, StackTrace stackTrace) {
+        // Current Supabase guidance: network errors (e.g. an offline token
+        // refresh) are emitted as stream errors, not events. Without this,
+        // Dart rethrows them as unhandled zone exceptions. Only the error
+        // itself is logged, never a session/token.
+        debugPrint('AuthController: auth stream error: $error');
+      },
+    );
     unawaited(_initialize());
   }
 
@@ -81,20 +99,44 @@ class AuthController extends ChangeNotifier {
   }
 
   Future<void> _refreshProfileStatus(String userId) async {
-    final profile = await _profileRepository.getProfile(userId);
-    _profile = profile;
-    _status = (profile?.isComplete ?? false)
-        ? AppAuthStatus.authenticatedComplete
-        : AppAuthStatus.authenticatedIncompleteProfile;
+    try {
+      final profile = await _profileRepository.getProfile(userId);
+      _profile = profile;
+      _status = (profile?.isComplete ?? false)
+          ? AppAuthStatus.authenticatedComplete
+          : AppAuthStatus.authenticatedIncompleteProfile;
+    } catch (error) {
+      // A real network/Postgrest call can fail transiently in a way the
+      // fakes used in tests never do. Left uncaught, this would strand
+      // [status] at whatever it already was -- most dangerously `unknown`
+      // on first launch, which leaves the router unable to ever leave the
+      // splash screen (`stillResolving` never clears).
+      //
+      // A failed *request* is deliberately never mapped to
+      // `authenticatedIncompleteProfile` -- that status specifically means
+      // "the profile loaded and has no username", which this doesn't know
+      // one way or the other. `authenticatedProfileUnavailable` is its own
+      // state precisely so an existing user with a set username is never
+      // wrongly routed to `/complete-profile` just because a fetch failed.
+      debugPrint('AuthController: profile fetch failed: $error');
+      _status = AppAuthStatus.authenticatedProfileUnavailable;
+    }
   }
 
-  /// Called by `/complete-profile` right after a successful username save.
+  /// Called by `/complete-profile` right after a successful username save,
+  /// and by the `/profile-unavailable` retry action — both just need the
+  /// profile re-fetched and [status] recomputed from the result.
   Future<void> refreshProfile() async {
     final user = _authRepository.currentUser;
     if (user == null) return;
     await _refreshProfileStatus(user.id);
     notifyListeners();
   }
+
+  /// Delegates to the repository; the resulting `signedOut` event (handled
+  /// in [_onAuthEvent] above) is what actually updates [status] and
+  /// notifies listeners, so callers don't need to do anything else.
+  Future<void> signOut() => _authRepository.signOut();
 
   /// Called by `/reset-password` right after a successful password update.
   Future<void> completePasswordReset() async {

@@ -16,6 +16,7 @@
   "scanScreenDescription": "Escanea la etiqueta de una cerveza para añadirla a tu colección en segundos.",
   "collectionScreenDescription": "Lleva el registro de cada cerveza que has probado y valorado.",
   "profileScreenDescription": "Gestiona tu perfil, logros y preferencias.",
+  "logoutAction": "Cerrar sesión",
   "profileScreenGreeting": "Sesión iniciada como {name}.",
 
   "welcomeSubtitle": "Descubre, colecciona y recuerda cada cerveza que pruebes.",
@@ -45,6 +46,9 @@
 
   "resetPasswordTitle": "Elige una nueva contraseña",
   "resetPasswordSubmit": "Actualizar contraseña",
+  "passwordSameAsCurrentError": "La nueva contraseña debe ser diferente de la contraseña actual.",
+
+  "profileUnavailableError": "No pudimos cargar tu perfil. Revisa tu conexión e inténtalo de nuevo.",
 
   "completeProfileTitle": "Elige un nombre de usuario",
   "completeProfileDescription": "Elige un nombre de usuario para terminar de configurar tu cuenta de BeerApp.",

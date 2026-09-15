@@ -51,6 +51,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Manage your profile, achievements and preferences.';
 
   @override
+  String get logoutAction => 'Sign out';
+
+  @override
   String profileScreenGreeting(String name) {
     return 'Signed in as $name.';
   }
@@ -125,6 +128,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resetPasswordSubmit => 'Update password';
+
+  @override
+  String get passwordSameAsCurrentError =>
+      'Your new password must be different from your current password.';
+
+  @override
+  String get profileUnavailableError =>
+      'We couldn\'t load your profile. Check your connection and try again.';
 
   @override
   String get completeProfileTitle => 'Choose a username';

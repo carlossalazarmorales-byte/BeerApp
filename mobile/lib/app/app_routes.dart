@@ -10,6 +10,11 @@ abstract final class AppRoutes {
   static const String resetPassword = '/reset-password';
   static const String completeProfile = '/complete-profile';
 
+  /// Shown for `AppAuthStatus.authenticatedProfileUnavailable` — a failed
+  /// profile *request*, never to be confused with [completeProfile] (a
+  /// successfully-loaded profile that's missing a username).
+  static const String profileUnavailable = '/profile-unavailable';
+
   /// The authenticated shell's default destination (Map tab).
   static const String home = '/map';
 }

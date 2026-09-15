@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' as supabase;
 
 import '../../../core/config/env.dart';
@@ -16,12 +17,33 @@ class SupabaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Stream<AuthEvent> get events => _client.auth.onAuthStateChange
-      .map(_mapAuthChangeEvent)
-      .where((event) => event != null)
-      .cast<AuthEvent>();
+  Stream<AuthEvent> get events =>
+      mapAuthStateStream(_client.auth.onAuthStateChange);
 
-  AuthEvent? _mapAuthChangeEvent(supabase.AuthState state) {
+  /// The map/filter transformation applied to the real `onAuthStateChange`
+  /// stream, factored out over an arbitrary input stream so a test can feed
+  /// it a stream error without needing a live Supabase client.
+  ///
+  /// Deliberately does NOT intercept stream errors (no `handleError`) —
+  /// current Supabase guidance requires an `onError` handler on
+  /// `onAuthStateChange` (network errors, e.g. an offline token refresh,
+  /// arrive as stream errors, not events), but that handler belongs solely
+  /// at the actual `.listen()` call in [AuthController]. A `handleError`
+  /// here that doesn't rethrow would silently consume the error before
+  /// that listener ever saw it, and logging it at both layers would be
+  /// noise for one event. `map`/`where`/`cast` forward stream errors
+  /// through unchanged by default, so nothing extra is needed for that.
+  @visibleForTesting
+  static Stream<AuthEvent> mapAuthStateStream(
+    Stream<supabase.AuthState> source,
+  ) {
+    return source
+        .map(_mapAuthChangeEvent)
+        .where((event) => event != null)
+        .cast<AuthEvent>();
+  }
+
+  static AuthEvent? _mapAuthChangeEvent(supabase.AuthState state) {
     switch (state.event) {
       case supabase.AuthChangeEvent.signedIn:
         return AuthEvent.signedIn;
@@ -89,9 +111,22 @@ class SupabaseAuthRepository implements AuthRepository {
       await _client.auth.updateUser(
         supabase.UserAttributes(password: newPassword),
       );
-    } on supabase.AuthException catch (_) {
-      throw const AuthFailure(AuthFailureCode.weakPassword);
+    } on supabase.AuthException catch (error) {
+      throw AuthFailure(mapUpdatePasswordError(error));
     }
+  }
+
+  /// Structured error code, not string matching on `error.message` — the
+  /// message text isn't a stable contract, the code is. Factored out as
+  /// its own testable function so the mapping (specifically: does
+  /// `same_password` really produce [AuthFailureCode.samePassword], and
+  /// does everything else still fall back to the existing generic code)
+  /// can be verified without a live Supabase call.
+  @visibleForTesting
+  static AuthFailureCode mapUpdatePasswordError(supabase.AuthException error) {
+    return error.code == 'same_password'
+        ? AuthFailureCode.samePassword
+        : AuthFailureCode.weakPassword;
   }
 
   @override

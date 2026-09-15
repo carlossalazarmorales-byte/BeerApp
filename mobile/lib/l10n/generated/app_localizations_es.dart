@@ -51,6 +51,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Gestiona tu perfil, logros y preferencias.';
 
   @override
+  String get logoutAction => 'Cerrar sesión';
+
+  @override
   String profileScreenGreeting(String name) {
     return 'Sesión iniciada como $name.';
   }
@@ -125,6 +128,14 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get resetPasswordSubmit => 'Actualizar contraseña';
+
+  @override
+  String get passwordSameAsCurrentError =>
+      'La nueva contraseña debe ser diferente de la contraseña actual.';
+
+  @override
+  String get profileUnavailableError =>
+      'No pudimos cargar tu perfil. Revisa tu conexión e inténtalo de nuevo.';
 
   @override
   String get completeProfileTitle => 'Elige un nombre de usuario';

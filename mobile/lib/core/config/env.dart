@@ -15,6 +15,14 @@ abstract final class Env {
   static const String authRedirectUrl =
       'com.carlossalazarmorales.beerapp://login-callback';
 
+  /// Parsed once from [authRedirectUrl] so its scheme/host/path aren't
+  /// duplicated as separate literals elsewhere — [AuthDeepLinkHandler]
+  /// compares every incoming link against this rather than just its
+  /// scheme, since a custom scheme alone doesn't uniquely identify our
+  /// callback (nothing else stops another app or a crafted link from
+  /// reusing the same scheme with a different host).
+  static final Uri authRedirectUri = Uri.parse(authRedirectUrl);
+
   /// Throws with a clear message if required values weren't supplied,
   /// rather than letting Supabase fail later with an opaque error.
   static void validate() {

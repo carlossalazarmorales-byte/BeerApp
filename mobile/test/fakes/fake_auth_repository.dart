@@ -11,7 +11,7 @@ class FakeAuthRepository implements AuthRepository {
   AppUser? _currentUser;
   final _controller = StreamController<AuthEvent>.broadcast();
 
-  /// Set by a test to make the next sign-in/sign-up call throw.
+  /// Set by a test to make the next sign-in/sign-up/sign-out call throw.
   Object? errorToThrow;
 
   @override
@@ -42,6 +42,7 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {
+    if (errorToThrow != null) throw errorToThrow!;
     _currentUser = null;
     _controller.add(AuthEvent.signedOut);
   }
@@ -50,7 +51,9 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> sendPasswordResetEmail(String email) async {}
 
   @override
-  Future<void> updatePassword(String newPassword) async {}
+  Future<void> updatePassword(String newPassword) async {
+    if (errorToThrow != null) throw errorToThrow!;
+  }
 
   @override
   Future<void> signInWithGoogle() async {
@@ -67,6 +70,11 @@ class FakeAuthRepository implements AuthRepository {
     _currentUser = AppUser(id: userId);
     _controller.add(AuthEvent.passwordRecovery);
   }
+
+  /// Simulates a stream error (e.g. a failed token refresh while offline) —
+  /// the real `onAuthStateChange` can emit these; this fake otherwise never
+  /// does, so tests need an explicit way to trigger it.
+  void emitError(Object error) => _controller.addError(error);
 
   void dispose() => unawaited(_controller.close());
 }

@@ -52,6 +52,10 @@
   "@profileScreenDescription": {
     "description": "Placeholder description for the Profile screen."
   },
+  "logoutAction": "Sign out",
+  "@logoutAction": {
+    "description": "Tooltip/label for the sign-out action on the Profile screen."
+  },
   "profileScreenGreeting": "Signed in as {name}.",
   "@profileScreenGreeting": {
     "description": "Profile screen subtitle once a real signed-in user/profile exists.",
@@ -121,6 +125,13 @@
   "@resetPasswordTitle": {"description": "Reset-password screen title, reached via the emailed link."},
   "resetPasswordSubmit": "Update password",
   "@resetPasswordSubmit": {"description": "Reset-password screen submit button label."},
+  "passwordSameAsCurrentError": "Your new password must be different from your current password.",
+  "@passwordSameAsCurrentError": {"description": "Shown when Supabase Auth rejects a password update with the same_password error code."},
+
+  "profileUnavailableError": "We couldn't load your profile. Check your connection and try again.",
+  "@profileUnavailableError": {
+    "description": "Shown when a signed-in user's profile fails to load (network/server error) — distinct from an incomplete profile."
+  },
 
   "completeProfileTitle": "Choose a username",
   "@completeProfileTitle": {"description": "Complete-profile screen title, shown only for OAuth sign-ups without a username."},

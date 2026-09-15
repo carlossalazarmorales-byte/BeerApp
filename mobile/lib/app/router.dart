@@ -8,6 +8,7 @@ import '../features/auth/presentation/auth_controller.dart';
 import '../features/auth/presentation/check_email_screen.dart';
 import '../features/auth/presentation/complete_profile_screen.dart';
 import '../features/auth/presentation/forgot_password_screen.dart';
+import '../features/auth/presentation/profile_unavailable_screen.dart';
 import '../features/auth/presentation/reset_password_screen.dart';
 import '../features/auth/presentation/sign_in_screen.dart';
 import '../features/auth/presentation/sign_up_screen.dart';
@@ -66,11 +67,16 @@ String? _redirect(
       return location == AppRoutes.completeProfile
           ? null
           : AppRoutes.completeProfile;
+    case AppAuthStatus.authenticatedProfileUnavailable:
+      return location == AppRoutes.profileUnavailable
+          ? null
+          : AppRoutes.profileUnavailable;
     case AppAuthStatus.authenticatedComplete:
       final isAuthOnlyRoute =
           location == AppRoutes.splash ||
           _publicAuthRoutes.contains(location) ||
           location == AppRoutes.completeProfile ||
+          location == AppRoutes.profileUnavailable ||
           location == AppRoutes.resetPassword;
       return isAuthOnlyRoute ? AppRoutes.home : null;
   }
@@ -125,6 +131,10 @@ GoRouter createRouter({
         path: AppRoutes.completeProfile,
         builder: (context, state) =>
             CompleteProfileScreen(profileRepository: profileRepository),
+      ),
+      GoRoute(
+        path: AppRoutes.profileUnavailable,
+        builder: (context, state) => const ProfileUnavailableScreen(),
       ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, navigationShell) =>

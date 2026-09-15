@@ -14,6 +14,12 @@ enum AuthEvent { signedIn, signedOut, passwordRecovery }
 enum AuthFailureCode {
   invalidCredentials,
   weakPassword,
+
+  /// Maps Supabase Auth's structured `same_password` error code — the new
+  /// password matches the current one. Kept distinct from [weakPassword]
+  /// so the UI can show a specific, correct message instead of the
+  /// generic one.
+  samePassword,
   network,
 
   /// A sign-in method exists in the UI/interface but its provider isn't

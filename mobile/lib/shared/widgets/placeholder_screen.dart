@@ -15,6 +15,7 @@ class PlaceholderScreen extends StatelessWidget {
     required this.title,
     required this.description,
     required this.icon,
+    this.actions,
     super.key,
   });
 
@@ -22,12 +23,16 @@ class PlaceholderScreen extends StatelessWidget {
   final String description;
   final IconData icon;
 
+  /// App-bar actions, e.g. the Profile screen's sign-out button. Null for
+  /// every other Phase 1 placeholder screen.
+  final List<Widget>? actions;
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(title)),
+      appBar: AppBar(title: Text(title), actions: actions),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.xl),
