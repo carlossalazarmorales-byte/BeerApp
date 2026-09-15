@@ -53,7 +53,7 @@ admin-gated; there is no catalog write endpoint yet, see
 | GET | `/beer-styles` | unpaginated |
 | GET | `/breweries` | `?country_id=&page=&page_size=` |
 | GET | `/breweries/{id}` | |
-| GET | `/beers` | `?country_id=&style_id=&brewery_id=&page=&page_size=` |
+| GET | `/beers` | `?country_id=&style_id=&brewery_id=&q=&page=&page_size=` |
 | GET | `/beers/{id}` | |
 
 These correspond to `ROADMAP.md` Phase 4's "Beer list API"/"Beer detail API"
@@ -62,3 +62,31 @@ foundational work for future phases," Roadmap Rule 2) so the protected
 backend could be proven end-to-end. Phase 4 consumes and polishes these in
 the Flutter UI (loading/empty/error states, favorite/wishlist actions) rather
 than rebuilding them — see `docs/DECISIONS.md`.
+
+## Text search (`GET /beers?q=`, Phase 5)
+
+`q` (optional, max 100 characters) does a case-insensitive substring search
+across a beer's own name, its brewery's name, its style's name, and its
+country's name (via the beer's own `country_id` — see the limitation below),
+ANDed with any `country_id`/`style_id`/`brewery_id` filters also present on
+the request. Matching is deterministic (`ILIKE`), never fuzzy/semantic —
+consistent with `ROADMAP.md`'s "prefer simple, deterministic database-backed
+search" guidance for this phase.
+
+Normalization happens server-side, independent of what the client sends:
+surrounding whitespace is stripped, and a whitespace-only (or now-empty)
+value after trimming is treated as "no search" rather than an empty ILIKE
+term. `%` and `_` in `q` are matched **literally** — the backend escapes
+both (and the SQL escape character itself) before building the ILIKE
+pattern, so a user searching for a literal `%` or `_` only matches beers
+that actually contain that character, never the whole catalog.
+
+Pagination's `total` always reflects the exact same searched/filtered row
+set as the returned page — the count query and the page query share one
+`FROM`/`JOIN`/`WHERE` clause built once, so they can't drift apart.
+
+**Known limitation**: "country" search matches a beer's own `country_id`
+field, not its brewery's country. A beer with no `country_id` set won't be
+found by searching its brewery's country name. Not a regression — no country
+search existed before Phase 5 — but worth knowing when a search doesn't
+surface an expected result.

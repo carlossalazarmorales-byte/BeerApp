@@ -347,3 +347,198 @@ type, message, and stack trace only, never tokens/headers/secrets, never
 shown in the UI, never active in release builds. Regression tests
 (`test/features/catalog/models/{json_parsing,beer,brewery,beer_style}_test.dart`)
 use the exact string-form JSON confirmed above.
+
+## 2026-09-15 — Phase 5: `GET /beers` gains `q`, not a parallel search endpoint
+
+Text search was added as a `q` query parameter on the existing `GET /beers`
+endpoint (ILIKE across the beer's own name plus its joined brewery/style/
+country names — see `docs/API.md`), rather than a new `/search` endpoint or
+a separate search service. The existing endpoint already supports
+pagination and exact `country_id`/`style_id`/`brewery_id` filters that
+`q` needs to compose with (AND semantics); a parallel endpoint would have
+had to duplicate that pagination/filter logic or awkwardly delegate back to
+it. Matches `ROADMAP.md`'s guidance to prefer the smallest correct extension
+over a parallel system.
+
+Deterministic `ILIKE` substring matching was used, not fuzzy/trigram/vector
+search — the catalog is 8 rows in dev and nothing in `PRODUCT.md`/`ROADMAP.md`
+calls for fuzzy matching yet. No new index/migration was added either: an
+`ILIKE '%...%'` pattern can't use a plain btree index regardless of catalog
+size (it would need the `pg_trgm` extension), and at this dataset size a
+sequential scan is fine — revisit if/when the catalog grows enough that
+search latency actually becomes a problem.
+
+## 2026-09-15 — Phase 5: LIKE-metacharacter escaping for `q`
+
+An early version of the `q` implementation passed the search term straight
+into an `ILIKE '%<term>%'` pattern after only parameterizing the whole
+pattern string. That prevents SQL injection but does **not** make `%`/`_`
+literal inside the pattern itself — a user searching for a literal `%`
+would have matched the entire catalog, and `_` would have matched any single
+character. Fixed in `backend/app/repositories/beers.py` by escaping `\`,
+`%`, and `_` in the raw term (backslash first, so it isn't double-escaped)
+before wrapping it in `%...%`, with an explicit `ESCAPE '\'` clause on every
+ILIKE comparison. Covered by
+`backend/tests/integration/test_beer_search.py`'s literal-`%`/literal-`_`
+regression tests.
+
+## 2026-09-15 — Phase 5: count and page queries share one built clause
+
+`BeerRepository._build_query()` builds the `FROM`/`JOIN`/`WHERE` clause and
+its bound parameters once, reused by both the `count(*)` query and the
+paginated `select`. An earlier draft risked hand-maintaining the `WHERE`
+clause twice (once per query), which could drift apart under future changes
+and silently return a `total` that doesn't match the actual searched/
+filtered row set. Regression-tested by
+`test_total_reflects_the_searched_filtered_result_set` in
+`backend/tests/integration/test_beer_search.py` (see the Phase 5
+verification-status entry below for that suite's actual run status in this
+environment).
+
+## 2026-09-15 — Phase 5: filters are single-select per category, combined with AND
+
+Discover's style/country/brewery filters each allow at most one selected
+value (not multi-select-with-OR-within-a-category), combined across
+categories with AND. Decided with the user up front: single-select keeps
+the filter-sheet UI (a flat list of selectable chips per category) and the
+API shape (one id per filter, matching the exact-match columns
+`GET /beers` already had) simple, and nothing in `PRODUCT.md`'s Phase 5
+scope calls for "style A or style B" queries yet. Multi-select can be
+revisited if a real product need for it shows up later.
+
+## 2026-09-15 — Phase 5: filters bottom sheet is transactional (draft vs. applied state)
+
+`DiscoverScreen`'s filter sheet holds `draftStyleId`/`draftCountryId`/
+`draftBreweryId` as local `State` on the sheet widget itself, seeded from
+`DiscoverController`'s currently **applied** filters when the sheet opens.
+Selecting chips inside the sheet only mutates that local draft; the
+controller's applied filters (and therefore the visible beer list
+underneath) don't change until "Show results" calls
+`DiscoverController.applyFilters(styleId:, countryId:, breweryId:)` once,
+atomically, triggering exactly one reload. Dismissing the sheet any other
+way (back/swipe/tap-outside) discards the draft with no controller call at
+all. This was an explicit correction during planning: an earlier draft had
+each chip call the controller directly, which would have applied filters
+one at a time (multiple reloads per sheet visit) and made "Show results"
+purely cosmetic rather than a real confirm/cancel boundary.
+
+## 2026-09-15 — Phase 5: brewery filter options load via a bounded pagination loop, not a new "list all" endpoint
+
+The Phase 4 `CatalogRepository` had no way to list breweries at all (only
+`getBrewery(id)` for a single brewery by id, used by the beer detail
+screen). Discover's brewery filter needed a listing, so
+`CatalogRepository.getBreweries({page, pageSize})` was added as a thin,
+generic wrapper around the existing paginated `GET /breweries` — kept in
+`features/catalog/` since it's generic catalog access, not Discover-specific
+orchestration (see `docs/ARCHITECTURE.md`).
+
+`DiscoverController` loads brewery filter options by calling it in a loop
+(page size 100) until the fetched count reaches the reported `total`, capped
+at 5 pages (500 breweries). This is a deliberate, bounded, documented limit
+rather than an unbounded "fetch everything" loop: at the current 6 dev
+breweries it resolves in one request, and if the catalog ever grows past 500
+breweries, the extra ones simply won't appear in the filter picker for this
+phase. The real fix at that scale is a searchable/typeahead brewery picker
+(fetching options as the user types, like the beer search itself), not a
+bigger in-memory list — deferred until the catalog is actually that large.
+
+## 2026-09-15 — Phase 5: search history and dedicated browse sections deferred
+
+`ROADMAP.md`'s Phase 5 checklist also lists "Search history" and separate
+"Country browsing"/"Style browsing"/"Brewery browsing" tasks. Decided with
+the user up front to defer both, for scope/UX reasons, not a technical
+blocker: search history is a nice-to-have UI surface (a recent-searches list
+under the search bar) that isn't required by this phase's exit criteria
+("user can reliably find a known beer") and wasn't designed/scoped as part
+of this phase's UX — it is **not** deferred for lack of a storage mechanism;
+`shared_preferences` (the obvious place to persist it) is already a direct
+`mobile/pubspec.yaml` dependency, used elsewhere in the app (the age-gate
+acknowledgement). The style/country/brewery filters already satisfy
+"browsing" without adding separate curated sections/shelves to Discover's
+initial state — which would risk exactly the kind of recommendation-engine/
+section overbuild `PRODUCT.md` and `ROADMAP.md` warn against this early.
+`ROADMAP.md` is annotated, not silently edited, per Roadmap Rule 9.
+
+## 2026-09-15 — Phase 5: no global `ChipTheme`; filter chips are a local, token-reading component
+
+`design_system/components/chips/app_filter_chip.dart` styles its `FilterChip`
+explicitly in its own `build()` (reading `AppColors`/`AppSpacing`/
+`AppTypography` tokens directly) rather than adding a `ChipThemeData` to
+`AppTheme.light`. A global chip theme would affect every `Chip`/`FilterChip`/
+`ChoiceChip` anywhere in the app, including ones that don't exist yet and
+haven't been designed against these token choices — scoping the styling to
+one reusable component used only by Discover's filter UI avoids that
+speculative, app-wide commitment while still keeping the styling
+token-driven and centralized (not hardcoded per call site), per
+`CLAUDE.md`'s design-system rule.
+
+## 2026-09-15 — Phase 5: `BeerListController`/`BeerListScreen` moved (not duplicated) into `features/discover/`
+
+Phase 4's `BeerListController`/`BeerListScreen` had exactly one consumer:
+the Discover tab (confirmed by grep before moving). Rather than keep a
+generic "beer list" abstraction in `features/catalog/` and build a second,
+Discover-specific controller/screen alongside it, the existing files were
+renamed and extended in place as `DiscoverController`/`DiscoverScreen` in
+`features/discover/` — avoiding a duplicate pagination/error-guard
+implementation for no real second consumer. `BeerListTile` and the shared
+catalog error/debug helpers stayed in `features/catalog/presentation/`
+since they're generic rendering/error-mapping, reused by Discover.
+
+## 2026-09-15 — Phase 5: a `FilterChip`'s delete button needs `onSelected` too, not just `onDeleted`
+
+Discovered via a widget test, not just inspection: Flutter's `FilterChip`
+computes `isEnabled` as `onSelected != null` (see
+`packages/flutter/lib/src/material/filter_chip.dart`), and its delete
+button's own `enabled` flag is `isEnabled && onDeleted != null` — so a
+`FilterChip` built with only `onDeleted` (no `onSelected`) silently renders
+a delete icon that does nothing when tapped. The first cut of Discover's
+active-filter chips did exactly that. Fixed by also giving each active
+chip an `onSelected` handler (reopens the filters sheet to edit that
+filter — a sensible action in its own right, not just a workaround), which
+both fixes the delete button and gives the chip body a meaningful tap
+target. Regression-tested in
+`test/features/discover/discover_screen_test.dart` ("removing an active
+filter chip on the main screen applies immediately").
+
+## 2026-09-15 — Phase 5: a failed search/filter reload clears items; a failed plain refresh doesn't
+
+`DiscoverController._loadFirstPage` takes a `preserveItemsOnError` flag.
+Plain `refresh()` (pull-to-refresh, same query/filters) sets it true,
+matching Phase 4's behavior of leaving the still-valid existing list visible
+if a refresh transiently fails. Every other trigger — the initial load, a
+debounced search, `applyFilters`/`clearFilters` — leaves it false, because
+on failure there is no valid result set for the *new* query/filters to fall
+back to; silently continuing to show the *previous* query's unrelated
+results would be misleading, and the manual exit criterion "killing the
+backend mid-search shows the existing localized error state" depends on
+this. The screen's existing `error != null && items.isEmpty` gate (carried
+over from Phase 4's `BeerListScreen`) needed no changes to support this —
+it already does the right thing once the controller clears `items`
+correctly on the search/filter path.
+
+## 2026-09-15 — Phase 5: verification status (three distinct things, not one)
+
+Recorded explicitly because these are easy to conflate:
+
+- **Default backend suite** (`cd backend && pytest`, excludes
+  `@pytest.mark.integration`): run in this implementation session, 35
+  passed, 0 failed — covers the new `q` route/service normalization and
+  pass-through behavior against fakes.
+- **Live Android smoke test**: run by the user against a real local FastAPI
+  backend and the real Supabase dev database/Postgres (not a fake, not this
+  implementation session) — all listed scenarios in this file's Phase 5
+  completion note passed, all live requests returned 200. This is the
+  end-to-end confirmation that the actual `ILIKE`/`ESCAPE`/join SQL, the
+  debounce/filter/stale-request client logic, and the transactional filters
+  sheet all work together against real infrastructure.
+- **`backend/tests/integration/test_beer_search.py`** (opt-in,
+  `INTEGRATION_DATABASE_URL`-gated, excluded from the default `pytest` run):
+  **not executed** in this implementation session — `INTEGRATION_DATABASE_URL`
+  is not configured in this environment, so `pytest -m integration` skips
+  all 9 of its tests rather than running them. Its assertions (case
+  sensitivity, whitespace, literal `%`/`_`, `total` correctness under
+  `page_size` truncation, filter+search combination) are a superset of what
+  the live smoke test happened to exercise by hand — it should still be run
+  against a real dev database (with `INTEGRATION_DATABASE_URL` set) before
+  relying on it as a regression guard, since it has not actually been
+  confirmed passing yet.

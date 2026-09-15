@@ -14,13 +14,22 @@ class BeerService:
         country_id: str | None,
         style_id: str | None,
         brewery_id: str | None,
+        q: str | None = None,
         page: int,
         page_size: int,
     ) -> Page[BeerOut]:
+        # Normalized here, not trusted from the caller: surrounding whitespace
+        # is stripped and a whitespace-only query is treated as "no search"
+        # rather than reaching the repository as an empty/blank ILIKE term.
+        normalized_q = q.strip() if q is not None else None
+        if not normalized_q:
+            normalized_q = None
+
         rows, total = await self._repository.list_paginated(
             country_id=country_id,
             style_id=style_id,
             brewery_id=brewery_id,
+            q=normalized_q,
             page=page,
             page_size=page_size,
         )

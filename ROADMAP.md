@@ -215,25 +215,56 @@ Exit criteria:
 
 Goal: make catalog exploration easy.
 
+> **Scope note (2026-09-15, see `docs/DECISIONS.md`)**: "Search history" is
+> **deferred** for scope/UX reasons — a nice-to-have not required by this
+> phase's exit criteria, not deferred for a technical/dependency reason
+> (`shared_preferences`, the obvious storage for it, is already a direct
+> mobile dependency). "Country browsing"/"Style browsing"/"Brewery browsing"
+> are satisfied by the style/country/brewery filters below rather than
+> separate curated Discover sections/shelves, which would risk exactly the
+> section/recommendation-engine overbuild `PRODUCT.md` warns against this
+> early.
+
 Tasks:
 
-- [ ] Search endpoint
-- [ ] Search by beer name
-- [ ] Search by brewery
-- [ ] Search by country
-- [ ] Search by style
-- [ ] Search screen
-- [ ] Search history
-- [ ] Filters
-- [ ] Discover sections
-- [ ] Country browsing
-- [ ] Style browsing
-- [ ] Brewery browsing
+- [x] Search endpoint (`GET /beers?q=`, see `docs/API.md`)
+- [x] Search by beer name
+- [x] Search by brewery
+- [x] Search by country
+- [x] Search by style
+- [x] Search screen (Discover's search field, debounced)
+- [ ] Search history — deferred, see scope note above
+- [x] Filters (style/country/brewery, single-select per category, AND
+      semantics, transactional filters bottom sheet)
+- [ ] Discover sections — deferred, see scope note above
+- [x] Country browsing — via country filter
+- [x] Style browsing — via style filter
+- [x] Brewery browsing — via brewery filter
 
 Exit criteria:
 
-- User can reliably find a known beer
-- Discover presents useful catalog entry points
+- [x] User can reliably find a known beer
+- [x] Discover presents useful catalog entry points
+
+> **Completion note (2026-09-15, see `docs/DECISIONS.md`)**: Phase 5 is
+> complete, verified via a live run on the Android emulator against a local
+> FastAPI backend and a real Supabase dev database (all live requests
+> returning 200) — the full 8-beer catalog loading initially; search by beer
+> name, brewery, style, and country each returning correct matches; clearing
+> search restoring the full catalog; a no-match search showing the
+> zero-results state rather than an error; literal `%`/`_` searches matching
+> only beers actually containing those characters, not the whole catalog;
+> dismissing the Filters sheet without confirming leaving applied
+> filters/results untouched; applying multiple filters via "Show results" in
+> one reload; removing an active filter chip; "Clear all" + "Show results"
+> restoring the unfiltered catalog; opening Beer Detail from
+> searched/filtered results and pressing Back preserving query text, applied
+> filters, the result list, and scroll position; and pull-to-refresh
+> re-fetching with the currently active search/filter parameters rather than
+> the unfiltered feed. This is in addition to the automated backend
+> (`pytest`) and mobile (`flutter test`) suites — see `docs/DECISIONS.md` for
+> the full automated/manual verification breakdown, including which opt-in
+> suite remains unexercised in this environment.
 
 ---
 

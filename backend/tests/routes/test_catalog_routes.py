@@ -120,6 +120,7 @@ def _beer_out() -> BeerOut:
 class _FakeBeerService:
     def __init__(self, *, found: bool = True) -> None:
         self._found = found
+        self.received_q: str | None = None
 
     async def list_beers(
         self,
@@ -127,9 +128,11 @@ class _FakeBeerService:
         country_id: str | None,
         style_id: str | None,
         brewery_id: str | None,
+        q: str | None = None,
         page: int,
         page_size: int,
     ) -> Page[BeerOut]:
+        self.received_q = q
         items = [_beer_out()] if self._found else []
         return Page[BeerOut](items=items, page=page, page_size=page_size, total=len(items))
 
@@ -305,3 +308,26 @@ def test_get_beer_found_returns_data(client, authenticated):
     body = response.json()
     assert body["official_name"] == "Guinness Draught"
     assert body["barcode"] == "5000213007072"
+
+
+def test_list_beers_passes_q_through(client, authenticated):
+    fake = _FakeBeerService()
+    _override(get_beer_service, fake)
+    try:
+        response = client.get("/beers", params={"q": "stout"})
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert response.status_code == 200
+    assert fake.received_q == "stout"
+
+
+def test_list_beers_q_over_max_length_is_422(client, authenticated):
+    _override(get_beer_service, _FakeBeerService())
+    try:
+        response = client.get("/beers", params={"q": "a" * 101})
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"

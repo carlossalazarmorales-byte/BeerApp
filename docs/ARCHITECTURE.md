@@ -57,6 +57,19 @@ least-privilege role (`beerapp_backend`, `SELECT`-only on the catalog tables)
 rather than the project's admin credentials — see `docs/DATABASE.md` for the
 full role model and `docs/DECISIONS.md` for the rationale.
 
+## Discover vs. catalog (Phase 5)
+
+`features/catalog/` stays generic: `CatalogRepository`/`ApiCatalogRepository`
+(now including a paginated `getBeers(... q:)` search parameter and a
+`getBreweries()` listing method), plus UI pieces reused elsewhere
+(`BeerListTile`, the shared catalog error/debug helpers). Discover-specific
+orchestration — the search query, style/country/brewery filter selection,
+debouncing, stale-request protection, and pagination against that
+query/filter state — lives entirely in `features/discover/`
+(`DiscoverController`/`DiscoverScreen`), which is the only consumer of the
+search/filter parameters. This keeps the catalog feature reusable by any
+future consumer (e.g. the map phase) without carrying Discover's UI state.
+
 ## Global catalog vs. personal data
 
 Per `CLAUDE.md` and `PRODUCT.md` §7: `Beer`, `Brewery`, and `Beer Style` are

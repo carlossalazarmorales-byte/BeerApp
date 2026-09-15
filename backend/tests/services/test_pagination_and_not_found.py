@@ -73,8 +73,10 @@ class _FakeBeerRepository:
     def __init__(self, rows: list[dict], total: int) -> None:
         self._rows = rows
         self._total = total
+        self.received_q: str | None = "not called"
 
     async def list_paginated(self, **kwargs):
+        self.received_q = kwargs.get("q")
         return self._rows, self._total
 
     async def get_by_id(self, beer_id: str):
@@ -85,9 +87,7 @@ def test_brewery_service_builds_page_envelope_from_repository_result():
     repository = _FakeBreweryRepository([_brewery_row("Achouffe")], total=37)
     service = BreweryService(repository)
 
-    page = asyncio.run(
-        service.list_breweries(country_id=str(_COUNTRY_ID), page=2, page_size=10)
-    )
+    page = asyncio.run(service.list_breweries(country_id=str(_COUNTRY_ID), page=2, page_size=10))
 
     assert repository.last_call == {"country_id": str(_COUNTRY_ID), "page": 2, "page_size": 10}
     assert page.page == 2
@@ -109,9 +109,7 @@ def test_beer_service_builds_page_envelope_from_repository_result():
     service = BeerService(repository)
 
     page = asyncio.run(
-        service.list_beers(
-            country_id=None, style_id=None, brewery_id=None, page=1, page_size=20
-        )
+        service.list_beers(country_id=None, style_id=None, brewery_id=None, page=1, page_size=20)
     )
 
     assert page.total == 8
@@ -124,3 +122,42 @@ def test_beer_service_get_by_id_raises_not_found_when_repository_returns_none():
 
     with pytest.raises(NotFoundError):
         asyncio.run(service.get_beer("44444444-4444-4444-4444-444444444444"))
+
+
+def test_beer_service_strips_surrounding_whitespace_from_q():
+    repository = _FakeBeerRepository([_beer_row("La Chouffe")], total=1)
+    service = BeerService(repository)
+
+    asyncio.run(
+        service.list_beers(
+            country_id=None, style_id=None, brewery_id=None, q="  stout  ", page=1, page_size=20
+        )
+    )
+
+    assert repository.received_q == "stout"
+
+
+def test_beer_service_treats_whitespace_only_q_as_no_search():
+    repository = _FakeBeerRepository([_beer_row("La Chouffe")], total=1)
+    service = BeerService(repository)
+
+    asyncio.run(
+        service.list_beers(
+            country_id=None, style_id=None, brewery_id=None, q="   ", page=1, page_size=20
+        )
+    )
+
+    assert repository.received_q is None
+
+
+def test_beer_service_treats_none_q_as_no_search():
+    repository = _FakeBeerRepository([_beer_row("La Chouffe")], total=1)
+    service = BeerService(repository)
+
+    asyncio.run(
+        service.list_beers(
+            country_id=None, style_id=None, brewery_id=None, q=None, page=1, page_size=20
+        )
+    )
+
+    assert repository.received_q is None

@@ -20,6 +20,7 @@ async def list_beers(
     country_id: UUID | None = None,
     style_id: UUID | None = None,
     brewery_id: UUID | None = None,
+    q: str | None = Query(default=None, max_length=100),
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     service: BeerService = Depends(get_beer_service),
@@ -28,6 +29,7 @@ async def list_beers(
         country_id=str(country_id) if country_id is not None else None,
         style_id=str(style_id) if style_id is not None else None,
         brewery_id=str(brewery_id) if brewery_id is not None else None,
+        q=q,
         page=page,
         page_size=page_size,
     )
