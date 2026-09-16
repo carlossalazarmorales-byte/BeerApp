@@ -1,28 +1,12 @@
 import asyncpg
 
+from app.repositories.search import escape_like_term
+
 _COLUMNS = (
     "b.id, b.official_name, b.brewery_id, b.style_id, b.country_id, b.region, "
     "b.city, b.latitude, b.longitude, b.abv, b.ibu, b.description, "
     "b.image_url, b.barcode, b.verified, b.source, b.created_at, b.updated_at"
 )
-
-# Postgres ILIKE's default escape character. Must escape it first in
-# user input, before introducing new backslashes for '%'/'_', so those new
-# backslashes aren't themselves re-escaped.
-_LIKE_ESCAPE_CHAR = "\\"
-
-
-def _escape_like_term(value: str) -> str:
-    """Escapes LIKE/ILIKE metacharacters so `value` is matched literally.
-
-    Parameterized queries prevent SQL injection but do not make '%'/'_'
-    literal inside an ILIKE *pattern* -- those remain wildcards even when the
-    pattern itself is passed as a bound parameter. A search for a literal
-    '%' must not match every row.
-    """
-    escaped = value.replace(_LIKE_ESCAPE_CHAR, _LIKE_ESCAPE_CHAR * 2)
-    escaped = escaped.replace("%", "\\%").replace("_", "\\_")
-    return escaped
 
 
 class BeerRepository:
@@ -62,7 +46,7 @@ class BeerRepository:
                 "left join public.beer_styles st on st.id = b.style_id "
                 "left join public.countries co on co.id = b.country_id"
             )
-            params.append(f"%{_escape_like_term(q)}%")
+            params.append(f"%{escape_like_term(q)}%")
             pattern_param = f"${len(params)}"
             conditions.append(
                 f"(b.official_name ilike {pattern_param} escape '\\' "

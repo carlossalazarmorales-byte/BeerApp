@@ -848,3 +848,209 @@ data is fresh by the time the user actually switches to Collection,
 regardless of which tab a mutation happened from. `AppShell` remains the
 plain `StatelessWidget` it was before this phase; no navigation-aware
 mechanism was added.
+
+## 2026-09-16 — Phase 8: dedicated `/map/beers`/`/map/breweries`, not extended catalog endpoints
+
+Considered: adding an `include_state=true` flag to the existing `GET
+/beers`/`GET /breweries`, or having the Flutter client merge `/beers` with
+`/collection/logged`/`/favorites`/`/wishlist` itself. Both rejected —
+extending the catalog endpoints couples an unrelated personal-state concern
+onto them; client-side merging means multiple round-trips per map render and
+pagination drift between independently-paginated lists, exactly the "N+1"/
+"duplicate entity" shape this project avoids elsewhere. A dedicated read
+model (`MapBeerOut`/`MapBreweryOut`, `backend/app/repositories/map.py`)
+joins catalog geo fields with per-user collection/log state in one query per
+entity type, self-sufficient for the map's preview cards with no follow-up
+request.
+
+## 2026-09-16 — Phase 8: `/map/beers` runs inside `scoped_connection`, not a plain pooled query
+
+`/map/beers` reads `user_beer_logs`/`user_beer_collection` to compute
+`is_tried`/`is_favorite`/`is_wishlist` — the same RLS-protected, `app.user_id`
+-scoped tables `CollectionRepository`/`BeerLogRepository` read (see the Phase
+6 entry above). A first draft ran this as a plain pooled query relying only
+on `WHERE ... = $1` predicates; corrected before shipping, since running as
+`beerapp_backend` without the transaction-local `app.user_id` setting means
+those predicates are the *only* thing preventing cross-user leakage — RLS is
+meant to be a backstop against exactly that class of mistake, not something
+a new query path can opt out of. `MapRepository.list_beers` now runs via the
+same `scoped_connection(pool, user_id)` helper as the other two
+repositories, with the explicit `user_id` predicates kept as defense-in-depth
+on top of it, not instead of it. `GET /map/breweries` reads only catalog
+tables and correctly uses a plain pooled connection — no RLS-protected table
+is involved.
+
+## 2026-09-16 — Phase 8: beer coordinate fallback is a paired CASE, never an independent per-field `COALESCE`
+
+A beer's marker uses its own `(latitude, longitude)` if both are set,
+otherwise its brewery's pair, otherwise no marker. The naive
+implementation — `coalesce(b.latitude, br.latitude)` and
+`coalesce(b.longitude, br.longitude)` as two independent expressions — was
+rejected even though today's CHECK constraints (`..._lat_lng_paired` on both
+tables) happen to make it safe in practice: it encodes "pick a source" as
+two separate decisions that could, in principle, disagree (one falling back,
+the other not, if either table's pairing invariant were ever weakened),
+silently producing a marker at a hybrid coordinate that is neither the
+beer's real location nor its brewery's. The actual query
+(`backend/app/repositories/map.py`) uses one `CASE` per field, but each
+re-checks *both* columns of whichever source it's reading, so latitude and
+longitude are always sourced from the same row. Covered by
+`backend/tests/integration/test_map_queries.py`'s
+`test_fallback_never_mixes_beer_latitude_with_brewery_longitude` and the
+own-pair/brewery-pair/excluded cases.
+
+## 2026-09-16 — Phase 8: `/map/beers`/`/map/breweries` are unpaginated but capped, with an explicit `truncated` flag
+
+Neither endpoint uses the shared `Page[T]` envelope. Marker rendering
+(clustering, camera-fit) needs the complete current result set at once —
+paginating it would visibly break both. But an unbounded response is still
+unsafe as the catalog grows, so each query is capped server-side (`cap + 1`
+rows fetched; `<= cap` → all returned, `truncated=false`; `> cap` → first
+`cap` returned, `truncated=true`) via a small `CappedList[T]` response
+schema. Rejected: silently truncating with no signal to the client — that
+would make the map factually incomplete while looking successful, exactly
+the kind of "correct-looking but wrong" behavior this project avoids. The
+cap (2000) is a Phase 8 safety backstop, not real pagination; if it's ever
+hit in practice, the actual fix is a viewport/bounding-box query, which
+belongs to Phase 14's performance work, not a bigger cap here.
+
+## 2026-09-16 — Phase 8: MapLibre + MapTiler, client-embedded key
+
+**MapLibre** (`maplibre_gl`) was chosen per `PRODUCT.md` §8's stated
+preference — open-source, no vendor lock-in, unlike Google Maps'/Mapbox's
+proprietary SDKs and terms.
+
+**MapTiler** was chosen as the Phase 8 tile/style provider — no tile
+infrastructure existed to self-host, and MapTiler's free tier is standard
+for MapLibre integrations. The API key is read via the same dart-define
+mechanism as every other build-time config value (`mobile/config/dev.json`,
+see `mobile/config/dev.example.json`), through a dedicated `MapConfig`
+class (`features/map/data/map_config.dart`) — **not** through `Env`/
+`Env.validate()`. This key is a **client-visible, quota-limited
+credential**, categorically different from a Supabase `service_role`-style
+secret: MapTiler's free tier is explicitly designed for keys to ship inside
+client binaries/URLs, rate-limited and usage-tracked per key rather than
+kept confidential. No backend tile-proxy was added — it would add latency
+and server load for a key that isn't secret in the first place. If a
+deployed key is ever abused (e.g. scraped from a public APK), MapTiler's
+dashboard supports rotating it and adding client/domain/app-bundle
+restrictions and quota limits — a deployment-time hardening step, not
+something enforced by the app itself. The key must never be hardcoded in
+Dart source, `AndroidManifest.xml`, generated files, tests, or docs.
+
+## 2026-09-16 — Phase 8: an unconfigured map must never block app startup
+
+`Env.validate()` hard-fails startup for genuinely required config
+(Supabase, the API base URL) — a missing MapTiler key was initially
+considered for the same treatment, then rejected: the map is one feature
+among several, not core infrastructure like Supabase, so an unconfigured or
+invalid map key must never prevent Auth/Discover/Collection/Profile from
+opening. `MapConfig.isConfigured` is checked by `MapScreen` itself; when
+false, it renders a localized "map unavailable" state instead of building a
+`MapLibreMap`, and the rest of the app works normally. This also means
+`MapConfig`, not `Env`, is the only place that knows the provider is
+MapTiler — switching providers later touches one file, not
+`MapController`/`MapScreen`.
+
+## 2026-09-16 — Phase 8: client-side clustering only, no backend aggregation
+
+`maplibre_gl`'s built-in GeoJSON-source clustering (`cluster: true`) groups
+markers at render time; no backend clustering/aggregation endpoint was
+built. At the current (and near-term) catalog scale, a backend aggregation
+query is unjustified complexity for no visible benefit — client-side
+clustering already produces correct, responsive behavior. If usage ever
+shows this assumption breaking down, that is explicitly Phase 14's
+performance work (alongside viewport/bounding-box querying for the
+truncation cap above), not a Phase 8 concern.
+
+## 2026-09-16 — Phase 8: single-select map mode, not independently combinable filters
+
+`PRODUCT.md` §8 lists map "states" (All beers / Tried / Not tried /
+Favorites / Wishlist / Breweries) as a flat list, read literally as mutually
+exclusive rather than combinable — confirmed as a product decision before
+implementation, since `ROADMAP.md`'s phrasing ("Tried / not-tried filters",
+"Favorite filter", "Wishlist filter") could otherwise be read either way.
+`MapMode` is a single enum (`all`/`tried`/`notTried`/`favorites`/`wishlist`/
+`breweries`); `MapController` holds exactly one active mode, never a set of
+independent booleans. Simpler UI, simpler query shape (`state=` is a single
+value, not an AND-combination), and matches the literal product spec.
+
+## 2026-09-16 — Phase 8: reusing `CollectionRefreshSignal` for map freshness, no new signal
+
+The Tried/Not tried/Favorites/Wishlist map modes depend on exactly the same
+`user_beer_logs`/`user_beer_collection` data `BeerLogController` and
+`CollectionStateController` already notify `CollectionRefreshSignal` about
+(see the Phase 7 entry above). Introducing a second, map-specific signal
+would mean every future mutation site has to remember to notify *two*
+signals to keep both Collection and the map fresh — an easy thing to forget,
+and no better than the one that already exists doing double duty.
+`MapController` listens to the same `CollectionRefreshSignal` instance
+(passed into `MapScreen`/`MapController` alongside `MapRepository`/
+`CatalogRepository`) and calls its own `refresh()` on a ping, reusing its
+existing generation-counter staleness guard so a signal-triggered reload can
+never overwrite a newer mode/search change. The signal's name still says
+"Collection" — not renamed, since renaming it would touch every existing
+call site for a purely cosmetic reason with no correctness benefit.
+
+## 2026-09-16 — Phase 8: exact country-name search match only, never fuzzy/partial
+
+The map's search bar resolves typed text to either a `country_id` (exact,
+case-insensitive, trimmed match against a known country name) or a
+free-text `q` region/name search — never a partial/fuzzy country match
+(e.g. typing "belg" is a `q` search, not treated as Belgium). Rejected
+partial matching because it's ambiguous by construction — "united" matches
+both "United States" and "United Kingdom" — and PRODUCT.md/ROADMAP.md never
+require it; `q` already covers "search for something that isn't an exact
+country name" via the same free-text path used for regions.
+
+## 2026-09-16 — Phase 8: live Android verification found a cluster-tap layer-mapping bug
+
+Tapping a cluster (e.g. the 5-beer cluster near Belgium) zoomed the camera
+**out** to a near-whole-world view instead of expanding it. Root cause: each
+cluster is rendered as *two* layers sharing one source — a circle bubble and
+a point-count text label — and MapLibre's native tap resolution on Android
+can resolve a tap to either one, not always the circle. The original
+`_handleFeatureTapped` mapped only the circle layer id to its source
+(`layerId == beersClusterLayerId ? beersSource : breweriesSource`); a tap
+resolved to the count-label layer fell through that binary check into the
+*wrong* source, `getClusterExpansionZoom` returned its documented "unknown
+cluster" sentinel of `0`, and that was applied directly to the camera.
+
+Fixed in `mobile/lib/features/map/presentation/map_cluster_utils.dart`:
+`clusterSourceIdForLayer` now explicitly maps all four cluster-related layer
+ids (both entities' circle *and* count-label layers) to their two sources,
+`parseClusterId` never substitutes a default for an unparseable id, cluster
+expansion centers on the tapped cluster feature's own `geometry.coordinates`
+(not the imprecise screen-tap `LatLng`), and a `getClusterExpansionZoom`
+result `<= 0` (or a thrown exception) leaves the camera untouched instead of
+applying it. Covered by `mobile/test/features/map/map_cluster_utils_test.dart`,
+including a test reproducing the count-label-layer case specifically.
+Re-verified live: repeated cluster taps now zoom in and split correctly
+(5 → 1 + 4 → 1 + 2 + 2) with no duplicate markers.
+
+## 2026-09-16 — Phase 8: live Android verification found a search camera-fit stale-data race
+
+Searching an exact country name (e.g. "Belgium") correctly narrowed the
+marker set but zoomed the camera **out** to a near-whole-world view instead
+of into the searched country. Root cause: `MapController._load()` calls
+`notifyListeners()` twice per search — once when `isLoading` flips to `true`
+(before the repository call resolves) and once on completion.
+`MapScreen._maybeFitCamera` fit the camera and recorded `_lastFitSignature`
+on the *first* notification too, while `beers`/`breweries` still held the
+*previous* (broad, pre-search) result; once the real filtered result
+arrived a moment later, the signature was already "used" and the correct
+fit was silently skipped.
+
+Fixed by adding an eligibility guard, `cameraFitSignatureToRecord`
+(`mobile/lib/features/map/presentation/map_camera_fit.dart`): a camera fit
+is only ever computed for a completed, successful load (`isLoading` false,
+`error` null) for a signature not already recorded — never on the
+loading-start notification, and never on a failed one. An empty completed
+result still records its signature (so a later `CollectionRefreshSignal`
+refresh of the same search doesn't re-trigger a fit the user didn't just
+ask for), but never moves the camera. Covered by
+`mobile/test/features/map/map_camera_fit_test.dart`, including a test
+reproducing the exact loading-start-vs-completed race. Re-verified live:
+exact-country and free-text region searches now zoom correctly into the
+result, single-point/identical-coordinate results still use the fixed
+degenerate zoom, and clearing a search never forces a fit.

@@ -32,10 +32,6 @@
     "description": "Badge shown on placeholder screens for features not built yet."
   },
 
-  "mapScreenDescription": "Explore the beers around you on an interactive world map.",
-  "@mapScreenDescription": {
-    "description": "Placeholder description for the Map screen."
-  },
   "discoverScreenDescription": "Find new breweries, styles and beers worth trying.",
   "@discoverScreenDescription": {
     "description": "Placeholder description for the Discover screen."
@@ -341,5 +337,46 @@
   "collectionErrorNotFound": "This beer could not be found.",
   "@collectionErrorNotFound": {"description": "Shown when a Collection request returns 404 (the beer itself doesn't exist)."},
   "collectionErrorGeneric": "We couldn't load your collection. Please try again.",
-  "@collectionErrorGeneric": {"description": "Fallback error message for Collection requests, used instead of showing a raw backend error message."}
+  "@collectionErrorGeneric": {"description": "Fallback error message for Collection requests, used instead of showing a raw backend error message."},
+
+  "mapModeAll": "All beers",
+  "@mapModeAll": {"description": "Map mode selector option: every beer with a resolvable location."},
+  "mapModeTried": "Tried",
+  "@mapModeTried": {"description": "Map mode selector option: only beers the current user has logged."},
+  "mapModeNotTried": "Not tried",
+  "@mapModeNotTried": {"description": "Map mode selector option: only beers the current user has not logged."},
+  "mapModeFavorites": "Favorites",
+  "@mapModeFavorites": {"description": "Map mode selector option: only the current user's favorited beers."},
+  "mapModeWishlist": "Wishlist",
+  "@mapModeWishlist": {"description": "Map mode selector option: only the current user's wishlist beers."},
+  "mapModeBreweries": "Breweries",
+  "@mapModeBreweries": {"description": "Map mode selector option: breweries instead of beers."},
+
+  "mapSearchHint": "Search a country or region",
+  "@mapSearchHint": {"description": "Placeholder text for the Map screen's search field."},
+
+  "mapUnavailableTitle": "Map unavailable",
+  "@mapUnavailableTitle": {"description": "Title shown when the map tile provider isn't configured on this build."},
+  "mapUnavailableMessage": "The interactive map isn't set up on this build yet.",
+  "@mapUnavailableMessage": {"description": "Message shown in place of the map when the tile provider isn't configured -- the rest of the app keeps working normally."},
+
+  "mapTruncatedMessage": "Showing a partial set of results -- not everything matched is displayed.",
+  "@mapTruncatedMessage": {"description": "Non-blocking notice shown when the server's safety cap truncated the map's results."},
+
+  "mapBeersEmptyMessage": "No beers match this view.",
+  "@mapBeersEmptyMessage": {"description": "Shown when the current mode/search combination matches no beers."},
+  "mapBreweriesEmptyMessage": "No breweries match this view.",
+  "@mapBreweriesEmptyMessage": {"description": "Shown when the current search matches no breweries."},
+
+  "mapBeerPreviewViewDetailsAction": "View details",
+  "@mapBeerPreviewViewDetailsAction": {"description": "Button on the Map screen's beer preview card that navigates to the full beer detail screen."},
+
+  "mapErrorUnauthorized": "Your session has expired. Please sign in again to continue.",
+  "@mapErrorUnauthorized": {"description": "Shown when a Map request fails because there is no usable authenticated session."},
+  "mapErrorServiceUnavailable": "This isn't available right now. Please try again in a moment.",
+  "@mapErrorServiceUnavailable": {"description": "Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503)."},
+  "mapErrorNetwork": "Check your internet connection and try again.",
+  "@mapErrorNetwork": {"description": "Shown when a Map request fails due to no network connectivity."},
+  "mapErrorGeneric": "We couldn't load the map. Please try again.",
+  "@mapErrorGeneric": {"description": "Fallback error message for Map requests, used instead of showing a raw backend error message."}
 }

@@ -186,3 +186,63 @@ preserves whatever the *other* concurrent request just set, never clobbers
 it) — see `docs/DECISIONS.md` and
 `backend/tests/integration/test_collection_concurrency.py` for the design
 and its verification against four required interleavings.
+
+## Map (`/map`, Phase 8)
+
+Dedicated read model for the world map — never extends `/beers`/`/breweries`,
+never client-side-merged from `/collection/*`. Both endpoints return an
+**unpaginated but safety-capped** envelope, not the `Page[T]` shape used
+elsewhere:
+
+```
+{ "items": [...], "truncated": false }
+```
+
+Markers need the *complete* current result set at once (clustering and
+camera-fit both require it), so pagination doesn't apply — but the result is
+still capped server-side (2000 rows) as a safety backstop. If the cap is hit,
+`truncated` is `true` and `items` holds only the first 2000 (by name); the
+client must treat this as an incomplete result — not silently correct — and
+surface it (a non-blocking notice), never claim a camera-fit computed from a
+truncated set represents the complete map. This is a Phase 8 backstop, not
+real pagination; viewport/bounding-box querying is the actual future-scale
+solution and belongs to Phase 14, not here.
+
+| method | path | notes |
+|---|---|---|
+| GET | `/map/beers` | `?state=all\|tried\|not_tried\|favorites\|wishlist&country_id=&q=` — default `state=all` |
+| GET | `/map/breweries` | `?country_id=&q=` — no `state` param: breweries have no favorite/wishlist/tried concept |
+
+**`state`** is the single-select map mode (`MapMode` in the Flutter client) —
+exactly one value at a time, never independently combinable filters. It has
+no meaning for `/map/breweries`; switching to the "Breweries" mode is a
+client-side concern (call `/map/breweries` instead of `/map/beers`, hide beer
+markers), not a `state` value.
+
+**Coordinate fallback.** A beer's marker uses its own `(latitude,
+longitude)` pair if *both* are set; otherwise its brewery's pair if *both*
+are set; otherwise the beer has no marker and is silently absent from
+`items` (not an error). The two fields are always read from the **same
+source** — the query can never combine one table's latitude with the
+other's longitude (see `backend/app/repositories/map.py`).
+
+**Response fields are self-sufficient** for the map's preview cards — no
+follow-up request:
+
+- `MapBeerOut`: `beer_id`, `official_name`, `brewery_name`, `latitude`,
+  `longitude` (effective, per the fallback above), `country_name`, `region`
+  (both display-only, independently falling back from the beer's own value to
+  its brewery's, unrelated to the coordinate-pairing rule), `is_tried`,
+  `is_favorite`, `is_wishlist`.
+- `MapBreweryOut`: `brewery_id`, `name`, `latitude`, `longitude`,
+  `country_name`, `city`, `region`, `description`, `website`, `verified`. No
+  personal-state fields — breweries have no favorite/wishlist/tried concept.
+
+**`is_tried`/`is_favorite`/`is_wishlist`** read the same tables
+`/collection/logged`/`/collection/favorites`/`/collection/wishlist` do
+(`user_beer_logs`/`user_beer_collection`), scoped to the requesting user —
+`GET /map/beers` runs its query inside the same RLS-scoping
+`scoped_connection` transaction `CollectionRepository`/`BeerLogRepository`
+use, not a plain pooled connection, since those tables are RLS-protected on
+the transaction-local `app.user_id` setting. `GET /map/breweries` needs no
+such scoping — it reads only catalog tables.

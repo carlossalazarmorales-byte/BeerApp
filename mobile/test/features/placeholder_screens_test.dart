@@ -1,6 +1,5 @@
 import 'package:beerapp/core/auth/auth_scope.dart';
 import 'package:beerapp/features/auth/presentation/auth_controller.dart';
-import 'package:beerapp/features/map/presentation/map_screen.dart';
 import 'package:beerapp/features/profile/presentation/profile_screen.dart';
 import 'package:beerapp/features/scan/presentation/scan_screen.dart';
 import 'package:beerapp/l10n/generated/app_localizations.dart';
@@ -28,7 +27,6 @@ Widget _wrap(Widget child) {
 
 void main() {
   final cases = <String, (Widget Function(), String)>{
-    'Map': (() => const MapScreen(), 'Map'),
     'Scan': (() => const ScanScreen(), 'Scan'),
     'Profile': (() => const ProfileScreen(), 'Profile'),
   };

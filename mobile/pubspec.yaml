@@ -27,6 +27,7 @@ dependencies:
   # call it ourselves (see core/auth/auth_deep_link_handler.dart), and a
   # transitive dependency can be dropped or changed without notice.
   app_links: ^7.2.1
+  maplibre_gl: ^0.27.1
 
 dev_dependencies:
   flutter_test:

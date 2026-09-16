@@ -132,3 +132,45 @@ every branch's widget subtree — including `CollectionController` — mounted
 and responsive even while a different tab is showing, so a hidden
 `CollectionController` still processes the notification and has fresh data
 ready by the time the user switches to that tab. See `docs/DECISIONS.md`.
+
+## World map (Phase 8)
+
+`features/map/` follows the same repository/controller pattern as every
+other feature — no new state-management framework:
+
+```
+features/map/
+  domain/          # MapRepository interface, MapMode/BeerMapState, MapBeer/MapBrewery/MapResult
+  data/            # ApiMapRepository (backed by GET /map/beers, /map/breweries), MapConfig
+  presentation/    # MapController, MapScreen, mode selector, beer/brewery preview cards
+```
+
+`MapController` reuses `CollectionRefreshSignal` (see above) exactly as
+`CollectionController` does: it listens for the same beer-log/favorite/
+wishlist mutation notifications, since the Tried/Not tried/Favorites/
+Wishlist map modes depend on the identical personal-state tables Collection
+does. No new signal was introduced for this.
+
+`GET /map/beers` reads `user_beer_logs`/`user_beer_collection` the same way
+`/collection/*` does: inside `scoped_connection` (see "Global catalog vs.
+personal data" above), never a plain pooled query, since those tables are
+RLS-protected on the transaction-local `app.user_id` setting. `GET
+/map/breweries` reads only catalog tables and needs no such scoping.
+
+**`MapConfig`** (`features/map/data/map_config.dart`) is the single place
+that knows the tile/style provider is MapTiler — `MapController`/`MapScreen`
+depend only on its narrow `isConfigured`/`styleUrl` interface, so changing
+providers later doesn't touch them. It is deliberately **not** part of
+`core/config/env.dart`'s `Env.validate()`: an unconfigured or invalid map
+key must never block Auth/Discover/Collection/Profile from opening, since
+the map is one feature among several, not core app infrastructure like
+Supabase or the API base URL. `MapScreen` checks `MapConfig.isConfigured`
+itself and renders a localized "unavailable" state instead of building a
+`MapLibreMap` when it's false — see `docs/DECISIONS.md` for why the
+MapTiler key is a client-visible, quota-limited credential, not a
+`service_role`-style secret.
+
+Clustering is client-side only, via `maplibre_gl`'s built-in GeoJSON-source
+`cluster` support — no backend aggregation/viewport query exists. See
+`docs/DECISIONS.md` for why, and Phase 14 as the place real geo-scale work
+(if it's ever needed) belongs.

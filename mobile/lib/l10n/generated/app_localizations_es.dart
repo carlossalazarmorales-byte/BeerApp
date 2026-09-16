@@ -31,10 +31,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get comingSoonBadge => 'Próximamente';
 
   @override
-  String get mapScreenDescription =>
-      'Explora las cervezas a tu alrededor en un mapa mundial interactivo.';
-
-  @override
   String get discoverScreenDescription =>
       'Encuentra nuevas cervecerías, estilos y cervezas que vale la pena probar.';
 
@@ -414,4 +410,62 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get collectionErrorGeneric =>
       'No pudimos cargar tu colección. Inténtalo de nuevo.';
+
+  @override
+  String get mapModeAll => 'Todas las cervezas';
+
+  @override
+  String get mapModeTried => 'Probadas';
+
+  @override
+  String get mapModeNotTried => 'No probadas';
+
+  @override
+  String get mapModeFavorites => 'Favoritas';
+
+  @override
+  String get mapModeWishlist => 'Lista de deseos';
+
+  @override
+  String get mapModeBreweries => 'Cervecerías';
+
+  @override
+  String get mapSearchHint => 'Busca un país o región';
+
+  @override
+  String get mapUnavailableTitle => 'Mapa no disponible';
+
+  @override
+  String get mapUnavailableMessage =>
+      'El mapa interactivo aún no está configurado en esta versión.';
+
+  @override
+  String get mapTruncatedMessage =>
+      'Se muestra un conjunto parcial de resultados: no todo lo que coincide está visible.';
+
+  @override
+  String get mapBeersEmptyMessage => 'Ninguna cerveza coincide con esta vista.';
+
+  @override
+  String get mapBreweriesEmptyMessage =>
+      'Ninguna cervecería coincide con esta vista.';
+
+  @override
+  String get mapBeerPreviewViewDetailsAction => 'Ver detalles';
+
+  @override
+  String get mapErrorUnauthorized =>
+      'Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.';
+
+  @override
+  String get mapErrorServiceUnavailable =>
+      'Esto no está disponible en este momento. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get mapErrorNetwork =>
+      'Revisa tu conexión a internet e inténtalo de nuevo.';
+
+  @override
+  String get mapErrorGeneric =>
+      'No pudimos cargar el mapa. Inténtalo de nuevo.';
 }

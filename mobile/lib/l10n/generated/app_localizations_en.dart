@@ -31,10 +31,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get comingSoonBadge => 'Coming soon';
 
   @override
-  String get mapScreenDescription =>
-      'Explore the beers around you on an interactive world map.';
-
-  @override
   String get discoverScreenDescription =>
       'Find new breweries, styles and beers worth trying.';
 
@@ -410,4 +406,59 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get collectionErrorGeneric =>
       'We couldn\'t load your collection. Please try again.';
+
+  @override
+  String get mapModeAll => 'All beers';
+
+  @override
+  String get mapModeTried => 'Tried';
+
+  @override
+  String get mapModeNotTried => 'Not tried';
+
+  @override
+  String get mapModeFavorites => 'Favorites';
+
+  @override
+  String get mapModeWishlist => 'Wishlist';
+
+  @override
+  String get mapModeBreweries => 'Breweries';
+
+  @override
+  String get mapSearchHint => 'Search a country or region';
+
+  @override
+  String get mapUnavailableTitle => 'Map unavailable';
+
+  @override
+  String get mapUnavailableMessage =>
+      'The interactive map isn\'t set up on this build yet.';
+
+  @override
+  String get mapTruncatedMessage =>
+      'Showing a partial set of results -- not everything matched is displayed.';
+
+  @override
+  String get mapBeersEmptyMessage => 'No beers match this view.';
+
+  @override
+  String get mapBreweriesEmptyMessage => 'No breweries match this view.';
+
+  @override
+  String get mapBeerPreviewViewDetailsAction => 'View details';
+
+  @override
+  String get mapErrorUnauthorized =>
+      'Your session has expired. Please sign in again to continue.';
+
+  @override
+  String get mapErrorServiceUnavailable =>
+      'This isn\'t available right now. Please try again in a moment.';
+
+  @override
+  String get mapErrorNetwork => 'Check your internet connection and try again.';
+
+  @override
+  String get mapErrorGeneric => 'We couldn\'t load the map. Please try again.';
 }

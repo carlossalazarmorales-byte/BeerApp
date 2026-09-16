@@ -140,12 +140,6 @@ abstract class AppLocalizations {
   /// **'Coming soon'**
   String get comingSoonBadge;
 
-  /// Placeholder description for the Map screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Explore the beers around you on an interactive world map.'**
-  String get mapScreenDescription;
-
   /// Placeholder description for the Discover screen.
   ///
   /// In en, this message translates to:
@@ -835,6 +829,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'We couldn\'t load your collection. Please try again.'**
   String get collectionErrorGeneric;
+
+  /// Map mode selector option: every beer with a resolvable location.
+  ///
+  /// In en, this message translates to:
+  /// **'All beers'**
+  String get mapModeAll;
+
+  /// Map mode selector option: only beers the current user has logged.
+  ///
+  /// In en, this message translates to:
+  /// **'Tried'**
+  String get mapModeTried;
+
+  /// Map mode selector option: only beers the current user has not logged.
+  ///
+  /// In en, this message translates to:
+  /// **'Not tried'**
+  String get mapModeNotTried;
+
+  /// Map mode selector option: only the current user's favorited beers.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get mapModeFavorites;
+
+  /// Map mode selector option: only the current user's wishlist beers.
+  ///
+  /// In en, this message translates to:
+  /// **'Wishlist'**
+  String get mapModeWishlist;
+
+  /// Map mode selector option: breweries instead of beers.
+  ///
+  /// In en, this message translates to:
+  /// **'Breweries'**
+  String get mapModeBreweries;
+
+  /// Placeholder text for the Map screen's search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search a country or region'**
+  String get mapSearchHint;
+
+  /// Title shown when the map tile provider isn't configured on this build.
+  ///
+  /// In en, this message translates to:
+  /// **'Map unavailable'**
+  String get mapUnavailableTitle;
+
+  /// Message shown in place of the map when the tile provider isn't configured -- the rest of the app keeps working normally.
+  ///
+  /// In en, this message translates to:
+  /// **'The interactive map isn\'t set up on this build yet.'**
+  String get mapUnavailableMessage;
+
+  /// Non-blocking notice shown when the server's safety cap truncated the map's results.
+  ///
+  /// In en, this message translates to:
+  /// **'Showing a partial set of results -- not everything matched is displayed.'**
+  String get mapTruncatedMessage;
+
+  /// Shown when the current mode/search combination matches no beers.
+  ///
+  /// In en, this message translates to:
+  /// **'No beers match this view.'**
+  String get mapBeersEmptyMessage;
+
+  /// Shown when the current search matches no breweries.
+  ///
+  /// In en, this message translates to:
+  /// **'No breweries match this view.'**
+  String get mapBreweriesEmptyMessage;
+
+  /// Button on the Map screen's beer preview card that navigates to the full beer detail screen.
+  ///
+  /// In en, this message translates to:
+  /// **'View details'**
+  String get mapBeerPreviewViewDetailsAction;
+
+  /// Shown when a Map request fails because there is no usable authenticated session.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again to continue.'**
+  String get mapErrorUnauthorized;
+
+  /// Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503).
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t available right now. Please try again in a moment.'**
+  String get mapErrorServiceUnavailable;
+
+  /// Shown when a Map request fails due to no network connectivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get mapErrorNetwork;
+
+  /// Fallback error message for Map requests, used instead of showing a raw backend error message.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load the map. Please try again.'**
+  String get mapErrorGeneric;
 }
 
 class _AppLocalizationsDelegate

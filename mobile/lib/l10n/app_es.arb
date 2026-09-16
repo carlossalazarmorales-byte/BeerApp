@@ -11,7 +11,6 @@
 
   "comingSoonBadge": "Próximamente",
 
-  "mapScreenDescription": "Explora las cervezas a tu alrededor en un mapa mundial interactivo.",
   "discoverScreenDescription": "Encuentra nuevas cervecerías, estilos y cervezas que vale la pena probar.",
   "scanScreenDescription": "Escanea la etiqueta de una cerveza para añadirla a tu colección en segundos.",
   "profileScreenDescription": "Gestiona tu perfil, logros y preferencias.",
@@ -152,5 +151,29 @@
   "collectionErrorServiceUnavailable": "Esto no está disponible en este momento. Inténtalo de nuevo en un momento.",
   "collectionErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
   "collectionErrorNotFound": "No se pudo encontrar esta cerveza.",
-  "collectionErrorGeneric": "No pudimos cargar tu colección. Inténtalo de nuevo."
+  "collectionErrorGeneric": "No pudimos cargar tu colección. Inténtalo de nuevo.",
+
+  "mapModeAll": "Todas las cervezas",
+  "mapModeTried": "Probadas",
+  "mapModeNotTried": "No probadas",
+  "mapModeFavorites": "Favoritas",
+  "mapModeWishlist": "Lista de deseos",
+  "mapModeBreweries": "Cervecerías",
+
+  "mapSearchHint": "Busca un país o región",
+
+  "mapUnavailableTitle": "Mapa no disponible",
+  "mapUnavailableMessage": "El mapa interactivo aún no está configurado en esta versión.",
+
+  "mapTruncatedMessage": "Se muestra un conjunto parcial de resultados: no todo lo que coincide está visible.",
+
+  "mapBeersEmptyMessage": "Ninguna cerveza coincide con esta vista.",
+  "mapBreweriesEmptyMessage": "Ninguna cervecería coincide con esta vista.",
+
+  "mapBeerPreviewViewDetailsAction": "Ver detalles",
+
+  "mapErrorUnauthorized": "Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.",
+  "mapErrorServiceUnavailable": "Esto no está disponible en este momento. Inténtalo de nuevo en un momento.",
+  "mapErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
+  "mapErrorGeneric": "No pudimos cargar el mapa. Inténtalo de nuevo."
 }

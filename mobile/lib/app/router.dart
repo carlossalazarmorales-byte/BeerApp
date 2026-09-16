@@ -19,6 +19,7 @@ import '../features/collection/domain/collection_repository.dart';
 import '../features/collection/presentation/collection_screen.dart';
 import '../features/discover/presentation/discover_screen.dart';
 import '../features/logging/domain/log_repository.dart';
+import '../features/map/domain/map_repository.dart';
 import '../features/map/presentation/map_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
@@ -95,6 +96,7 @@ GoRouter createRouter({
   required CatalogRepository catalogRepository,
   required LogRepository logRepository,
   required CollectionRepository collectionRepository,
+  required MapRepository mapRepository,
   required CollectionRefreshSignal refreshSignal,
 }) {
   return GoRouter(
@@ -168,7 +170,11 @@ GoRouter createRouter({
             routes: [
               GoRoute(
                 path: AppRoutes.home,
-                builder: (context, state) => const MapScreen(),
+                builder: (context, state) => MapScreen(
+                  repository: mapRepository,
+                  catalogRepository: catalogRepository,
+                  refreshSignal: refreshSignal,
+                ),
               ),
             ],
           ),

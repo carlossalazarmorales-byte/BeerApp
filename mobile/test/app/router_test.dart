@@ -26,6 +26,7 @@ import '../fakes/fake_auth_repository.dart';
 import '../fakes/fake_catalog_repository.dart';
 import '../fakes/fake_collection_repository.dart';
 import '../fakes/fake_log_repository.dart';
+import '../fakes/fake_map_repository.dart';
 import '../fakes/fake_profile_repository.dart';
 
 Finder _navLabel(String label) =>
@@ -69,6 +70,7 @@ class _Harness {
       catalogRepository: catalogRepository,
       logRepository: FakeLogRepository(),
       collectionRepository: FakeCollectionRepository(),
+      mapRepository: FakeMapRepository(),
       refreshSignal: CollectionRefreshSignal(),
     );
 

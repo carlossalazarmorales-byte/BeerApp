@@ -404,26 +404,64 @@ Goal: implement BeerApp's flagship experience.
 
 Tasks:
 
-- [ ] Add MapLibre
-- [ ] Base map style
-- [ ] Beer origin markers
-- [ ] Brewery markers
-- [ ] Marker clustering
-- [ ] Country-level exploration
-- [ ] Region-level exploration
-- [ ] Tried / not-tried filters
-- [ ] Favorite filter
-- [ ] Wishlist filter
-- [ ] Beer preview card
-- [ ] Brewery preview card
-- [ ] Smooth camera transitions
-- [ ] Loading states
-- [ ] Location permission handling if needed
+- [x] Add MapLibre — `maplibre_gl` (Flutter binding for MapLibre Native)
+- [x] Base map style — MapTiler hosted style, loaded via `MapConfig` (client-visible, quota-limited key; see `docs/DECISIONS.md`)
+- [x] Beer origin markers — `GET /map/beers`, coordinate falls back to the brewery's pair when the beer has none of its own (never a mixed pair — see `MapRepository`)
+- [x] Brewery markers — `GET /map/breweries`
+- [x] Marker clustering — client-side only, `maplibre_gl`'s built-in GeoJSON-source clustering
+- [x] Country-level exploration — search bar resolves an exact country-name match to `country_id`, camera fits the result
+- [x] Region-level exploration — same search bar, free-text `q` when it isn't an exact country match
+- [x] Tried / not-tried filters — part of the single-select map mode (`MapMode`)
+- [x] Favorite filter — same
+- [x] Wishlist filter — same
+- [x] Beer preview card — `BeerPreviewCard`, self-sufficient DTO, no follow-up request until "View details"
+- [x] Brewery preview card — `BreweryPreviewCard`; no brewery-detail screen exists or was added
+- [x] Smooth camera transitions — `animateCamera`, with a fixed-zoom fallback for degenerate (single-point) search results
+- [x] Loading states — `LoadingState`/`ErrorState`/`EmptyState`, plus a distinct non-blocking truncation notice and a distinct "map unavailable" configuration state
+- [x] Location permission handling if needed — **not needed**: no device GPS/current-location anywhere in this phase, per `PRODUCT.md` §8 and the hedged ROADMAP wording
 
 Exit criteria:
 
-- User can explore beer geographically
-- Map performance remains acceptable with many points
+- [x] User can explore beer geographically — implemented, covered by automated tests, and live-verified on a real Android emulator (see Status below)
+- [x] Map performance remains acceptable with many points — a server-side safety cap (`CappedList`, surfaced to the client as `truncated`) exists as a Phase 8 backstop; real viewport/bounding-box scale work remains deferred to Phase 14 at the current (small) catalog scale
+
+**Status (2026-09-16)**: complete. Backend (`pytest`, excluding
+`@pytest.mark.integration`) and Flutter (`flutter test`) suites both pass in
+full, `flutter analyze`/`dart format` and `ruff check`/`ruff format` clean.
+
+**Live Android smoke test — passed**, against the real local FastAPI backend
+and a real MapTiler-configured build, against the full circulated checklist:
+
+- Base map (real tiles, no config/provider error, no location permission prompt) — pass
+- All six map modes (All beers/Tried/Not tried/Favorites/Wishlist/Breweries), each cleanly replacing the previous marker set with no duplicate layers — pass
+- Clustering, including repeated tap-to-expand with no duplicate markers — pass
+- Beer marker → preview card → Beer Detail → back, state/camera preserved — pass
+- Brewery marker → preview card, no dead/invented navigation offered — pass
+- Search/camera: exact-country search, free-text region search, identical-coordinate handling, single-point fixed zoom, stale-result protection, and clear-search behavior — all pass
+- Personal-state freshness: Favorites and Wishlist both confirmed to refresh via the existing `CollectionRefreshSignal` with no app restart or manual refresh. Tried/Not-tried live mutation freshness was **intentionally not exercised** — verifying it would have meant creating or modifying consumption-log data solely for testing, which this project's responsible-product rules avoid; the refresh mechanism itself is identical to and already proven by the Favorites/Wishlist checks above, plus the automated `MapController` staleness/signal tests. Not treated as a gap.
+- Error/privacy sanity (no raw backend/SQL/provider errors, no stack traces, no internal ids, no auth token or MapTiler key in any log, no location permission request) — pass
+- Stability (repeated tab/mode cycling, preview cards, Beer Detail round-trips, background/resume) — pass, no crashes, no duplicate sources/layers
+
+Two real bugs were found and fixed during this live verification, both now
+covered by regression tests — see `docs/DECISIONS.md`'s two 2026-09-16
+"live Android verification found..." entries for the technical detail:
+a cluster-tap layer-mapping bug (a tap resolving to the cluster's
+count-label layer, not its circle, sent the camera to an invalid zoom
+instead of expanding), and a search camera-fit stale-data race (a
+loading-start notification could consume the camera-fit signature against
+stale pre-search markers, silently skipping the correct fit once the real
+result arrived).
+
+**Still not run**: `backend/tests/integration/` (including the new
+`test_map_queries.py`, covering RLS isolation between two users, the
+paired coordinate fallback, per-`state` filtering, and the truncation cap)
+— no dedicated disposable `INTEGRATION_DATABASE_URL` is configured in this
+environment, so those tests skip rather than run, same caveat as Phase 7.
+This does not block the exit criteria above (the live smoke test
+independently exercised the RLS-scoped personal-state paths against the
+real `beerapp-dev` project), but the integration suite should still be run
+against a disposable database before relying on it as an ongoing regression
+guard.
 
 ---
 
