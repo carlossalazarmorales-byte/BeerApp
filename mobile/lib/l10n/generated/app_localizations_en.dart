@@ -43,10 +43,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Scan a beer label to add it to your collection in seconds.';
 
   @override
-  String get collectionScreenDescription =>
-      'Keep track of every beer you have tried and rated.';
-
-  @override
   String get profileScreenDescription =>
       'Manage your profile, achievements and preferences.';
 
@@ -351,4 +347,67 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get beerLogErrorGeneric =>
       'We couldn\'t save your log. Please try again.';
+
+  @override
+  String get beerDetailAddToFavoritesAction => 'Add to favorites';
+
+  @override
+  String get beerDetailRemoveFromFavoritesAction => 'Remove from favorites';
+
+  @override
+  String get beerDetailAddToWishlistAction => 'Add to wishlist';
+
+  @override
+  String get beerDetailRemoveFromWishlistAction => 'Remove from wishlist';
+
+  @override
+  String get collectionTabLogged => 'Logged';
+
+  @override
+  String get collectionTabFavorites => 'Favorites';
+
+  @override
+  String get collectionTabWishlist => 'Wishlist';
+
+  @override
+  String get collectionFiltersSheetTitle => 'Filters';
+
+  @override
+  String get collectionSortRecent => 'Recent';
+
+  @override
+  String get collectionSortRating => 'Rating';
+
+  @override
+  String get collectionSortName => 'Name';
+
+  @override
+  String get collectionLoggedEmptyMessage =>
+      'You haven\'t logged any beers yet.';
+
+  @override
+  String get collectionFavoritesEmptyMessage =>
+      'You haven\'t favorited any beers yet.';
+
+  @override
+  String get collectionWishlistEmptyMessage => 'Your wishlist is empty.';
+
+  @override
+  String get collectionErrorUnauthorized =>
+      'Your session has expired. Please sign in again to continue.';
+
+  @override
+  String get collectionErrorServiceUnavailable =>
+      'This isn\'t available right now. Please try again in a moment.';
+
+  @override
+  String get collectionErrorNetwork =>
+      'Check your internet connection and try again.';
+
+  @override
+  String get collectionErrorNotFound => 'This beer could not be found.';
+
+  @override
+  String get collectionErrorGeneric =>
+      'We couldn\'t load your collection. Please try again.';
 }

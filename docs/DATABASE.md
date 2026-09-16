@@ -1,11 +1,12 @@
 # Database
 
-PostgreSQL, hosted via Supabase. As of Phase 6, seven tables exist:
+PostgreSQL, hosted via Supabase. As of Phase 7, seven tables exist:
 `public.profiles` (Phase 2), the Phase 3 catalog tables `public.countries`,
-`public.beer_styles`, `public.breweries`, `public.beers`, and the Phase 6
-user-owned `public.user_beer_logs`, plus two roles (`beerapp_backend`,
+`public.beer_styles`, `public.breweries`, `public.beers`, the Phase 6
+user-owned `public.user_beer_logs`, and the Phase 7 user-owned
+`public.user_beer_collection`, plus two roles (`beerapp_backend`,
 `beerapp_seed`) that gate access to the catalog tables (and, since Phase 6,
-`user_beer_logs` too). Migrations live under `supabase/migrations/`.
+the user-owned tables too). Migrations live under `supabase/migrations/`.
 
 ## Planned approach
 
@@ -174,23 +175,95 @@ table — the running API's first write endpoint anywhere in the backend. It
 remains `SELECT`-only on the four catalog tables; this grant is least-privilege,
 not a broadening of catalog access.
 
+## `public.user_beer_collection` (Phase 7)
+
+The second user-owned table on the same pattern as `user_beer_logs` above —
+canonical favorite/wishlist state, one row per `(user_id, beer_id)`. Distinct
+from `user_beer_logs`: a log is a repeatable historical event (a user may log
+the same beer many times), while this is toggleable current-state
+membership. See `docs/DECISIONS.md` for why one table with two booleans was
+chosen over separate `favorites`/`wishlist` tables.
+
+| column | type | notes |
+|---|---|---|
+| `id` | `uuid primary key default gen_random_uuid()` | |
+| `user_id` | `uuid not null references auth.users(id) on delete cascade` | owner identity FK, same cascade exception as `user_beer_logs.user_id` |
+| `beer_id` | `uuid not null references beers(id) on delete restrict` | shared catalog reference |
+| `is_favorite` / `is_wishlist` | `boolean not null default false` | independent flags — a beer can be both, either, or (as a *row*) neither is never actually stored, see below |
+| `favorited_at` / `wishlisted_at` | `timestamptz`, nullable | set only on that flag's `false→true` transition, cleared on `true→false` — deliberately **not** `updated_at` (bumped by *any* column change, so it can't answer "most recently added to this state" on its own) |
+| `created_at` / `updated_at` | `timestamptz` | as above, same shared trigger |
+
+Constraints: `unique(user_id, beer_id)` (also the `ON CONFLICT` target for
+the atomic upsert below), and paired CHECKs
+(`(is_favorite) = (favorited_at is not null)`, same for wishlist).
+**Deliberately no `CHECK (is_favorite OR is_wishlist)`**: an earlier design
+had exactly that CHECK, using a Postgres rejection as the signal to fall back
+to a `DELETE`. That's unsafe under concurrency — CHECK constraints aren't
+deferrable, so recovering from the violation means rolling back to a
+savepoint, and that rollback releases any row lock acquired after it,
+reopening a window where a concurrent transaction can grab the row between
+the failed write and the follow-up delete. The invariant — an all-false
+state is represented by *no row*, never a stored row — still holds; it's
+enforced entirely by `CollectionRepository.set_state`
+(`backend/app/repositories/collection.py`), the only write path to this
+table, inside one uninterrupted transaction:
+
+```sql
+insert into public.user_beer_collection
+  (user_id, beer_id, is_favorite, is_wishlist, favorited_at, wishlisted_at)
+values ($1, $2, coalesce($3, false), coalesce($4, false), ...)
+on conflict (user_id, beer_id) do update set
+  is_favorite = coalesce($3, user_beer_collection.is_favorite),
+  is_wishlist = coalesce($4, user_beer_collection.is_wishlist),
+  ...
+returning ...;
+-- then, in the same transaction, if the returned row is now false/false:
+delete from public.user_beer_collection where user_id = $1 and beer_id = $2;
+```
+
+`$3`/`$4` are `NULL` when a PATCH field was omitted ("preserve current").
+`coalesce(..., user_beer_collection.is_favorite)` reads the *live* row at the
+moment of the locked write (not a value computed in application code before
+either transaction committed), which is what makes two concurrent PATCHes on
+the same row merge correctly instead of one clobbering the other's field —
+verified against four required concurrency scenarios in
+`backend/tests/integration/test_collection_concurrency.py`. See
+`docs/DECISIONS.md` for the full derivation.
+
+Two partial indexes serve the Favorites/Wishlist tabs (each `WHERE`-guarded
+so the other flag's rows don't bloat it):
+
+- `(user_id, favorited_at desc, id desc) where is_favorite`
+- `(user_id, wishlisted_at desc, id desc) where is_wishlist`
+
+The `unique(user_id, beer_id)` index also serves Beer Detail's single-row
+lookup and the Logged tab's join onto this table.
+
+**RLS/grants** are the identical shape as `user_beer_logs` — same
+`backend_owns_rows` policy (`app.user_id` + `nullif(..., '')`), same
+`SELECT`/`INSERT`/`UPDATE`/`DELETE` grant to `beerapp_backend` only,
+`anon`/`authenticated` denied at both the grant and policy level. Verified by
+`backend/tests/integration/test_user_beer_collection_rls.py`.
+
 ## Access model (RLS + roles)
 
 Catalog access is **API-only**: the mobile app never queries these four
 tables through Supabase PostgREST directly, not even as an authenticated
 user. This is enforced at the database level, not just by convention:
 
-| role | catalog privileges | `user_beer_logs` privileges |
+| role | catalog privileges | `user_beer_logs` / `user_beer_collection` privileges |
 |---|---|---|
 | `anon` | none | none |
 | `authenticated` | none | none |
-| `beerapp_backend` | `SELECT` only, all four catalog tables — the running FastAPI app's connection (`DATABASE_URL`) | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, own rows only per the request-scoped RLS policy above (Phase 6) |
+| `beerapp_backend` | `SELECT` only, all four catalog tables — the running FastAPI app's connection (`DATABASE_URL`) | `SELECT`/`INSERT`/`UPDATE`/`DELETE` on both, own rows only per the request-scoped RLS policy above (Phase 6/7) |
 | `beerapp_seed` | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, all four catalog tables — `backend/scripts/seed_catalog.py` only (`SEED_DATABASE_URL`), never the running API | none |
 
-Per-user ownership on `user_beer_logs` is enforced by the repository's
-explicit `WHERE user_id = $1` filtering plus the transaction-scoped RLS
-policy above — not by `auth.uid()` (there is no PostgREST session here,
-unlike `profiles`) and not by a blanket `USING (true)` policy.
+Per-user ownership on `user_beer_logs`/`user_beer_collection` is enforced by
+the repository's explicit `WHERE user_id = $1` filtering plus the
+transaction-scoped RLS policy above (both tables share the same
+`scoped_connection` helper, `backend/app/repositories/scoped_connection.py`)
+— not by `auth.uid()` (there is no PostgREST session here, unlike `profiles`)
+and not by a blanket `USING (true)` policy.
 
 RLS is enabled on all four tables. `anon`/`authenticated` have **no policies
 at all** on them (deny-by-default) plus an explicit `REVOKE ALL` at the table
@@ -260,11 +333,19 @@ and the `beerapp_backend` privilege boundary, against `INTEGRATION_DATABASE_URL`
 tests — safe to use directly since that role has no write privilege at all).
 Neither is `SEED_DATABASE_URL`.
 
-`user_beer_logs`' RLS test (`test_user_beer_logs_rls.py`) deliberately issues
-unfiltered and cross-identity SQL a correct repository would never write, and
-therefore **must only run against a disposable `INTEGRATION_DATABASE_URL`**,
-never `DATABASE_URL`/`SEED_DATABASE_URL` or the shared dev project — this is
-a hard rule, not a preference, since the whole point of those tests is
-exercising SQL shapes that would be unsafe against real data. It expects
-that database's connecting role to be able to `SET ROLE beerapp_backend`
-(a superuser, or a role explicitly `GRANT`ed membership).
+`user_beer_logs`'/`user_beer_collection`'s RLS tests (`test_user_beer_logs_rls.py`,
+`test_user_beer_collection_rls.py`) deliberately issue unfiltered and
+cross-identity SQL a correct repository would never write, and therefore
+**must only run against a disposable `INTEGRATION_DATABASE_URL`**, never
+`DATABASE_URL`/`SEED_DATABASE_URL` or the shared dev project — this is a hard
+rule, not a preference, since the whole point of those tests is exercising
+SQL shapes that would be unsafe against real data. Both expect that
+database's connecting role to be able to `SET ROLE beerapp_backend` (a
+superuser, or a role explicitly `GRANT`ed membership).
+
+`test_collection_concurrency.py` additionally proves
+`CollectionRepository.set_state`'s atomic merge is race-safe under real
+concurrent transactions (two genuinely separate connections, not two
+savepoints on one connection) — the one place in this test suite where rows
+are committed for real rather than rolled back, with explicit cleanup in a
+`finally` block. Also `INTEGRATION_DATABASE_URL`-only.

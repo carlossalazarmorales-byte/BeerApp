@@ -16,7 +16,9 @@ import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/data/supabase_profile_repository.dart';
 import 'features/auth/presentation/auth_controller.dart';
 import 'features/catalog/data/api_catalog_repository.dart';
+import 'features/collection/data/api_collection_repository.dart';
 import 'features/logging/data/api_log_repository.dart';
+import 'shared/collection_refresh_signal.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,6 +69,8 @@ Future<void> main() async {
   );
   final catalogRepository = ApiCatalogRepository(apiClient);
   final logRepository = ApiLogRepository(apiClient);
+  final collectionRepository = ApiCollectionRepository(apiClient);
+  final collectionRefreshSignal = CollectionRefreshSignal();
 
   final router = createRouter(
     authRepository: authRepository,
@@ -75,6 +79,8 @@ Future<void> main() async {
     ageGateController: ageGateController,
     catalogRepository: catalogRepository,
     logRepository: logRepository,
+    collectionRepository: collectionRepository,
+    refreshSignal: collectionRefreshSignal,
   );
 
   // Constructed only now that AuthController's onAuthStateChange listener

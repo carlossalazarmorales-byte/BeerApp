@@ -132,3 +132,57 @@ rejected as 422 (not the ambiguous "maybe midnight UTC, maybe local time"
 naive datetime) on both create and update. An aware value in the future is
 a 400, on both create and update. Omitted on create, it defaults to the
 server's current time.
+
+## Collection (`/collection`, Phase 7)
+
+The second user-owned resource, on the same identity model as beer logs:
+`user_id` always comes from the verified JWT, never the request.
+
+| method | path | notes |
+|---|---|---|
+| GET | `/collection/logged` | `?country_id=&style_id=&brewery_id=&sort=recent\|rating\|name&page=&page_size=` — one row per unique logged beer, derived from `user_beer_logs` (`DISTINCT ON beer_id`) — counted unfiltered, `total` *is* "unique beers tried" |
+| GET | `/collection/favorites` | same params, rows with `is_favorite = true` |
+| GET | `/collection/wishlist` | same params, rows with `is_wishlist = true` |
+| GET | `/collection/{beer_id}` | `{beer_id, is_favorite, is_wishlist}` |
+| PATCH | `/collection/{beer_id}` | `{is_favorite?, is_wishlist?}` |
+
+Every list row is self-sufficient — `official_name`, `brewery_name`,
+`style_name`, `country_name`, `image_url`, `abv`, `is_favorite`,
+`is_wishlist`, `latest_rating`, `latest_consumed_at` all arrive in the same
+response, via a `LEFT JOIN` onto `breweries`/`beer_styles`/`countries`
+already in the query — no client-side name cache and no follow-up request
+per item. `latest_rating`/`latest_consumed_at` are always the beer's
+**latest** log's values, never an average, in every tab (see
+`docs/DECISIONS.md`); a favorited/wishlisted beer with no logs simply has
+both `null`.
+
+**Exact ORDER BY** (`beer_id` is always the final deterministic tie-breaker;
+`name` sort compares `lower(official_name)`):
+
+| tab | `sort=recent` | `sort=rating` | `sort=name` |
+|---|---|---|---|
+| Logged | `latest_consumed_at desc` | `latest_rating desc nulls last, latest_consumed_at desc` | `lower(official_name) asc` |
+| Favorites | `favorited_at desc` | `latest_rating desc nulls last, favorited_at desc` | `lower(official_name) asc` |
+| Wishlist | `wishlisted_at desc` | `latest_rating desc nulls last, wishlisted_at desc` | `lower(official_name) asc` |
+
+**`GET /collection/{beer_id}` — 404 vs. 200.** "No collection row" and "beer
+doesn't exist" are different states: a real catalog beer with no row is 200
+with both flags `false` ("not yet in your collection" is a normal state,
+not a missing resource); only a `beer_id` that isn't a real catalog beer is
+404.
+
+**`PATCH /collection/{beer_id}` is an upsert** — a deliberate, one-resource
+exception to the beer-logs convention that PATCH requires an existing row.
+This resource's only identity is the `(user_id, beer_id)` pair, and "no row"
+*is* its default state, so treating a first PATCH as a normal partial update
+against that default is exactly the right behavior, not a special case.
+`extra="forbid"` and an empty-patch rejection apply, same as beer logs. 404
+only if `beer_id` isn't a real catalog beer.
+
+Fields are always the **absolute** requested value, never a "toggle" — a
+retried or double-tapped identical request converges to the same state.
+Concurrent PATCHes to the same beer merge correctly (an omitted field
+preserves whatever the *other* concurrent request just set, never clobbers
+it) — see `docs/DECISIONS.md` and
+`backend/tests/integration/test_collection_concurrency.py` for the design
+and its verification against four required interleavings.

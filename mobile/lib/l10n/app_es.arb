@@ -14,7 +14,6 @@
   "mapScreenDescription": "Explora las cervezas a tu alrededor en un mapa mundial interactivo.",
   "discoverScreenDescription": "Encuentra nuevas cervecerías, estilos y cervezas que vale la pena probar.",
   "scanScreenDescription": "Escanea la etiqueta de una cerveza para añadirla a tu colección en segundos.",
-  "collectionScreenDescription": "Lleva el registro de cada cerveza que has probado y valorado.",
   "profileScreenDescription": "Gestiona tu perfil, logros y preferencias.",
   "logoutAction": "Cerrar sesión",
   "profileScreenGreeting": "Sesión iniciada como {name}.",
@@ -128,5 +127,30 @@
   "beerLogErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
   "beerLogErrorNotFound": "No se pudo encontrar este registro.",
   "beerLogErrorInvalidRequest": "Revisa la fecha y los campos de precio/moneda e inténtalo de nuevo.",
-  "beerLogErrorGeneric": "No pudimos guardar tu registro. Inténtalo de nuevo."
+  "beerLogErrorGeneric": "No pudimos guardar tu registro. Inténtalo de nuevo.",
+
+  "beerDetailAddToFavoritesAction": "Añadir a favoritas",
+  "beerDetailRemoveFromFavoritesAction": "Quitar de favoritas",
+  "beerDetailAddToWishlistAction": "Añadir a la lista de deseos",
+  "beerDetailRemoveFromWishlistAction": "Quitar de la lista de deseos",
+
+  "collectionTabLogged": "Registradas",
+  "collectionTabFavorites": "Favoritas",
+  "collectionTabWishlist": "Lista de deseos",
+
+  "collectionFiltersSheetTitle": "Filtros",
+
+  "collectionSortRecent": "Reciente",
+  "collectionSortRating": "Valoración",
+  "collectionSortName": "Nombre",
+
+  "collectionLoggedEmptyMessage": "Todavía no has registrado ninguna cerveza.",
+  "collectionFavoritesEmptyMessage": "Todavía no has marcado ninguna cerveza como favorita.",
+  "collectionWishlistEmptyMessage": "Tu lista de deseos está vacía.",
+
+  "collectionErrorUnauthorized": "Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.",
+  "collectionErrorServiceUnavailable": "Esto no está disponible en este momento. Inténtalo de nuevo en un momento.",
+  "collectionErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
+  "collectionErrorNotFound": "No se pudo encontrar esta cerveza.",
+  "collectionErrorGeneric": "No pudimos cargar tu colección. Inténtalo de nuevo."
 }

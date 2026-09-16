@@ -2,6 +2,7 @@ import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
 import 'package:beerapp/features/logging/domain/models/beer_log.dart';
 import 'package:beerapp/features/logging/domain/models/beer_log_input.dart';
 import 'package:beerapp/features/logging/presentation/beer_log/beer_log_controller.dart';
+import 'package:beerapp/shared/collection_refresh_signal.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../../fakes/fake_log_repository.dart';
@@ -22,6 +23,7 @@ void main() {
       final controller = BeerLogController(
         repository: repository,
         beerId: 'beer-1',
+        refreshSignal: CollectionRefreshSignal(),
       );
 
       await controller.load();
@@ -36,6 +38,7 @@ void main() {
       final controller = BeerLogController(
         repository: repository,
         beerId: 'beer-1',
+        refreshSignal: CollectionRefreshSignal(),
       );
 
       await controller.load();
@@ -59,6 +62,7 @@ void main() {
         final controller = BeerLogController(
           repository: repository,
           beerId: 'beer-1',
+          refreshSignal: CollectionRefreshSignal(),
         );
 
         await controller.load();
@@ -77,6 +81,7 @@ void main() {
       final controller = BeerLogController(
         repository: repository,
         beerId: 'beer-1',
+        refreshSignal: CollectionRefreshSignal(),
       );
       await controller.load();
       expect(controller.hasMore, isFalse);
@@ -103,6 +108,7 @@ void main() {
         final controller = BeerLogController(
           repository: repository,
           beerId: 'beer-1',
+          refreshSignal: CollectionRefreshSignal(),
         );
         await controller.load();
 
@@ -129,6 +135,7 @@ void main() {
       final controller = BeerLogController(
         repository: repository,
         beerId: 'beer-1',
+        refreshSignal: CollectionRefreshSignal(),
       );
       await controller.load();
 
@@ -166,6 +173,7 @@ void main() {
       final controller = BeerLogController(
         repository: repository,
         beerId: 'beer-1',
+        refreshSignal: CollectionRefreshSignal(),
       );
       await controller.load();
 
@@ -212,6 +220,7 @@ void main() {
       final controller = BeerLogController(
         repository: repository,
         beerId: 'beer-1',
+        refreshSignal: CollectionRefreshSignal(),
       );
       await controller.load();
 
@@ -232,6 +241,7 @@ void main() {
         final controller = BeerLogController(
           repository: repository,
           beerId: 'beer-1',
+          refreshSignal: CollectionRefreshSignal(),
         );
 
         final first = controller.submitCreate(
@@ -255,6 +265,7 @@ void main() {
         final controller = BeerLogController(
           repository: repository,
           beerId: 'beer-1',
+          refreshSignal: CollectionRefreshSignal(),
         );
         await controller.load();
 
@@ -276,6 +287,7 @@ void main() {
       final controller = BeerLogController(
         repository: repository,
         beerId: 'beer-1',
+        refreshSignal: CollectionRefreshSignal(),
       );
       await controller.load();
 
@@ -285,4 +297,213 @@ void main() {
       expect(controller.logs, isEmpty);
     });
   });
+
+  group('CollectionRefreshSignal notification', () {
+    test('submitCreate notifies the refresh signal on success', () async {
+      final repository = FakeLogRepository();
+      final refreshSignal = CollectionRefreshSignal();
+      var notified = 0;
+      refreshSignal.addListener(() => notified++);
+      final controller = BeerLogController(
+        repository: repository,
+        beerId: 'beer-1',
+        refreshSignal: refreshSignal,
+      );
+
+      await controller.submitCreate(const BeerLogCreateInput(beerId: 'beer-1'));
+
+      expect(notified, 1);
+    });
+
+    test(
+      'submitCreate does not notify the refresh signal on failure',
+      () async {
+        final repository = FakeLogRepository()
+          ..createLogError = Exception('boom');
+        final refreshSignal = CollectionRefreshSignal();
+        var notified = 0;
+        refreshSignal.addListener(() => notified++);
+        final controller = BeerLogController(
+          repository: repository,
+          beerId: 'beer-1',
+          refreshSignal: refreshSignal,
+        );
+
+        await controller.submitCreate(
+          const BeerLogCreateInput(beerId: 'beer-1'),
+        );
+
+        expect(notified, 0);
+      },
+    );
+
+    test('submitDelete notifies the refresh signal on success', () async {
+      final repository = FakeLogRepository()..logsById['log-1'] = _log('log-1');
+      final refreshSignal = CollectionRefreshSignal();
+      var notified = 0;
+      refreshSignal.addListener(() => notified++);
+      final controller = BeerLogController(
+        repository: repository,
+        beerId: 'beer-1',
+        refreshSignal: refreshSignal,
+      );
+      await controller.load();
+
+      await controller.submitDelete('log-1');
+
+      expect(notified, 1);
+    });
+
+    test('submitUpdate notifies the refresh signal on success', () async {
+      final repository = FakeLogRepository()..logsById['log-1'] = _log('log-1');
+      final refreshSignal = CollectionRefreshSignal();
+      var notified = 0;
+      refreshSignal.addListener(() => notified++);
+      final controller = BeerLogController(
+        repository: repository,
+        beerId: 'beer-1',
+        refreshSignal: refreshSignal,
+      );
+      await controller.load();
+
+      await controller.submitUpdate(
+        'log-1',
+        const BeerLogUpdateInput(review: 'Nice'),
+      );
+
+      expect(notified, 1);
+    });
+
+    test(
+      'submitUpdate does not notify the refresh signal on failure',
+      () async {
+        final repository = FakeLogRepository()
+          ..logsById['log-1'] = _log('log-1')
+          ..updateLogError = Exception('boom');
+        final refreshSignal = CollectionRefreshSignal();
+        var notified = 0;
+        refreshSignal.addListener(() => notified++);
+        final controller = BeerLogController(
+          repository: repository,
+          beerId: 'beer-1',
+          refreshSignal: refreshSignal,
+        );
+        await controller.load();
+
+        await controller.submitUpdate(
+          'log-1',
+          const BeerLogUpdateInput(review: 'Nice'),
+        );
+
+        expect(notified, 0);
+      },
+    );
+
+    test(
+      'submitDelete does not notify the refresh signal on failure',
+      () async {
+        final repository = FakeLogRepository()
+          ..logsById['log-1'] = _log('log-1')
+          ..deleteLogError = Exception('boom');
+        final refreshSignal = CollectionRefreshSignal();
+        var notified = 0;
+        refreshSignal.addListener(() => notified++);
+        final controller = BeerLogController(
+          repository: repository,
+          beerId: 'beer-1',
+          refreshSignal: refreshSignal,
+        );
+        await controller.load();
+
+        await controller.submitDelete('log-1');
+
+        expect(notified, 0);
+      },
+    );
+  });
+
+  group(
+    'CollectionRefreshSignal fires even when the follow-up reload fails',
+    () {
+      test('submitCreate: backend create succeeds but the subsequent load() '
+          'fails -> the refresh signal still fires exactly once', () async {
+        final repository = FakeLogRepository();
+        final refreshSignal = CollectionRefreshSignal();
+        var notified = 0;
+        refreshSignal.addListener(() => notified++);
+        final controller = BeerLogController(
+          repository: repository,
+          beerId: 'beer-1',
+          refreshSignal: refreshSignal,
+        );
+        // The create itself succeeds; the reload load() triggers
+        // afterward fails.
+        repository.getLogsError = Exception('reload failed');
+
+        final success = await controller.submitCreate(
+          const BeerLogCreateInput(beerId: 'beer-1'),
+        );
+
+        expect(
+          notified,
+          1,
+          reason:
+              'the backend mutation succeeded, so Collection must have '
+              'been notified regardless of the local reload failure',
+        );
+        // Existing behavior preserved: the mutation itself is reported as
+        // successful, and load()'s own failure surfaces via its own
+        // error field, not by making submitCreate report failure.
+        expect(success, isTrue);
+        expect(controller.error, isNotNull);
+      });
+
+      test('submitUpdate: backend update succeeds but the subsequent load() '
+          'fails -> the refresh signal still fires exactly once', () async {
+        final repository = FakeLogRepository()
+          ..logsById['log-1'] = _log('log-1');
+        final refreshSignal = CollectionRefreshSignal();
+        var notified = 0;
+        refreshSignal.addListener(() => notified++);
+        final controller = BeerLogController(
+          repository: repository,
+          beerId: 'beer-1',
+          refreshSignal: refreshSignal,
+        );
+        await controller.load();
+        repository.getLogsError = Exception('reload failed');
+
+        final success = await controller.submitUpdate(
+          'log-1',
+          const BeerLogUpdateInput(review: 'Nice'),
+        );
+
+        expect(notified, 1);
+        expect(success, isTrue);
+        expect(controller.error, isNotNull);
+      });
+
+      test('submitDelete: backend delete succeeds but the subsequent load() '
+          'fails -> the refresh signal still fires exactly once', () async {
+        final repository = FakeLogRepository()
+          ..logsById['log-1'] = _log('log-1');
+        final refreshSignal = CollectionRefreshSignal();
+        var notified = 0;
+        refreshSignal.addListener(() => notified++);
+        final controller = BeerLogController(
+          repository: repository,
+          beerId: 'beer-1',
+          refreshSignal: refreshSignal,
+        );
+        await controller.load();
+        repository.getLogsError = Exception('reload failed');
+
+        final success = await controller.submitDelete('log-1');
+
+        expect(notified, 1);
+        expect(success, isTrue);
+        expect(controller.error, isNotNull);
+      });
+    },
+  );
 }

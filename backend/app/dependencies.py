@@ -5,11 +5,13 @@ from app.repositories.beer_logs import BeerLogRepository
 from app.repositories.beer_styles import BeerStyleRepository
 from app.repositories.beers import BeerRepository
 from app.repositories.breweries import BreweryRepository
+from app.repositories.collection import CollectionRepository
 from app.repositories.countries import CountryRepository
 from app.services.beer_logs import BeerLogService
 from app.services.beer_styles import BeerStyleService
 from app.services.beers import BeerService
 from app.services.breweries import BreweryService
+from app.services.collection import CollectionService
 from app.services.countries import CountryService
 
 
@@ -35,3 +37,7 @@ def get_beer_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> BeerService:
 
 def get_beer_log_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> BeerLogService:
     return BeerLogService(BeerLogRepository(pool))
+
+
+def get_collection_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> CollectionService:
+    return CollectionService(CollectionRepository(pool))

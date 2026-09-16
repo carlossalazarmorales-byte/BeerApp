@@ -7,10 +7,12 @@ import 'package:beerapp/features/catalog/domain/models/brewery.dart';
 import 'package:beerapp/features/catalog/domain/models/country.dart';
 import 'package:beerapp/features/catalog/presentation/beer_detail/beer_detail_screen.dart';
 import 'package:beerapp/l10n/generated/app_localizations.dart';
+import 'package:beerapp/shared/collection_refresh_signal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../fakes/fake_catalog_repository.dart';
+import '../../../fakes/fake_collection_repository.dart';
 import '../../../fakes/fake_log_repository.dart';
 
 Widget _wrap(Widget child) {
@@ -64,6 +66,8 @@ void main() {
           BeerDetailScreen(
             repository: repository,
             logRepository: FakeLogRepository(),
+            collectionRepository: FakeCollectionRepository(),
+            refreshSignal: CollectionRefreshSignal(),
             beerId: 'beer-1',
           ),
         ),
@@ -98,6 +102,8 @@ void main() {
           BeerDetailScreen(
             repository: repository,
             logRepository: FakeLogRepository(),
+            collectionRepository: FakeCollectionRepository(),
+            refreshSignal: CollectionRefreshSignal(),
             beerId: 'beer-1',
           ),
         ),
@@ -130,6 +136,8 @@ void main() {
           BeerDetailScreen(
             repository: repository,
             logRepository: FakeLogRepository(),
+            collectionRepository: FakeCollectionRepository(),
+            refreshSignal: CollectionRefreshSignal(),
             beerId: 'beer-1',
           ),
         ),
@@ -157,6 +165,8 @@ void main() {
           BeerDetailScreen(
             repository: repository,
             logRepository: FakeLogRepository(),
+            collectionRepository: FakeCollectionRepository(),
+            refreshSignal: CollectionRefreshSignal(),
             beerId: 'beer-1',
           ),
         ),
@@ -179,6 +189,8 @@ void main() {
         BeerDetailScreen(
           repository: _seededRepository(),
           logRepository: FakeLogRepository(),
+          collectionRepository: FakeCollectionRepository(),
+          refreshSignal: CollectionRefreshSignal(),
           beerId: 'beer-1',
         ),
       ),
@@ -197,6 +209,8 @@ void main() {
           BeerDetailScreen(
             repository: _seededRepository(),
             logRepository: FakeLogRepository(),
+            collectionRepository: FakeCollectionRepository(),
+            refreshSignal: CollectionRefreshSignal(),
             beerId: 'beer-1',
           ),
         ),
@@ -233,6 +247,8 @@ void main() {
           BeerDetailScreen(
             repository: _seededRepository(),
             logRepository: logRepository,
+            collectionRepository: FakeCollectionRepository(),
+            refreshSignal: CollectionRefreshSignal(),
             beerId: 'beer-1',
           ),
         ),
@@ -257,6 +273,8 @@ void main() {
         BeerDetailScreen(
           repository: _seededRepository(),
           logRepository: FakeLogRepository(),
+          collectionRepository: FakeCollectionRepository(),
+          refreshSignal: CollectionRefreshSignal(),
           beerId: 'beer-1',
         ),
       ),
@@ -265,4 +283,67 @@ void main() {
 
     expect(find.text('Load more'), findsNothing);
   });
+
+  testWidgets(
+    'a collection-state load failure never blocks the beer content, only disables the favorite/wishlist buttons',
+    (tester) async {
+      const rawMessage = 'relation "user_beer_collection" does not exist';
+      final collectionRepository = FakeCollectionRepository()
+        ..getStateError = const ApiException(
+          message: rawMessage,
+          statusCode: 500,
+          code: 'internal_error',
+        );
+
+      await tester.pumpWidget(
+        _wrap(
+          BeerDetailScreen(
+            repository: _seededRepository(),
+            logRepository: FakeLogRepository(),
+            collectionRepository: collectionRepository,
+            refreshSignal: CollectionRefreshSignal(),
+            beerId: 'beer-1',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Beer content still renders even though collection state failed.
+      expect(find.text('Test Stout'), findsNWidgets(2));
+      expect(find.textContaining(rawMessage), findsNothing);
+
+      final favoriteButton = tester.widget<IconButton>(
+        find.widgetWithIcon(IconButton, Icons.star_border),
+      );
+      expect(favoriteButton.onPressed, isNull);
+    },
+  );
+
+  testWidgets(
+    'tapping the favorite button sets it, and tapping again clears it',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(
+          BeerDetailScreen(
+            repository: _seededRepository(),
+            logRepository: FakeLogRepository(),
+            collectionRepository: FakeCollectionRepository(),
+            refreshSignal: CollectionRefreshSignal(),
+            beerId: 'beer-1',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.star_border), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.star_border));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.star), findsOneWidget);
+
+      await tester.tap(find.byIcon(Icons.star));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.star_border), findsOneWidget);
+    },
+  );
 }

@@ -44,10 +44,6 @@
   "@scanScreenDescription": {
     "description": "Placeholder description for the Scan screen."
   },
-  "collectionScreenDescription": "Keep track of every beer you have tried and rated.",
-  "@collectionScreenDescription": {
-    "description": "Placeholder description for the Collection screen."
-  },
   "profileScreenDescription": "Manage your profile, achievements and preferences.",
   "@profileScreenDescription": {
     "description": "Placeholder description for the Profile screen."
@@ -301,5 +297,49 @@
   "beerLogErrorInvalidRequest": "Check the date and price/currency fields and try again.",
   "@beerLogErrorInvalidRequest": {"description": "Shown when a beer log request returns 400 (e.g. a future consumption date, or a price/currency combination that isn't valid)."},
   "beerLogErrorGeneric": "We couldn't save your log. Please try again.",
-  "@beerLogErrorGeneric": {"description": "Fallback error message for beer log requests, used instead of showing a raw backend error message."}
+  "@beerLogErrorGeneric": {"description": "Fallback error message for beer log requests, used instead of showing a raw backend error message."},
+
+  "beerDetailAddToFavoritesAction": "Add to favorites",
+  "@beerDetailAddToFavoritesAction": {"description": "Accessible label/tooltip for the favorite button on the beer detail screen when the beer is not currently favorited."},
+  "beerDetailRemoveFromFavoritesAction": "Remove from favorites",
+  "@beerDetailRemoveFromFavoritesAction": {"description": "Accessible label/tooltip for the favorite button on the beer detail screen when the beer is currently favorited."},
+  "beerDetailAddToWishlistAction": "Add to wishlist",
+  "@beerDetailAddToWishlistAction": {"description": "Accessible label/tooltip for the wishlist button on the beer detail screen when the beer is not currently on the wishlist."},
+  "beerDetailRemoveFromWishlistAction": "Remove from wishlist",
+  "@beerDetailRemoveFromWishlistAction": {"description": "Accessible label/tooltip for the wishlist button on the beer detail screen when the beer is currently on the wishlist."},
+
+  "collectionTabLogged": "Logged",
+  "@collectionTabLogged": {"description": "Collection screen tab label for the Logged (unique beers tried) view."},
+  "collectionTabFavorites": "Favorites",
+  "@collectionTabFavorites": {"description": "Collection screen tab label for the Favorites view."},
+  "collectionTabWishlist": "Wishlist",
+  "@collectionTabWishlist": {"description": "Collection screen tab label for the Wishlist view."},
+
+  "collectionFiltersSheetTitle": "Filters",
+  "@collectionFiltersSheetTitle": {"description": "Title of the Collection screen's filters bottom sheet."},
+
+  "collectionSortRecent": "Recent",
+  "@collectionSortRecent": {"description": "Collection screen sort option: most-recent-activity-first."},
+  "collectionSortRating": "Rating",
+  "@collectionSortRating": {"description": "Collection screen sort option: by the beer's latest logged rating."},
+  "collectionSortName": "Name",
+  "@collectionSortName": {"description": "Collection screen sort option: alphabetically by beer name."},
+
+  "collectionLoggedEmptyMessage": "You haven't logged any beers yet.",
+  "@collectionLoggedEmptyMessage": {"description": "Shown on the Collection screen's Logged tab when the user has no beer logs."},
+  "collectionFavoritesEmptyMessage": "You haven't favorited any beers yet.",
+  "@collectionFavoritesEmptyMessage": {"description": "Shown on the Collection screen's Favorites tab when the user has no favorites."},
+  "collectionWishlistEmptyMessage": "Your wishlist is empty.",
+  "@collectionWishlistEmptyMessage": {"description": "Shown on the Collection screen's Wishlist tab when the user has no wishlist beers."},
+
+  "collectionErrorUnauthorized": "Your session has expired. Please sign in again to continue.",
+  "@collectionErrorUnauthorized": {"description": "Shown when a Collection request fails because there is no usable authenticated session."},
+  "collectionErrorServiceUnavailable": "This isn't available right now. Please try again in a moment.",
+  "@collectionErrorServiceUnavailable": {"description": "Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503)."},
+  "collectionErrorNetwork": "Check your internet connection and try again.",
+  "@collectionErrorNetwork": {"description": "Shown when a Collection request fails due to no network connectivity."},
+  "collectionErrorNotFound": "This beer could not be found.",
+  "@collectionErrorNotFound": {"description": "Shown when a Collection request returns 404 (the beer itself doesn't exist)."},
+  "collectionErrorGeneric": "We couldn't load your collection. Please try again.",
+  "@collectionErrorGeneric": {"description": "Fallback error message for Collection requests, used instead of showing a raw backend error message."}
 }

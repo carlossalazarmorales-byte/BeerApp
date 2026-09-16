@@ -231,6 +231,112 @@ def test_user_beer_log_user_id_foreign_key_is_cascade(integration_dsn):
     _run(integration_dsn, body)
 
 
+def test_user_beer_collection_favorited_at_must_be_paired_with_is_favorite(integration_dsn):
+    async def body(conn: asyncpg.Connection) -> None:
+        beer_id = await _seed_beer(conn)
+        with pytest.raises(asyncpg.CheckViolationError):
+            await conn.execute(
+                "insert into public.user_beer_collection "
+                "(user_id, beer_id, is_favorite, favorited_at) "
+                "values ('00000000-0000-0000-0000-000000000001', $1, false, now())",
+                beer_id,
+            )
+
+    _run(integration_dsn, body)
+
+
+def test_user_beer_collection_wishlisted_at_must_be_paired_with_is_wishlist(integration_dsn):
+    async def body(conn: asyncpg.Connection) -> None:
+        beer_id = await _seed_beer(conn)
+        with pytest.raises(asyncpg.CheckViolationError):
+            await conn.execute(
+                "insert into public.user_beer_collection "
+                "(user_id, beer_id, is_wishlist, wishlisted_at) "
+                "values ('00000000-0000-0000-0000-000000000001', $1, true, null)",
+                beer_id,
+            )
+
+    _run(integration_dsn, body)
+
+
+def test_user_beer_collection_all_false_is_allowed_at_the_db_level(integration_dsn):
+    """There is deliberately no `CHECK (is_favorite OR is_wishlist)` -- see
+    the migration's comment and docs/DECISIONS.md. The DB itself permits an
+    all-false row; the guarantee that one is never *committed* is enforced
+    entirely by CollectionRepository.set_state (see
+    tests/integration/test_collection_concurrency.py), not by a constraint.
+    This test documents that the absence of the CHECK is deliberate, not an
+    oversight.
+    """
+
+    async def body(conn: asyncpg.Connection) -> None:
+        beer_id = await _seed_beer(conn)
+        # Must not raise -- proves the CHECK really is absent.
+        await conn.execute(
+            "insert into public.user_beer_collection (user_id, beer_id) "
+            "values ('00000000-0000-0000-0000-000000000001', $1)",
+            beer_id,
+        )
+
+    _run(integration_dsn, body)
+
+
+def test_user_beer_collection_user_beer_unique_constraint_is_enforced(integration_dsn):
+    async def body(conn: asyncpg.Connection) -> None:
+        beer_id = await _seed_beer(conn)
+        await conn.execute(
+            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
+            "values ('00000000-0000-0000-0000-000000000001', $1, true)",
+            beer_id,
+        )
+        with pytest.raises(asyncpg.UniqueViolationError):
+            await conn.execute(
+                "insert into public.user_beer_collection (user_id, beer_id, is_wishlist) "
+                "values ('00000000-0000-0000-0000-000000000001', $1, true)",
+                beer_id,
+            )
+
+    _run(integration_dsn, body)
+
+
+def test_user_beer_collection_beer_id_foreign_key_is_enforced(integration_dsn):
+    async def body(conn: asyncpg.Connection) -> None:
+        with pytest.raises(asyncpg.ForeignKeyViolationError):
+            await conn.execute(
+                "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
+                "values ('00000000-0000-0000-0000-000000000001', "
+                "'00000000-0000-0000-0000-000000000000', true)"
+            )
+
+    _run(integration_dsn, body)
+
+
+def test_user_beer_collection_beer_id_is_restrict_not_cascade(integration_dsn):
+    async def body(conn: asyncpg.Connection) -> None:
+        beer_id = await _seed_beer(conn)
+        await conn.execute(
+            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
+            "values ('00000000-0000-0000-0000-000000000001', $1, true)",
+            beer_id,
+        )
+        with pytest.raises(asyncpg.ForeignKeyViolationError):
+            await conn.execute("delete from public.beers where id = $1", beer_id)
+
+    _run(integration_dsn, body)
+
+
+def test_user_beer_collection_user_id_foreign_key_is_cascade(integration_dsn):
+    async def body(conn: asyncpg.Connection) -> None:
+        delete_rule = await conn.fetchval(
+            "select confdeltype from pg_constraint "
+            "where conrelid = 'public.user_beer_collection'::regclass "
+            "and confrelid = 'auth.users'::regclass"
+        )
+        assert delete_rule == "c"
+
+    _run(integration_dsn, body)
+
+
 def test_beer_barcode_must_be_unique_when_present(integration_dsn):
     async def body(conn: asyncpg.Connection) -> None:
         country_id = await conn.fetchval(

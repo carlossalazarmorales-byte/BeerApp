@@ -15,12 +15,14 @@ import '../features/auth/presentation/sign_up_screen.dart';
 import '../features/auth/presentation/welcome_screen.dart';
 import '../features/catalog/domain/catalog_repository.dart';
 import '../features/catalog/presentation/beer_detail/beer_detail_screen.dart';
+import '../features/collection/domain/collection_repository.dart';
 import '../features/collection/presentation/collection_screen.dart';
 import '../features/discover/presentation/discover_screen.dart';
 import '../features/logging/domain/log_repository.dart';
 import '../features/map/presentation/map_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
+import '../shared/collection_refresh_signal.dart';
 import '../shared/widgets/splash_screen.dart';
 import 'app_routes.dart';
 import 'app_shell.dart';
@@ -92,6 +94,8 @@ GoRouter createRouter({
   required AgeGateController ageGateController,
   required CatalogRepository catalogRepository,
   required LogRepository logRepository,
+  required CollectionRepository collectionRepository,
+  required CollectionRefreshSignal refreshSignal,
 }) {
   return GoRouter(
     initialLocation: AppRoutes.splash,
@@ -151,6 +155,8 @@ GoRouter createRouter({
         builder: (context, state) => BeerDetailScreen(
           repository: catalogRepository,
           logRepository: logRepository,
+          collectionRepository: collectionRepository,
+          refreshSignal: refreshSignal,
           beerId: state.pathParameters['beerId']!,
         ),
       ),
@@ -187,7 +193,11 @@ GoRouter createRouter({
             routes: [
               GoRoute(
                 path: '/collection',
-                builder: (context, state) => const CollectionScreen(),
+                builder: (context, state) => CollectionScreen(
+                  repository: collectionRepository,
+                  catalogRepository: catalogRepository,
+                  refreshSignal: refreshSignal,
+                ),
               ),
             ],
           ),

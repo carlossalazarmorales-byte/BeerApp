@@ -16,6 +16,7 @@ import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
 import 'package:beerapp/features/catalog/presentation/beer_detail/beer_detail_screen.dart';
 import 'package:beerapp/features/map/presentation/map_screen.dart';
 import 'package:beerapp/features/profile/presentation/profile_screen.dart';
+import 'package:beerapp/shared/collection_refresh_signal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -23,6 +24,7 @@ import 'package:go_router/go_router.dart';
 import '../fakes/fake_age_gate_storage.dart';
 import '../fakes/fake_auth_repository.dart';
 import '../fakes/fake_catalog_repository.dart';
+import '../fakes/fake_collection_repository.dart';
 import '../fakes/fake_log_repository.dart';
 import '../fakes/fake_profile_repository.dart';
 
@@ -66,6 +68,8 @@ class _Harness {
       ageGateController: ageGateController,
       catalogRepository: catalogRepository,
       logRepository: FakeLogRepository(),
+      collectionRepository: FakeCollectionRepository(),
+      refreshSignal: CollectionRefreshSignal(),
     );
 
     return _Harness._(

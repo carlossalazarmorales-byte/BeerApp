@@ -8,7 +8,7 @@ from app.auth.jwks import JWKSCache
 from app.config import get_settings
 from app.db import create_pool
 from app.errors import register_exception_handlers
-from app.routes import beer_logs, beer_styles, beers, breweries, countries
+from app.routes import beer_logs, beer_styles, beers, breweries, collection, countries
 
 
 @asynccontextmanager
@@ -37,6 +37,7 @@ app.include_router(beer_styles.router)
 app.include_router(breweries.router)
 app.include_router(beers.router)
 app.include_router(beer_logs.router)
+app.include_router(collection.router)
 
 
 @app.get("/health", tags=["system"])

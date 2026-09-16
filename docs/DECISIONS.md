@@ -710,3 +710,141 @@ Regression-tested in `beer_log_controller_test.dart`'s stale-`loadMore`
 race test, which specifically asserts a late-arriving stale response
 corrupts neither the data nor a subsequent, currently-active request's
 loading state.
+
+## 2026-09-16 — Phase 7: one `user_beer_collection` table, not separate `favorites`/`wishlist` tables
+
+Both shapes were weighed before implementation. Two tables (row-exists-means-
+true, `INSERT ... ON CONFLICT DO NOTHING` / plain `DELETE`, no boolean/CHECK
+to reason about) is the simpler shape *per concept*, but favorites and
+wishlist aren't independent concepts in how they're actually read: Beer
+Detail's single "what's this beer's state" lookup and the Favorites/Wishlist
+tabs both want one row answering "this user's state for this beer," not a
+join/union of two tables. Two tables would also double every piece of Phase
+6's per-table boilerplate (migration pair, RLS policy, grant, repository)
+for what is structurally one row shape appearing twice. Chosen instead: a
+single `user_beer_collection` table with `is_favorite`/`is_wishlist`
+booleans and `unique(user_id, beer_id)`. The complexity this design takes on
+in exchange — keeping "all-false means no row" true under concurrent writes
+without a DB-level CHECK to lean on — is confined to one write path,
+`CollectionRepository.set_state`, and judged a worthwhile trade. See
+`docs/DATABASE.md`'s `user_beer_collection` section for the schema.
+
+## 2026-09-16 — Phase 7: no `CHECK (is_favorite OR is_wishlist)` — the invariant is enforced by the repository, not the database
+
+An earlier version of this design used exactly that CHECK, relying on
+Postgres rejecting an all-false write as the signal for the repository to
+fall back to a `DELETE`. Rejected once the concurrency implications were
+worked through: Postgres CHECK constraints aren't deferrable, so recovering
+from a violation means rolling back to a `SAVEPOINT` — and that rollback
+releases any row lock acquired after the savepoint, reopening a window where
+a *different* concurrent transaction could grab the row between "roll back
+the failed write" and "issue the follow-up delete." That window is exactly
+the kind of lost-update bug this table's concurrency design otherwise
+closes.
+
+The logical invariant — an all-false state is represented by no row, never
+a stored row — still holds, but it is now enforced entirely by
+`CollectionRepository.set_state` (`backend/app/repositories/collection.py`),
+the only write path to this table: the atomic upsert (below) and any needed
+`DELETE` run inside one uninterrupted transaction, with no savepoint and no
+constraint violation ever invited. `favorited_at`/`wishlisted_at` pairing
+stays a DB-level CHECK, since those are single-statement-internal
+invariants with no cross-transaction race.
+
+## 2026-09-16 — Phase 7: atomic SQL-side merge for `PATCH /collection/{beer_id}`, not a Python read-modify-write
+
+A read-modify-write split across Python (read current state, compute the
+merge, then write) is unsafe under concurrent PATCHes to the same beer: two
+overlapping requests can each read stale state and one can silently clobber
+the other's field. The fix computes the merge *inside* the SQL statement
+against the live row instead:
+
+```sql
+insert into public.user_beer_collection (...)
+values ($1, $2, coalesce($3, false), coalesce($4, false), ...)
+on conflict (user_id, beer_id) do update set
+  is_favorite = coalesce($3, user_beer_collection.is_favorite),
+  is_wishlist = coalesce($4, user_beer_collection.is_wishlist),
+  ...
+```
+
+`coalesce(..., user_beer_collection.is_favorite)` reads the *unqualified
+table name* to mean "the row's current value at the moment of this locked
+write" — Postgres serializes concurrent `ON CONFLICT DO UPDATE`s on the same
+key via the row lock, so whichever runs second sees the first's
+already-committed value through this reference, never a Python-side guess
+made before either committed. Two concurrent first-time inserts on a brand
+new `(user_id, beer_id)` are resolved the same way `INSERT ... ON CONFLICT`
+is designed to make safe already, with no extra locking code.
+
+Verified against four required concurrency scenarios (initial state,
+concurrent request A, concurrent request B, required final state), each run
+repeatedly against real overlapping transactions in
+`backend/tests/integration/test_collection_concurrency.py`:
+
+- initial `{false, true}`; `favorite=true` / `wishlist=false` → `{true, false}`
+- no row; `favorite=true` / `wishlist=true` → exactly one row, `{true, true}`
+- initial `{true, true}`; `favorite=false` / `wishlist=false` → no row
+- no row; `favorite=false` / `wishlist=true` → exactly one row, `{false, true}`
+
+All four hold regardless of which request's transaction happens to commit
+first.
+
+## 2026-09-16 — Phase 7: `PATCH /collection/{beer_id}` is an upsert, deviating from the beer-logs PATCH convention
+
+`docs/API.md`'s beer-logs section establishes PATCH-requires-an-existing-row
+(404 otherwise) as the convention. Collection state deliberately breaks it:
+this resource's only identity is the `(user_id, beer_id)` pair — there is no
+separate `id`, no POST-then-PATCH lifecycle, and "no row" *is* the default
+state (`{is_favorite: false, is_wishlist: false}`). Treating a first PATCH
+as an ordinary partial update against that implicit default, rather than
+requiring a prior POST to create a favorite/wishlist row first, is the
+correct behavior for a canonical-state resource, not a special case to
+avoid. `GET /collection/{beer_id}` mirrors this: a real beer with no
+collection row is 200 (both flags false), and only a `beer_id` that isn't a
+real catalog beer is 404 — implemented via a `LEFT JOIN` from `beers` (the
+driving table) rather than a second existence-check round-trip.
+
+## 2026-09-16 — Phase 7: `sort=rating` means the beer's latest log's rating, not an average
+
+A beer can have multiple logs, so "this beer's rating" for sort purposes was
+a genuine open question, resolved with the product owner before
+implementation: latest log's rating, not an average across all rated logs.
+Reasoning: it's already exactly what the Logged tab's `latest_logs` CTE
+computes (`DISTINCT ON (beer_id) ... ORDER BY consumed_at DESC`), reused
+as-is for Favorites/Wishlist at zero extra query complexity, and it keeps
+the displayed rating consistent with the "recent" framing used everywhere
+else (Beer Detail's own log list, the default sort). It also avoids building
+a second, competing notion of "this beer's rating" ahead of ROADMAP.md's own
+separate Phase 9 "Average rating" statistics task, which would need to
+define that concept properly (weighting, recency, minimum sample size) —
+sort order is the wrong place to improvise it. Null/tie-break behavior:
+`NULLS LAST`, with `beer_id` as the final deterministic tie-breaker,
+consistent with every other list in this app.
+
+## 2026-09-16 — Phase 7: `CollectionRefreshSignal` — mutation-driven Collection freshness, not `RouteObserver`
+
+Considered and rejected: a `RouteObserver`/`RouteAware` hook on `AppShell`
+that calls `CollectionController.refresh()` when Beer Detail pops back to
+the shell. It would have worked for the single case of "push Beer Detail,
+pop back immediately" but not the equally common case of returning to a
+*different* tab first (e.g. Discover) and switching to Collection later via
+the bottom nav — `IndexedStack` tab switches never push/pop anything for
+`RouteAware` to observe, so that path would leave Collection silently stale
+until a manual pull-to-refresh. That gap directly conflicts with Phase 6's
+own deferred "update collection state after logging" requirement, so it was
+rejected rather than accepted as a known limitation.
+
+Chosen instead: `CollectionRefreshSignal`
+(`mobile/lib/shared/collection_refresh_signal.dart`), a one-method
+`ChangeNotifier` that any successful mutation (`BeerLogController.submitCreate`/
+`submitUpdate`/`submitDelete`, `CollectionStateController.setFavorite`/
+`setWishlist`) calls after it succeeds. `CollectionController` listens and
+calls `refresh()`. This needs no visibility/navigation awareness at all,
+because `StatefulShellRoute.indexedStack` keeps every branch's widget
+subtree — `CollectionController` included — mounted and responsive even
+while a different tab is showing, so the notification is processed and the
+data is fresh by the time the user actually switches to Collection,
+regardless of which tab a mutation happened from. `AppShell` remains the
+plain `StatelessWidget` it was before this phase; no navigation-aware
+mechanism was added.

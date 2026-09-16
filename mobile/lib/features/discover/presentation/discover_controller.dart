@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../catalog/domain/catalog_filter_options.dart';
 import '../../catalog/domain/catalog_repository.dart';
 import '../../catalog/domain/models/beer.dart';
 import '../../catalog/domain/models/brewery.dart';
@@ -15,14 +16,6 @@ class DiscoverController extends ChangeNotifier {
   DiscoverController({required this._repository});
 
   static const Duration searchDebounce = Duration(milliseconds: 350);
-
-  /// Hard cap on how many brewery filter-option pages are fetched, so an
-  /// unexpectedly large catalog can't be pulled into memory in full. Above
-  /// this (500 breweries), the filter picker simply won't offer the rest --
-  /// see docs/DECISIONS.md for the documented Phase 5 limit and the planned
-  /// future fix (a searchable/typeahead brewery picker).
-  static const int _maxBreweryOptionPages = 5;
-  static const int _breweryOptionsPageSize = 100;
 
   final CatalogRepository _repository;
 
@@ -204,10 +197,9 @@ class DiscoverController extends ChangeNotifier {
 
   Future<void> _loadLookups() async {
     try {
-      final countries = await _repository.getCountries();
-      final styles = await _repository.getBeerStyles();
-      countryNames = {for (final c in countries) c.id: c.name};
-      styleNames = {for (final s in styles) s.id: s.name};
+      final lookups = await loadCatalogNameLookups(_repository);
+      countryNames = lookups.countryNames;
+      styleNames = lookups.styleNames;
       notifyListeners();
     } catch (e, st) {
       // Style/country name lookups are cosmetic (tile subtitles, filter
@@ -219,18 +211,7 @@ class DiscoverController extends ChangeNotifier {
 
   Future<void> _loadBreweryOptions() async {
     try {
-      final options = <Brewery>[];
-      var page = 1;
-      while (page <= _maxBreweryOptionPages) {
-        final result = await _repository.getBreweries(
-          page: page,
-          pageSize: _breweryOptionsPageSize,
-        );
-        options.addAll(result.items);
-        if (options.length >= result.total || result.items.isEmpty) break;
-        page += 1;
-      }
-      breweryOptions = options;
+      breweryOptions = await loadBreweryFilterOptions(_repository);
       notifyListeners();
     } catch (e, st) {
       logCatalogError('DiscoverController.loadBreweryOptions', e, st);

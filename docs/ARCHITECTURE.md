@@ -97,3 +97,38 @@ enforced by **two** layers instead: the repository's explicit
 `sub` claim at the start of each transaction) — never `auth.uid()`, and
 never a blanket `USING (true)` policy. See `docs/DATABASE.md`'s
 `user_beer_logs` section for the exact mechanism.
+
+`public.user_beer_collection` (Phase 7) is the second table on this pattern
+— favorite/wishlist state, distinct from `user_beer_logs`'s repeatable
+historical events. Since a second repository now needed the identical
+transaction-scoped-identity mechanism, it was extracted out of
+`BeerLogRepository._scoped` into a small shared helper,
+`scoped_connection()` (`backend/app/repositories/scoped_connection.py`) —
+the same "wait for a second real consumer before generalizing" bar CLAUDE.md
+asks for elsewhere. Both repositories still filter `WHERE user_id = $N`
+explicitly on every query in addition to it; the helper only centralizes the
+"open a transaction and set `app.user_id`" plumbing, not the query logic
+itself.
+
+## Collection freshness (Phase 7)
+
+The Collection screen (unique beers tried, favorites, wishlist) must reflect
+mutations that happen elsewhere — logging a beer or favoriting/wishlisting it
+from Beer Detail — without a manual refresh. The obvious navigation-driven
+approach (a `RouteObserver`/`RouteAware` hook firing when Beer Detail pops)
+was rejected: `BeerDetailScreen` is a top-level route on the root navigator
+while `CollectionScreen` lives inside its own `StatefulShellBranch` navigator,
+so that hook would only fire on an actual push/pop — missing the common case
+of returning to a *different* tab first and switching to Collection later via
+the bottom nav.
+
+Instead, `CollectionRefreshSignal` (`mobile/lib/shared/collection_refresh_signal.dart`)
+is a tiny mutation-driven `ChangeNotifier`: any controller that successfully
+mutates data Collection cares about (`BeerLogController`,
+`CollectionStateController`) calls `notifyChanged()` on it, and
+`CollectionController` listens and calls `refresh()`. This works with no
+visibility check at all, because `StatefulShellRoute.indexedStack` keeps
+every branch's widget subtree — including `CollectionController` — mounted
+and responsive even while a different tab is showing, so a hidden
+`CollectionController` still processes the notification and has fresh data
+ready by the time the user switches to that tab. See `docs/DECISIONS.md`.

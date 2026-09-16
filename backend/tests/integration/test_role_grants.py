@@ -60,3 +60,26 @@ def test_beerapp_backend_has_full_grants_on_user_beer_logs(backend_role_dsn):
             await conn.close()
 
     asyncio.run(body())
+
+
+def test_beerapp_backend_has_full_grants_on_user_beer_collection(backend_role_dsn):
+    """Phase 7's second user-owned write table, on the exact same grant
+    shape as user_beer_logs above -- see
+    tests/integration/test_user_beer_collection_rls.py for the row-level
+    behavior those grants combine with.
+    """
+
+    async def body() -> None:
+        conn = await asyncpg.connect(**parse_dsn_kwargs(backend_role_dsn), ssl="require")
+        try:
+            rows = await conn.fetch(
+                "select privilege_type from information_schema.role_table_grants "
+                "where table_schema = 'public' and table_name = 'user_beer_collection' "
+                "and grantee = 'beerapp_backend'"
+            )
+            privileges = {row["privilege_type"] for row in rows}
+            assert privileges == {"SELECT", "INSERT", "UPDATE", "DELETE"}
+        finally:
+            await conn.close()
+
+    asyncio.run(body())

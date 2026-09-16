@@ -158,12 +158,6 @@ abstract class AppLocalizations {
   /// **'Scan a beer label to add it to your collection in seconds.'**
   String get scanScreenDescription;
 
-  /// Placeholder description for the Collection screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Keep track of every beer you have tried and rated.'**
-  String get collectionScreenDescription;
-
   /// Placeholder description for the Profile screen.
   ///
   /// In en, this message translates to:
@@ -727,6 +721,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'We couldn\'t save your log. Please try again.'**
   String get beerLogErrorGeneric;
+
+  /// Accessible label/tooltip for the favorite button on the beer detail screen when the beer is not currently favorited.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to favorites'**
+  String get beerDetailAddToFavoritesAction;
+
+  /// Accessible label/tooltip for the favorite button on the beer detail screen when the beer is currently favorited.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from favorites'**
+  String get beerDetailRemoveFromFavoritesAction;
+
+  /// Accessible label/tooltip for the wishlist button on the beer detail screen when the beer is not currently on the wishlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to wishlist'**
+  String get beerDetailAddToWishlistAction;
+
+  /// Accessible label/tooltip for the wishlist button on the beer detail screen when the beer is currently on the wishlist.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from wishlist'**
+  String get beerDetailRemoveFromWishlistAction;
+
+  /// Collection screen tab label for the Logged (unique beers tried) view.
+  ///
+  /// In en, this message translates to:
+  /// **'Logged'**
+  String get collectionTabLogged;
+
+  /// Collection screen tab label for the Favorites view.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get collectionTabFavorites;
+
+  /// Collection screen tab label for the Wishlist view.
+  ///
+  /// In en, this message translates to:
+  /// **'Wishlist'**
+  String get collectionTabWishlist;
+
+  /// Title of the Collection screen's filters bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters'**
+  String get collectionFiltersSheetTitle;
+
+  /// Collection screen sort option: most-recent-activity-first.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get collectionSortRecent;
+
+  /// Collection screen sort option: by the beer's latest logged rating.
+  ///
+  /// In en, this message translates to:
+  /// **'Rating'**
+  String get collectionSortRating;
+
+  /// Collection screen sort option: alphabetically by beer name.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get collectionSortName;
+
+  /// Shown on the Collection screen's Logged tab when the user has no beer logs.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t logged any beers yet.'**
+  String get collectionLoggedEmptyMessage;
+
+  /// Shown on the Collection screen's Favorites tab when the user has no favorites.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t favorited any beers yet.'**
+  String get collectionFavoritesEmptyMessage;
+
+  /// Shown on the Collection screen's Wishlist tab when the user has no wishlist beers.
+  ///
+  /// In en, this message translates to:
+  /// **'Your wishlist is empty.'**
+  String get collectionWishlistEmptyMessage;
+
+  /// Shown when a Collection request fails because there is no usable authenticated session.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again to continue.'**
+  String get collectionErrorUnauthorized;
+
+  /// Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503).
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t available right now. Please try again in a moment.'**
+  String get collectionErrorServiceUnavailable;
+
+  /// Shown when a Collection request fails due to no network connectivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get collectionErrorNetwork;
+
+  /// Shown when a Collection request returns 404 (the beer itself doesn't exist).
+  ///
+  /// In en, this message translates to:
+  /// **'This beer could not be found.'**
+  String get collectionErrorNotFound;
+
+  /// Fallback error message for Collection requests, used instead of showing a raw backend error message.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load your collection. Please try again.'**
+  String get collectionErrorGeneric;
 }
 
 class _AppLocalizationsDelegate

@@ -1,9 +1,9 @@
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
 from datetime import datetime
 from decimal import Decimal
 
 import asyncpg
+
+from app.repositories.scoped_connection import scoped_connection
 
 _COLUMNS = (
     "id, user_id, beer_id, rating, review, consumed_at, serving_note, "
@@ -31,25 +31,14 @@ class BeerLogRepository:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._pool = pool
 
-    @asynccontextmanager
-    async def _scoped(self, user_id: str) -> AsyncIterator[asyncpg.Connection]:
-        """Every user_beer_logs operation runs inside a transaction with
-        app.user_id set via SET LOCAL (transaction-scoped, never
-        session-level: the pool reuses physical connections across
-        unrelated requests/users, and SET LOCAL is automatically unset at
-        COMMIT/ROLLBACK, exactly when the connection returns to the pool).
-        This is what the backend_owns_rows RLS policy on user_beer_logs
-        checks against -- see supabase/migrations/
-        20260915120700_grant_beerapp_backend_user_beer_logs.sql and
-        docs/DATABASE.md. Every method below still filters
-        `where user_id = $N` explicitly in addition to this -- the RLS
-        policy is a backstop that makes an isolation bug in the SQL below
-        non-exploitable, not a replacement for careful queries.
-        """
-        async with self._pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute("select set_config('app.user_id', $1, true)", user_id)
-                yield conn
+    def _scoped(self, user_id: str):
+        # Delegates to the shared scoped_connection helper (see
+        # app/repositories/scoped_connection.py) -- extracted in Phase 7 once
+        # CollectionRepository became a second consumer of this exact
+        # mechanism. Every method below still filters `where user_id = $N`
+        # explicitly in addition to this -- the RLS policy scoped_connection
+        # relies on is a backstop, not a replacement for careful queries.
+        return scoped_connection(self._pool, user_id)
 
     async def create(
         self,

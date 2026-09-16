@@ -9,6 +9,9 @@ import '../../../../design_system/tokens/app_radii.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../design_system/tokens/app_typography.dart';
 import '../../../../l10n/generated/app_localizations.dart';
+import '../../../../shared/collection_refresh_signal.dart';
+import '../../../collection/domain/collection_repository.dart';
+import '../../../collection/presentation/collection_state_controller.dart';
 import '../../../logging/domain/log_repository.dart';
 import '../../../logging/presentation/beer_log/beer_log_controller.dart';
 import '../../../logging/presentation/beer_log/log_form_sheet.dart';
@@ -23,12 +26,16 @@ class BeerDetailScreen extends StatefulWidget {
   const BeerDetailScreen({
     required this.repository,
     required this.logRepository,
+    required this.collectionRepository,
+    required this.refreshSignal,
     required this.beerId,
     super.key,
   });
 
   final CatalogRepository repository;
   final LogRepository logRepository;
+  final CollectionRepository collectionRepository;
+  final CollectionRefreshSignal refreshSignal;
   final String beerId;
 
   @override
@@ -43,19 +50,28 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
   late final BeerLogController _logController = BeerLogController(
     repository: widget.logRepository,
     beerId: widget.beerId,
+    refreshSignal: widget.refreshSignal,
   );
+  late final CollectionStateController _collectionController =
+      CollectionStateController(
+        repository: widget.collectionRepository,
+        beerId: widget.beerId,
+        refreshSignal: widget.refreshSignal,
+      );
 
   @override
   void initState() {
     super.initState();
     _controller.load();
     _logController.load();
+    _collectionController.load();
   }
 
   @override
   void dispose() {
     _controller.dispose();
     _logController.dispose();
+    _collectionController.dispose();
     super.dispose();
   }
 
@@ -76,14 +92,72 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
     // same notifications as the body -- both live inside this one
     // ListenableBuilder rather than splitting it out, so the title isn't
     // stuck showing its initial (pre-load) value. Merged with
-    // _logController too, so the "Your logs" section rebuilds from the
-    // same single listenable.
+    // _logController/_collectionController too, so "Your logs" and the
+    // favorite/wishlist buttons rebuild from the same single listenable.
+    // _collectionController's own load failure is deliberately never
+    // consulted by _buildBody's guards below -- a collection-state failure
+    // can only ever disable the favorite/wishlist buttons, never block the
+    // rest of the screen.
     return ListenableBuilder(
-      listenable: Listenable.merge([_controller, _logController]),
+      listenable: Listenable.merge([
+        _controller,
+        _logController,
+        _collectionController,
+      ]),
       builder: (context, _) => Scaffold(
-        appBar: AppBar(title: Text(_controller.beer?.officialName ?? '')),
+        appBar: AppBar(
+          title: Text(_controller.beer?.officialName ?? ''),
+          actions: _controller.beer == null
+              ? null
+              : [_buildCollectionActions(context)],
+        ),
         body: _buildBody(context),
       ),
+    );
+  }
+
+  Widget _buildCollectionActions(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    // Disabled while loading, or if the initial load never succeeded (no
+    // confirmed baseline state to toggle from) -- a collection-state
+    // failure only ever disables these two buttons, never the rest of the
+    // screen (see this method's caller). A later failed mutation rolls
+    // back to the last-known-good value and does not disable the buttons,
+    // since retrying is safe once there's a confirmed baseline.
+    final disabled =
+        _collectionController.isLoading || !_collectionController.hasLoaded;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: Icon(
+            _collectionController.isFavorite ? Icons.star : Icons.star_border,
+          ),
+          tooltip: _collectionController.isFavorite
+              ? l10n.beerDetailRemoveFromFavoritesAction
+              : l10n.beerDetailAddToFavoritesAction,
+          onPressed: disabled
+              ? null
+              : () => _collectionController.setFavorite(
+                  !_collectionController.isFavorite,
+                ),
+        ),
+        IconButton(
+          icon: Icon(
+            _collectionController.isWishlist
+                ? Icons.bookmark
+                : Icons.bookmark_border,
+          ),
+          tooltip: _collectionController.isWishlist
+              ? l10n.beerDetailRemoveFromWishlistAction
+              : l10n.beerDetailAddToWishlistAction,
+          onPressed: disabled
+              ? null
+              : () => _collectionController.setWishlist(
+                  !_collectionController.isWishlist,
+                ),
+        ),
+      ],
     );
   }
 

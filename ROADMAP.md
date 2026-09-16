@@ -136,8 +136,8 @@ Tables/entities:
 - [x] breweries
 - [x] beers
 - [x] user_beer_logs — built in Phase 6, see that phase's entry
-- [ ] favorites — deferred to Phase 7
-- [ ] wishlist — deferred to Phase 7
+- [x] favorites — built in Phase 7 as part of `user_beer_collection`, see that phase's entry
+- [x] wishlist — built in Phase 7 as part of `user_beer_collection`, see that phase's entry
 
 Tasks:
 
@@ -191,6 +191,8 @@ Tasks:
 > `favorites`/`wishlist` table or endpoint yet (Phase 3's scope note above).
 > Phase 4 does not add favorites, wishlist, ratings, reviews, logging,
 > achievements, the scanner, the map, recommendations, or social features.
+> **Completion note (2026-09-16)**: the favorite/wishlist buttons landed in
+> Phase 7, on Beer Detail's AppBar — see that phase's entry.
 
 Exit criteria:
 
@@ -288,7 +290,7 @@ Tasks:
 - [ ] Optional photo — deferred: no Supabase Storage wiring this phase. See `docs/DECISIONS.md`.
 - [x] Quick-log flow
 - [x] Detailed-log flow
-- [ ] Update collection state after logging — deferred to Phase 7: this task most naturally reads as "the Collection screen reflects a newly-created log," which requires a Collection screen that doesn't exist yet (Phase 7's own first task). Phase 6 makes the underlying data queryable and correct (`GET /beer-logs`, ordered/paginated) so Phase 7 can build that screen without any API change, but no visible collection state is actually updated by anything in Phase 6.
+- [x] Update collection state after logging — built in Phase 7: `BeerLogController` now pings `CollectionRefreshSignal` after every successful create/update/delete, and `CollectionController` listens and refreshes. See that phase's entry.
 
 Also implemented, beyond the original task list, as a scoped product
 exception (see `docs/DECISIONS.md`): an optional `serving_volume_ml` field,
@@ -336,23 +338,63 @@ Goal: turn logging into a visible collection.
 
 Tasks:
 
-- [ ] Collection screen
-- [ ] Unique beers tried
-- [ ] Recent beers
-- [ ] Favorites
-- [ ] Wishlist
-- [ ] Filter by country
-- [ ] Filter by style
-- [ ] Filter by brewery
-- [ ] Sort by rating
-- [ ] Sort by date
-- [ ] Sort by name
-- [ ] Collection empty states
+- [x] Collection screen — one screen, Logged/Favorites/Wishlist tabs (`CollectionScreen`)
+- [x] Unique beers tried — `GET /collection/logged`, derived from `user_beer_logs` via `DISTINCT ON (beer_id)`, never a stored/duplicated count
+- [x] Recent beers — the default `sort=recent` on every tab (most-recently-active-first), no separate section needed
+- [x] Favorites — `is_favorite` on the new `user_beer_collection` table; Beer Detail AppBar button + the Favorites tab
+- [x] Wishlist — `is_wishlist` on the same table; Beer Detail AppBar button + the Wishlist tab
+- [x] Filter by country
+- [x] Filter by style
+- [x] Filter by brewery
+- [x] Sort by rating — the beer's *latest* log's rating, never an average (see `docs/DECISIONS.md`)
+- [x] Sort by date — `sort=recent`
+- [x] Sort by name — case-insensitive
+- [x] Collection empty states — distinct message per tab
+
+Note: Collection's current UI is functional, using existing design-system
+components (`AppCard`, `AppFilterChip`, shared loading/empty/error states) —
+a dedicated visual/UI polish pass (spacing, iconography, empty-state
+illustration, etc.) is intentionally deferred to a later design pass, not
+part of this phase's exit criteria.
 
 Exit criteria:
 
-- Collection accurately reflects user logs
-- Wishlist and favorites work independently
+- [x] Collection accurately reflects user logs — verified both by automated tests (`test_collection_queries.py`'s unique-beers-tried/multiple-logs cases) and the live Android smoke test below (a beer logged, including a second independent log for the same beer, appeared exactly once under Logged with no manual refresh).
+- [x] Wishlist and favorites work independently — verified both by automated tests (service, route, and concurrency-scenario tests all assert one flag never disturbs the other) and the live smoke test below (favorite/wishlist set and cleared independently from Beer Detail, state persisted across navigation and relaunch, correctly isolated per user account).
+
+**Status (2026-09-16)**: complete. Default backend suite (`pytest`,
+excludes `@pytest.mark.integration`) and default Flutter suite
+(`flutter test`) both pass in full — 120 backend tests (186 total including
+the 66 opt-in `@pytest.mark.integration` tests, still not run — no
+`INTEGRATION_DATABASE_URL` configured in this environment, see below), 208
+Flutter tests, `flutter analyze`/`dart format` and `ruff check`/`ruff format`
+clean. The two migrations
+(`20260915220833_create_user_beer_collection_table.sql`,
+`20260915220843_grant_beerapp_backend_user_beer_collection.sql`) were
+applied to `beerapp-dev` via `supabase db push`, confirmed by
+`supabase migration list` (all local/remote entries matching) and a clean
+`supabase db lint --linked`.
+
+**Live Android smoke test — passed**, against the real local FastAPI
+backend and the real `beerapp-dev` Supabase project, reported by the tester
+as passing the full circulated checklist: Collection initial state (all
+three tabs, no raw backend errors); logging → Collection freshness,
+including a beer logged twice still appearing once under Logged; favorite/
+wishlist independence from Beer Detail; persistence across navigation and
+relaunch; sort by recent/rating/name; country/style/brewery filters
+(apply/clear/dismiss-without-applying); pagination if the dev account had
+enough rows to exercise it; a second test account's isolation from the
+first account's logs and favorite/wishlist state; and no raw backend/SQL
+errors, stack traces, or identifiers surfaced in the UI.
+
+**Still not run**: `backend/tests/integration/` (including the new
+`test_user_beer_collection_rls.py`/`test_collection_queries.py`/
+`test_collection_concurrency.py`) — `INTEGRATION_DATABASE_URL` is not
+configured in this environment, so those tests skip rather than run. This
+does not block the exit criteria above (the live smoke test independently
+confirmed the same isolation/independence properties against real
+infrastructure), but the integration suite should still be run against a
+disposable database before relying on it as an ongoing regression guard.
 
 ---
 

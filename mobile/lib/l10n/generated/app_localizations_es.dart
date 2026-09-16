@@ -43,10 +43,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Escanea la etiqueta de una cerveza para añadirla a tu colección en segundos.';
 
   @override
-  String get collectionScreenDescription =>
-      'Lleva el registro de cada cerveza que has probado y valorado.';
-
-  @override
   String get profileScreenDescription =>
       'Gestiona tu perfil, logros y preferencias.';
 
@@ -354,4 +350,68 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get beerLogErrorGeneric =>
       'No pudimos guardar tu registro. Inténtalo de nuevo.';
+
+  @override
+  String get beerDetailAddToFavoritesAction => 'Añadir a favoritas';
+
+  @override
+  String get beerDetailRemoveFromFavoritesAction => 'Quitar de favoritas';
+
+  @override
+  String get beerDetailAddToWishlistAction => 'Añadir a la lista de deseos';
+
+  @override
+  String get beerDetailRemoveFromWishlistAction =>
+      'Quitar de la lista de deseos';
+
+  @override
+  String get collectionTabLogged => 'Registradas';
+
+  @override
+  String get collectionTabFavorites => 'Favoritas';
+
+  @override
+  String get collectionTabWishlist => 'Lista de deseos';
+
+  @override
+  String get collectionFiltersSheetTitle => 'Filtros';
+
+  @override
+  String get collectionSortRecent => 'Reciente';
+
+  @override
+  String get collectionSortRating => 'Valoración';
+
+  @override
+  String get collectionSortName => 'Nombre';
+
+  @override
+  String get collectionLoggedEmptyMessage =>
+      'Todavía no has registrado ninguna cerveza.';
+
+  @override
+  String get collectionFavoritesEmptyMessage =>
+      'Todavía no has marcado ninguna cerveza como favorita.';
+
+  @override
+  String get collectionWishlistEmptyMessage => 'Tu lista de deseos está vacía.';
+
+  @override
+  String get collectionErrorUnauthorized =>
+      'Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.';
+
+  @override
+  String get collectionErrorServiceUnavailable =>
+      'Esto no está disponible en este momento. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get collectionErrorNetwork =>
+      'Revisa tu conexión a internet e inténtalo de nuevo.';
+
+  @override
+  String get collectionErrorNotFound => 'No se pudo encontrar esta cerveza.';
+
+  @override
+  String get collectionErrorGeneric =>
+      'No pudimos cargar tu colección. Inténtalo de nuevo.';
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../../shared/collection_refresh_signal.dart';
 import '../../domain/log_repository.dart';
 import '../../domain/models/beer_log.dart';
 import '../../domain/models/beer_log_input.dart';
@@ -17,11 +18,26 @@ import '../beer_log_debug_log.dart';
 /// `isLoading`/`isLoadingMore` at all, because by the time it resolves a
 /// newer request may legitimately have that flag set to `true` for its own
 /// in-flight work, and an unconditional reset would stomp on it.
+///
+/// Every successful create/update/delete pings [CollectionRefreshSignal] so
+/// the Collection screen (unique beers tried, "Recent beers") stays fresh --
+/// see that signal's doc comment for why this is mutation-driven rather than
+/// navigation-driven. The signal fires immediately once the backend mutation
+/// itself succeeds, *before* the follow-up [load] reload -- Collection
+/// must be notified regardless of whether that local reload subsequently
+/// succeeds or fails, so the notification can never be silently skipped by
+/// an unrelated local-reload problem (e.g. `notifyListeners()` throwing
+/// because this controller was disposed while the reload was in flight).
 class BeerLogController extends ChangeNotifier {
-  BeerLogController({required this._repository, required this._beerId});
+  BeerLogController({
+    required this._repository,
+    required this._beerId,
+    required this._refreshSignal,
+  });
 
   final LogRepository _repository;
   final String _beerId;
+  final CollectionRefreshSignal _refreshSignal;
   static const int _pageSize = 20;
 
   String get beerId => _beerId;
@@ -108,6 +124,10 @@ class BeerLogController extends ChangeNotifier {
     notifyListeners();
     try {
       await _repository.createLog(input);
+      // Notified immediately once the backend mutation itself has
+      // succeeded, before the local reload -- Collection must be notified
+      // regardless of whether the follow-up load() below succeeds.
+      _refreshSignal.notifyChanged();
       await load();
       return true;
     } catch (e, st) {
@@ -126,6 +146,8 @@ class BeerLogController extends ChangeNotifier {
     notifyListeners();
     try {
       await _repository.updateLog(logId, input);
+      // See submitCreate's comment -- notified before the local reload.
+      _refreshSignal.notifyChanged();
       await load();
       return true;
     } catch (e, st) {
@@ -144,6 +166,8 @@ class BeerLogController extends ChangeNotifier {
     notifyListeners();
     try {
       await _repository.deleteLog(logId);
+      // See submitCreate's comment -- notified before the local reload.
+      _refreshSignal.notifyChanged();
       await load();
       return true;
     } catch (e, st) {
