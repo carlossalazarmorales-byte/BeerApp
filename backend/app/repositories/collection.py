@@ -237,6 +237,29 @@ class CollectionRepository:
     async def set_state(
         self, *, user_id: str, beer_id: str, is_favorite: bool | None, is_wishlist: bool | None
     ) -> dict:
+        async with self._scoped(user_id) as conn:
+            return await self.set_state_on_connection(
+                conn,
+                user_id=user_id,
+                beer_id=beer_id,
+                is_favorite=is_favorite,
+                is_wishlist=is_wishlist,
+            )
+
+    async def set_state_on_connection(
+        self,
+        conn: asyncpg.Connection,
+        *,
+        user_id: str,
+        beer_id: str,
+        is_favorite: bool | None,
+        is_wishlist: bool | None,
+    ) -> dict:
+        # Operates on a caller-supplied connection so CollectionService can
+        # run this in the same transaction as achievement evaluation (Phase
+        # 10, see docs/DECISIONS.md). `set_state` above remains the public
+        # entry point for any other caller and is unchanged in behavior.
+        #
         # Atomic, race-safe merge -- see docs/DECISIONS.md for the full
         # derivation and the four concurrency scenarios this was verified
         # against. $3/$4 (is_favorite/is_wishlist) are NULL when the PATCH
@@ -283,14 +306,13 @@ class CollectionRepository:
             "returning id, user_id, beer_id, is_favorite, is_wishlist, "
             "favorited_at, wishlisted_at, created_at, updated_at"
         )
-        async with self._scoped(user_id) as conn:
-            record = await conn.fetchrow(query, user_id, beer_id, is_favorite, is_wishlist)
-            result = dict(record)
-            if not result["is_favorite"] and not result["is_wishlist"]:
-                await conn.execute(
-                    "delete from public.user_beer_collection where user_id = $1 and beer_id = $2",
-                    user_id,
-                    beer_id,
-                )
-                return {"beer_id": beer_id, "is_favorite": False, "is_wishlist": False}
-            return result
+        record = await conn.fetchrow(query, user_id, beer_id, is_favorite, is_wishlist)
+        result = dict(record)
+        if not result["is_favorite"] and not result["is_wishlist"]:
+            await conn.execute(
+                "delete from public.user_beer_collection where user_id = $1 and beer_id = $2",
+                user_id,
+                beer_id,
+            )
+            return {"beer_id": beer_id, "is_favorite": False, "is_wishlist": False}
+        return result

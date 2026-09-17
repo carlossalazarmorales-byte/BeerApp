@@ -1174,3 +1174,148 @@ added, per the original scoping decision above. Covered by a new
 Spanish renders Spanish ones and never the English ones). Re-verified live:
 the chart now reads "ene feb mar abr may jun jul ago sep oct nov dic" in
 Spanish with no clipping/overflow.
+
+## 2026-09-17 — Phase 10: achievement catalog is code, not a database table
+
+ROADMAP.md's exit criteria for Phase 10 require achievements to be
+"data-driven" and that "adding a new achievement does not require major
+application changes." Two ways to satisfy that were considered: a database
+table of achievement definitions (key, category, threshold), or a static
+catalog in backend code.
+
+Chose code (`ACHIEVEMENT_CATALOG` in `backend/app/services/achievement_catalog.py`
+— a `dict[str, AchievementDefinition]`). A DB table would need its own
+migration, its own admin-facing write path (explicitly out of scope — "do
+not build an admin achievement CMS" per the original planning brief), and
+would still need backend code changes to interpret new metric/prerequisite
+shapes; it buys nothing a code catalog doesn't already give. Adding a normal
+future achievement is one dict entry plus one localized name/description ARB
+pair per locale (`achievement_localizations.dart` on the mobile side) — no
+migration, no new Dart class, satisfying "does not require major application
+changes" without the operational overhead of a second source of truth.
+
+Corollary: `user_achievements.achievement_key` is a plain `text` column, not
+an FK to a definitions table and not a Postgres enum — validated only in
+application code against the current catalog. A persisted row whose key is
+later retired from the catalog is simply skipped when building the
+`GET /achievements` response (the response is built by iterating the
+catalog and checking it against the unlocked-rows map, never the reverse),
+rather than being treated as a data-integrity error.
+
+## 2026-09-17 — Phase 10: hybrid evaluation (Collection-mutation-triggered + read-time backfill), not purely lazy
+
+The first design considered evaluating the achievement catalog only lazily,
+inside `GET /achievements` — mirroring Statistics's fully-derived-on-read
+philosophy, with zero eager hooks into existing mutation code. That has a
+real gap given the Phase 10 starter catalog's *reversible* conditions
+(favorite/wishlist state): a user could satisfy a condition (favorite a
+beer) and reverse it (unfavorite) before ever opening the Achievements
+screen. Since progress itself is never persisted, nothing would ever capture
+that the condition was once true, and the achievement — despite being
+permanent by product decision — would never unlock at all.
+
+Fixed by introducing a small `AchievementEvaluator` service
+(`backend/app/services/achievement_evaluator.py`) with one method,
+`evaluate_and_unlock`, invoked from two places:
+
+1. `CollectionService.set_state`, immediately after its own mutation
+   succeeds — the primary trigger for reversible achievements, so an unlock
+   is captured at the moment a condition first becomes true, before it can
+   ever be reversed unseen.
+2. `AchievementsService.get_achievements`, before building its response — an
+   idempotent repair/backfill path (covers e.g. data that predates this
+   feature), not the only place unlocks can happen.
+
+No background worker or queue: `evaluate_and_unlock` is cheap (two small
+`COUNT(*)` queries against `user_beer_collection` for the current 3-entry
+catalog) and fully idempotent (`INSERT ... ON CONFLICT DO NOTHING`), so
+calling it synchronously inside an existing request is not a scaling
+concern at this stage. `BeerLogService` is deliberately **not** wired to
+this evaluator in Phase 10 — there is no approved log-derived starter
+achievement, so adding the hook now would be speculative; see the starter
+catalog scope entry below.
+
+## 2026-09-17 — Phase 10: Collection mutation and achievement evaluation share one database transaction
+
+Triggering evaluation from `CollectionService.set_state` (previous entry) is
+not sufficient by itself if the mutation and the evaluation run in separate
+transactions: the Collection write could commit, evaluation could then fail
+for any reason, and if the condition is reversed before anything ever
+retries, the fact that it was once satisfied is unrecoverably lost — exactly
+the gap the previous fix was meant to close.
+
+Fixed by making both run inside the same transaction. `AchievementsRepository`
+and one method of `CollectionRepository` (`set_state_on_connection`, an
+extraction of the existing `set_state` SQL with no logic change) are written
+to operate on an already-open `asyncpg.Connection` passed in by the caller,
+rather than each opening its own `scoped_connection`. `CollectionService.set_state`
+now owns the transaction boundary itself: it opens one `scoped_connection`,
+runs the Collection upsert/delete on that connection, then runs
+`AchievementEvaluator.evaluate_and_unlock` on the *same* connection, all
+before the block exits and commits. If evaluation raises, the exception
+propagates out of that block and the whole transaction — Collection mutation
+included — rolls back.
+
+This is a deliberate, accepted trade-off: an unexpected bug in achievement
+evaluation now surfaces as a 500 on the Collection `PATCH` itself, rather
+than silently succeeding at the mutation while losing the achievement
+opportunity. Considered acceptable because `evaluate_and_unlock` is small,
+pure, and has direct unit coverage
+(`backend/tests/services/test_achievement_evaluator_service.py`), plus a
+dedicated integration test written to prove the real-Postgres rollback
+behavior (`backend/tests/integration/test_collection_achievement_atomicity.py`)
+— not yet executed against a disposable database in this environment (see
+ROADMAP.md Phase 10 status), so the rollback claim itself rests on the unit
+test's proxy assertion (the service propagates the evaluator's exception
+rather than swallowing it) until that integration run happens.
+`AchievementsRepository` not taking a `pool` in its constructor — every
+method takes a connection instead — is the resulting, deliberate deviation
+from every other repository in this codebase; `AchievementsService.get_achievements`
+opens its own `scoped_connection` for the read-time backfill path, so the
+same connection-taking repository methods serve both call sites without
+duplicating any SQL.
+
+`user_achievements`'s RLS also uses two explicit command-specific policies
+(`backend_select_own`, `backend_insert_own`) rather than the single `for
+all` policy used on `user_beer_logs`/`user_beer_collection` — see
+`docs/DATABASE.md` for the shape; recorded here because it's the same
+permanence-first reasoning as the grant/transaction decisions above:
+defense-in-depth matching the already-narrower `SELECT, INSERT`-only grant,
+not a case the established single-policy convention required deviating
+from.
+
+## 2026-09-17 — Phase 10: starter catalog excludes logged-activity counts and `profile_complete`; `collection_curator` checks unlocked prerequisites, not simultaneous live metrics
+
+The first proposed starter catalog included achievements based on counts of
+logged beers, countries/styles/breweries discovered through logs, reviews
+written, and ratings given — all categories PRODUCT.md §16 lists as
+acceptable. **Rejected on review**: the mechanic of counting *logged
+consumption activity* toward an unlock threshold creates an incentive to log
+more drinking activity to reach a number, which sits outside the approved
+product boundary (PRODUCT.md §3 / CLAUDE.md Responsible Product Design)
+even though the category labels themselves are fine. The categories remain
+in `AchievementCategory` (backend and mobile) for a future, non-incentivizing
+data source (e.g. Discover-driven "viewed" activity) — only their Phase 10
+*definitions* are deferred, not the architecture's support for them.
+
+A `profile_complete` achievement (reusing the existing client-side
+`Profile.isComplete` definition, `mobile/lib/features/auth/domain/profile.dart`)
+was also considered and deferred: the backend has no grant at all on
+`public.profiles` today (it's read/written directly by the client via
+Supabase's native `auth.uid()` RLS, never proxied through `beerapp_backend`),
+so evaluating it server-side would require a new grant migration — a real
+cross-system coupling change not justified for one starter achievement. Can
+be revisited alongside Phase 12 (Profile and Settings).
+
+The shipped Phase 10 starter catalog is three Collection-only entries:
+`collection_first_favorite`, `collection_first_wishlist`, and the compound
+`collection_curator`. `collection_curator` was originally specified as
+"favorites_count >= 1 AND wishlist_count >= 1" checked against live metrics
+— but since those counts are live and reversible, a user who favorited then
+unfavorited something, then later only wishlisted something, could never
+trigger it, even though `collection_first_favorite` stayed permanently
+unlocked the whole time. Fixed by giving `AchievementDefinition` a second
+way to specify a condition, `prerequisite_keys` (other catalog keys that
+must already be permanently unlocked), used instead of `requirements` for
+compound entries — permanence-safe by construction, since it checks the
+already-unlocked set rather than live metrics evaluated together.

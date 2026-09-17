@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import asynccontextmanager
 from uuid import UUID
 
 import asyncpg
@@ -30,6 +31,46 @@ def _collection_beer_row(**overrides) -> dict:
     return row
 
 
+class _FakeConnection:
+    """A sentinel object, not a real asyncpg.Connection -- tests assert
+    identity (is) on this to prove two calls shared one connection/
+    transaction, without needing a real database.
+    """
+
+
+class _FakePool:
+    """Duck-types asyncpg.Pool.acquire() just enough for the real
+    scoped_connection() (unmodified, imported by CollectionService) to run
+    against it -- so these tests exercise the actual transaction-opening
+    code path, not a mock of it.
+    """
+
+    def __init__(self, conn: _FakeConnection) -> None:
+        self._conn = conn
+
+    @asynccontextmanager
+    async def acquire(self):
+        yield self._conn
+
+
+# scoped_connection() calls conn.transaction(isolation=...) and
+# conn.execute(...) on whatever `acquire()` yields -- _FakeConnection must
+# support both for the real scoped_connection to run unmodified.
+def _patch_fake_connection() -> None:
+    async def _noop_execute(self, *args, **kwargs):
+        return None
+
+    @asynccontextmanager
+    async def _noop_transaction(self, isolation=None):
+        yield None
+
+    _FakeConnection.execute = _noop_execute
+    _FakeConnection.transaction = _noop_transaction
+
+
+_patch_fake_connection()
+
+
 class _FakeCollectionRepository:
     def __init__(self) -> None:
         self.logged_result: tuple[list[dict], int] = ([], 0)
@@ -52,9 +93,12 @@ class _FakeCollectionRepository:
     async def get_state(self, *, user_id: str, beer_id: str):
         return self.get_state_result
 
-    async def set_state(self, *, user_id: str, beer_id: str, is_favorite, is_wishlist):
+    async def set_state_on_connection(
+        self, conn, *, user_id: str, beer_id: str, is_favorite, is_wishlist
+    ):
         self.set_state_calls.append(
             {
+                "conn": conn,
                 "user_id": user_id,
                 "beer_id": beer_id,
                 "is_favorite": is_favorite,
@@ -66,17 +110,34 @@ class _FakeCollectionRepository:
         return self.set_state_result
 
 
+class _FakeAchievementEvaluator:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+        self.error: Exception | None = None
+
+    async def evaluate_and_unlock(self, conn, *, user_id: str) -> None:
+        self.calls.append({"conn": conn, "user_id": user_id})
+        if self.error is not None:
+            raise self.error
+
+
+def _make_service(repository=None, evaluator=None):
+    repository = repository or _FakeCollectionRepository()
+    evaluator = evaluator or _FakeAchievementEvaluator()
+    pool = _FakePool(_FakeConnection())
+    return CollectionService(repository, pool, evaluator), repository, evaluator
+
+
 def _run(coro):
     return asyncio.run(coro)
 
 
-# -- list_* pagination passthrough ------------------------------------------
+# -- list_* pagination passthrough (unaffected by the atomicity change) -----
 
 
 def test_list_logged_wraps_repository_rows_into_page():
-    repository = _FakeCollectionRepository()
+    service, repository, _ = _make_service()
     repository.logged_result = ([_collection_beer_row()], 1)
-    service = CollectionService(repository)
 
     page = _run(
         service.list_logged(
@@ -95,9 +156,8 @@ def test_list_logged_wraps_repository_rows_into_page():
 
 
 def test_list_favorites_wraps_repository_rows_into_page():
-    repository = _FakeCollectionRepository()
+    service, repository, _ = _make_service()
     repository.favorites_result = ([_collection_beer_row(is_favorite=True)], 1)
-    service = CollectionService(repository)
 
     page = _run(
         service.list_favorites(
@@ -115,9 +175,8 @@ def test_list_favorites_wraps_repository_rows_into_page():
 
 
 def test_list_wishlist_wraps_repository_rows_into_page():
-    repository = _FakeCollectionRepository()
+    service, repository, _ = _make_service()
     repository.wishlist_result = ([_collection_beer_row(is_wishlist=True)], 1)
-    service = CollectionService(repository)
 
     page = _run(
         service.list_wishlist(
@@ -138,22 +197,20 @@ def test_list_wishlist_wraps_repository_rows_into_page():
 
 
 def test_get_state_raises_not_found_when_repository_returns_none():
-    repository = _FakeCollectionRepository()
+    service, repository, _ = _make_service()
     repository.get_state_result = None
-    service = CollectionService(repository)
 
     with pytest.raises(NotFoundError):
         _run(service.get_state(user_id=_USER_ID, beer_id=_BEER_ID))
 
 
 def test_get_state_returns_false_false_for_a_real_beer_with_no_row():
-    repository = _FakeCollectionRepository()
+    service, repository, _ = _make_service()
     repository.get_state_result = {
         "beer_id": UUID(_BEER_ID),
         "is_favorite": False,
         "is_wishlist": False,
     }
-    service = CollectionService(repository)
 
     result = _run(service.get_state(user_id=_USER_ID, beer_id=_BEER_ID))
 
@@ -161,13 +218,12 @@ def test_get_state_returns_false_false_for_a_real_beer_with_no_row():
     assert result.is_wishlist is False
 
 
-# -- set_state: FK violation -> NotFoundError --------------------------------
+# -- set_state: FK violation -> NotFoundError, evaluator not invoked --------
 
 
-def test_set_state_foreign_key_violation_becomes_not_found():
-    repository = _FakeCollectionRepository()
+def test_set_state_foreign_key_violation_becomes_not_found_and_skips_evaluator():
+    service, repository, evaluator = _make_service()
     repository.set_state_error = asyncpg.ForeignKeyViolationError("no such beer")
-    service = CollectionService(repository)
 
     with pytest.raises(NotFoundError):
         _run(
@@ -176,15 +232,16 @@ def test_set_state_foreign_key_violation_becomes_not_found():
             )
         )
 
+    assert evaluator.calls == []
+
 
 def test_set_state_passes_absolute_requested_values_to_repository():
-    repository = _FakeCollectionRepository()
+    service, repository, _ = _make_service()
     repository.set_state_result = {
         "beer_id": UUID(_BEER_ID),
         "is_favorite": True,
         "is_wishlist": False,
     }
-    service = CollectionService(repository)
 
     _run(
         service.set_state(
@@ -198,13 +255,12 @@ def test_set_state_passes_absolute_requested_values_to_repository():
 
 
 def test_set_state_returns_repository_result():
-    repository = _FakeCollectionRepository()
+    service, repository, _ = _make_service()
     repository.set_state_result = {
         "beer_id": UUID(_BEER_ID),
         "is_favorite": False,
         "is_wishlist": False,
     }
-    service = CollectionService(repository)
 
     result = _run(
         service.set_state(
@@ -214,3 +270,55 @@ def test_set_state_returns_repository_result():
 
     assert result.is_favorite is False
     assert result.is_wishlist is False
+
+
+# -- atomicity: mutation and evaluation share one connection/transaction ----
+
+
+def test_set_state_invokes_evaluator_with_the_same_connection_as_the_mutation():
+    """The key regression test for the atomicity fix: proves
+    repository.set_state_on_connection and evaluator.evaluate_and_unlock
+    both ran against the exact same connection object, without needing a
+    real database -- see docs/DECISIONS.md.
+    """
+    service, repository, evaluator = _make_service()
+    repository.set_state_result = {
+        "beer_id": UUID(_BEER_ID),
+        "is_favorite": True,
+        "is_wishlist": False,
+    }
+
+    _run(
+        service.set_state(
+            user_id=_USER_ID, beer_id=_BEER_ID, payload=CollectionStateUpdate(is_favorite=True)
+        )
+    )
+
+    assert len(evaluator.calls) == 1
+    mutation_conn = repository.set_state_calls[0]["conn"]
+    evaluator_conn = evaluator.calls[0]["conn"]
+    assert mutation_conn is evaluator_conn
+    assert evaluator.calls[0]["user_id"] == _USER_ID
+
+
+def test_set_state_propagates_evaluator_failure_instead_of_reporting_success():
+    """Unit-level proxy for "evaluator failure rolls back the mutation" --
+    real rollback behavior itself requires Postgres (see
+    tests/integration/test_collection_achievement_atomicity.py). This proves
+    the service does not swallow the evaluator's exception to report the
+    Collection mutation as independently successful.
+    """
+    service, repository, evaluator = _make_service()
+    repository.set_state_result = {
+        "beer_id": UUID(_BEER_ID),
+        "is_favorite": True,
+        "is_wishlist": False,
+    }
+    evaluator.error = RuntimeError("boom")
+
+    with pytest.raises(RuntimeError):
+        _run(
+            service.set_state(
+                user_id=_USER_ID, beer_id=_BEER_ID, payload=CollectionStateUpdate(is_favorite=True)
+            )
+        )

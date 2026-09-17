@@ -2,6 +2,8 @@ import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/onboarding/age_gate_controller.dart';
+import '../features/achievements/domain/achievements_repository.dart';
+import '../features/achievements/presentation/achievements_screen.dart';
 import '../features/auth/domain/auth_repository.dart';
 import '../features/auth/domain/profile_repository.dart';
 import '../features/auth/presentation/auth_controller.dart';
@@ -100,6 +102,7 @@ GoRouter createRouter({
   required CollectionRepository collectionRepository,
   required MapRepository mapRepository,
   required StatisticsRepository statisticsRepository,
+  required AchievementsRepository achievementsRepository,
   required CollectionRefreshSignal refreshSignal,
 }) {
   return GoRouter(
@@ -172,6 +175,14 @@ GoRouter createRouter({
         path: AppRoutes.statistics,
         builder: (context, state) => StatisticsScreen(
           repository: statisticsRepository,
+          refreshSignal: refreshSignal,
+        ),
+      ),
+      // Declared as a top-level route, same reasoning as [statistics] above.
+      GoRoute(
+        path: AppRoutes.achievements,
+        builder: (context, state) => AchievementsScreen(
+          repository: achievementsRepository,
           refreshSignal: refreshSignal,
         ),
       ),

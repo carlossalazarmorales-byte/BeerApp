@@ -528,17 +528,17 @@ Goal: add progression and motivation.
 
 Tasks:
 
-- [ ] Achievement data model
-- [ ] Achievement definitions
-- [ ] Progress values
-- [ ] Locked state
-- [ ] Unlocked state
-- [ ] Unlock timestamp
-- [ ] Achievement evaluation service
-- [ ] Achievement screen
-- [ ] Achievement notifications
-- [ ] Categories
-- [ ] Progress bars
+- [x] Achievement data model
+- [x] Achievement definitions
+- [x] Progress values
+- [x] Locked state
+- [x] Unlocked state
+- [x] Unlock timestamp
+- [x] Achievement evaluation service
+- [x] Achievement screen
+- [x] Achievement notifications
+- [x] Categories
+- [x] Progress bars
 
 Potential categories:
 
@@ -552,10 +552,85 @@ Potential categories:
 - Collection
 - Special milestones
 
+Only Collection and Special have Phase 10 starter catalog entries
+(`collection_first_favorite`, `collection_first_wishlist`,
+`collection_curator`) — see `docs/DECISIONS.md` for why the
+consumption-count-based categories (Beers tried, Countries, Styles,
+Breweries, Reviews, Ratings) and Regions were deferred rather than
+populated now. The architecture (backend catalog, `AchievementCategory`
+enum, category-grouped screen) already supports all of them.
+
 Exit criteria:
 
-- Achievements are data-driven
-- Adding a new achievement does not require major application changes
+- [x] Achievements are data-driven — catalog lives entirely in
+  `backend/app/services/achievement_catalog.py`, not a database table
+- [x] Adding a new achievement does not require major application changes —
+  one catalog entry plus one localized name/description ARB pair per locale
+
+**Status (2026-09-17)**: complete. Backend (`pytest`, excluding
+`@pytest.mark.integration`, 172 passed) and Flutter (`flutter test`, 281
+passed) suites both pass in full, `flutter analyze`/`dart format` and
+`ruff check`/`ruff format` clean.
+
+**Live-verified against `beerapp-dev`:**
+
+- Both Phase 10 migrations applied successfully (`supabase db push`);
+  `supabase migration list` confirms both now applied remotely
+- `supabase db lint --linked --level error` passed, before and after the push
+- `supabase db push --dry-run` contained exactly the two expected Phase 10
+  migrations, nothing else
+- `user_achievements` grants verified read-only as `SELECT, INSERT` only for
+  `beerapp_backend` — no `UPDATE`/`DELETE`
+- `backend_select_own` (SELECT, `USING`) and `backend_insert_own` (INSERT,
+  `WITH CHECK`) RLS policies verified present, and no `UPDATE`/`DELETE`
+  policy exists
+- `GET /health` → 200
+- Authenticated `GET /achievements` → 200, returning exactly the three
+  starter-catalog keys
+- Existing account Collection state (a real prior favorite and wishlist
+  entry, never fabricated) was correctly evaluated/backfilled on first call
+- Starter catalog rendered correctly (First Favorite, First Wishlist Add,
+  Curator), with only the Collection and Special sections shown — no empty
+  category headings for Beers Tried/Countries/Styles/Breweries/Reviews/Ratings
+- First-load notification baseline correct: no spurious "unlocked" banner
+  despite pre-existing unlocks
+- Progress/permanence display correct: locked/unlocked bars and Curator's
+  prerequisite-count progress all matched expectations
+- English UI verified live, no clipping/overflow
+- Error/retry verified: stopping the backend produced the correct localized
+  network-error state; restarting the backend and retrying recovered fully
+- Privacy/error sanitization verified: no raw backend/SQL/JWT/secret data
+  was ever shown
+- Navigation, repeated Profile↔Achievements cycling, tab switching, and
+  background/resume all verified stable — no crash, no request loop, no
+  stuck loading state
+
+**Transparent limitations:**
+
+A. **Spanish localization: NOT LIVE-VERIFIED.** Attempting to switch the
+emulator's system locale triggered a `system_server`/emulator ANR (RAM
+pressure on the test machine, not a BeerApp exception) — the emulator
+recovered on its own. Covered instead by: the Spanish ARB strings existing,
+`flutter gen-l10n` succeeding, the Flutter localization test suite passing,
+and the full Flutter suite (281/281) passing — no source-level missing
+achievement localization was found. This is automated/source-verified
+coverage, not a live pass, and is not reported as one.
+
+B. **Mutation-driven achievement unlock: NOT EXERCISED live.** No new
+Favorite/Wishlist mutation was performed during verification. What *was*
+verified live is the idempotent `GET /achievements` backfill path evaluating
+pre-existing Collection state and persisting/rendering all three eligible
+achievements correctly. The synchronous Collection-mutation transaction path
+itself remains covered by `backend/tests/services/test_collection_service.py`
+(unit) and `backend/tests/integration/test_collection_achievement_atomicity.py`
+(written, not executed — see C).
+
+C. **Real PostgreSQL integration suite: NOT RUN.** No dedicated disposable
+`INTEGRATION_DATABASE_URL` is configured in this environment, same caveat as
+Phases 6-9. `backend/tests/integration/test_user_achievements_rls.py` and
+`test_collection_achievement_atomicity.py` exist and cover cross-user RLS
+denial and real-Postgres transactional rollback/atomicity respectively, but
+were not executed — this is not claimed as a pass.
 
 ---
 

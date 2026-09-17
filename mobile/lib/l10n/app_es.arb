@@ -220,5 +220,38 @@
   "statisticsMonthSep": "sep",
   "statisticsMonthOct": "oct",
   "statisticsMonthNov": "nov",
-  "statisticsMonthDec": "dic"
+  "statisticsMonthDec": "dic",
+
+  "profileAchievementsCardTitle": "Logros",
+  "profileAchievementsCardSubtitle": "Consulta lo que has desbloqueado",
+
+  "achievementsScreenTitle": "Logros",
+
+  "achievementsErrorUnauthorized": "Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.",
+  "achievementsErrorServiceUnavailable": "Esto no está disponible en este momento. Inténtalo de nuevo en un momento.",
+  "achievementsErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
+  "achievementsErrorGeneric": "No pudimos cargar tus logros. Inténtalo de nuevo.",
+
+  "achievementsLockedLabel": "Bloqueado",
+  "achievementsUnlockedOnLabel": "Desbloqueado el {date}",
+  "achievementsProgressFormat": "{current} / {target}",
+
+  "achievementsNewUnlockBannerOne": "Logro desbloqueado: {name}",
+  "achievementsNewUnlockBannerMany": "{count} nuevos logros desbloqueados",
+
+  "achievementsCategoryBeersTried": "Cervezas probadas",
+  "achievementsCategoryCountries": "Países",
+  "achievementsCategoryStyles": "Estilos",
+  "achievementsCategoryBreweries": "Cervecerías",
+  "achievementsCategoryReviews": "Reseñas",
+  "achievementsCategoryRatings": "Valoraciones",
+  "achievementsCategoryCollection": "Colección",
+  "achievementsCategorySpecial": "Especiales",
+
+  "achievementNameCollectionFirstFavorite": "Primer favorito",
+  "achievementDescriptionCollectionFirstFavorite": "Añade una cerveza a tus favoritos.",
+  "achievementNameCollectionFirstWishlist": "Primer deseo",
+  "achievementDescriptionCollectionFirstWishlist": "Añade una cerveza a tu lista de deseos.",
+  "achievementNameCollectionCurator": "Curador",
+  "achievementDescriptionCollectionCurator": "Ten al menos una cerveza favorita y una en tu lista de deseos."
 }

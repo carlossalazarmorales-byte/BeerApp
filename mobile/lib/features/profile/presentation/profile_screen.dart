@@ -121,6 +121,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                shape: RoundedRectangleBorder(borderRadius: AppRadii.lgRadius),
+                leading: const Icon(
+                  Icons.emoji_events_outlined,
+                  color: AppColors.primary,
+                ),
+                title: Text(l10n.profileAchievementsCardTitle),
+                subtitle: Text(l10n.profileAchievementsCardSubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(AppRoutes.achievements),
+              ),
+            ),
+          ),
         ],
       ),
     );

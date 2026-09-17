@@ -577,4 +577,97 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statisticsMonthDec => 'Dec';
+
+  @override
+  String get profileAchievementsCardTitle => 'Achievements';
+
+  @override
+  String get profileAchievementsCardSubtitle => 'See what you\'ve unlocked';
+
+  @override
+  String get achievementsScreenTitle => 'Achievements';
+
+  @override
+  String get achievementsErrorUnauthorized =>
+      'Your session has expired. Please sign in again to continue.';
+
+  @override
+  String get achievementsErrorServiceUnavailable =>
+      'This isn\'t available right now. Please try again in a moment.';
+
+  @override
+  String get achievementsErrorNetwork =>
+      'Check your internet connection and try again.';
+
+  @override
+  String get achievementsErrorGeneric =>
+      'We couldn\'t load your achievements. Please try again.';
+
+  @override
+  String get achievementsLockedLabel => 'Locked';
+
+  @override
+  String achievementsUnlockedOnLabel(String date) {
+    return 'Unlocked on $date';
+  }
+
+  @override
+  String achievementsProgressFormat(int current, int target) {
+    return '$current / $target';
+  }
+
+  @override
+  String achievementsNewUnlockBannerOne(String name) {
+    return 'Achievement unlocked: $name';
+  }
+
+  @override
+  String achievementsNewUnlockBannerMany(int count) {
+    return '$count new achievements unlocked';
+  }
+
+  @override
+  String get achievementsCategoryBeersTried => 'Beers Tried';
+
+  @override
+  String get achievementsCategoryCountries => 'Countries';
+
+  @override
+  String get achievementsCategoryStyles => 'Styles';
+
+  @override
+  String get achievementsCategoryBreweries => 'Breweries';
+
+  @override
+  String get achievementsCategoryReviews => 'Reviews';
+
+  @override
+  String get achievementsCategoryRatings => 'Ratings';
+
+  @override
+  String get achievementsCategoryCollection => 'Collection';
+
+  @override
+  String get achievementsCategorySpecial => 'Special';
+
+  @override
+  String get achievementNameCollectionFirstFavorite => 'First Favorite';
+
+  @override
+  String get achievementDescriptionCollectionFirstFavorite =>
+      'Add a beer to your favorites.';
+
+  @override
+  String get achievementNameCollectionFirstWishlist => 'First Wishlist Add';
+
+  @override
+  String get achievementDescriptionCollectionFirstWishlist =>
+      'Add a beer to your wishlist.';
+
+  @override
+  String get achievementNameCollectionCurator => 'Curator';
+
+  @override
+  String get achievementDescriptionCollectionCurator =>
+      'Have at least one favorite and one wishlist beer.';
 }

@@ -337,3 +337,74 @@ the effective country can never be null — unlike `style_id`, which can be
 genuinely absent for a beer and is excluded from `styles_discovered`/
 `favorite_style` in that case. This fallback is **not** applied to style or
 brewery — those are always exactly `beer.style_id`/`beer.brewery_id`.
+
+## Achievements (`/achievements`, Phase 10)
+
+A single bounded, non-paginated list of every catalog achievement — locked
+and unlocked — for the caller. Like Statistics, this is one aggregate
+resource, not the `Page[T]` envelope:
+
+| method | path | notes |
+|---|---|---|
+| GET | `/achievements` | auth required, returns `AchievementsOut` directly. Evaluates the catalog against current state and persists any newly-satisfied unlocks as a side effect before responding (an idempotent repair/backfill path — see docs/DECISIONS.md) — the client never awards itself an achievement. |
+
+Response shape:
+
+```json
+{
+  "items": [
+    {
+      "key": "collection_first_favorite",
+      "category": "collection",
+      "unlocked": true,
+      "unlocked_at": "2026-09-17T12:00:00Z",
+      "progress_current": 1,
+      "progress_target": 1
+    },
+    {
+      "key": "collection_first_wishlist",
+      "category": "collection",
+      "unlocked": false,
+      "unlocked_at": null,
+      "progress_current": 0,
+      "progress_target": 1
+    },
+    {
+      "key": "collection_curator",
+      "category": "special",
+      "unlocked": false,
+      "unlocked_at": null,
+      "progress_current": 1,
+      "progress_target": 2
+    }
+  ]
+}
+```
+
+**Catalog is code, not data.** `key`/`category` come from
+`backend/app/services/achievement_catalog.py` (`ACHIEVEMENT_CATALOG`), not a
+database table — see docs/DECISIONS.md. There is no `name`/`description`
+field in the response; the mobile client maps `key` to a localized name and
+description itself (`achievement_localizations.dart`), the same way every
+other user-facing string in the app is localized.
+
+**Permanence display rule.** Once `unlocked` is `true`, `progress_current`
+always equals `progress_target` — a bar never regresses even if the
+underlying live state (e.g. Collection favorites/wishlist) later changes,
+because unlocks are permanent (see docs/DECISIONS.md).
+
+**Progress semantics differ by achievement shape.** A single-metric
+("progressive") achievement's `progress_current`/`progress_target` are the
+live metric value and its threshold. A compound ("special") achievement's
+are a neutral count of how many of its prerequisite achievements are
+already unlocked, out of the total — never a raw domain number, and never
+an alcohol-consumption quantity (see CLAUDE.md's Responsible Product Design
+rules).
+
+**Starter catalog (Phase 10)** is deliberately small and derived only from
+`user_beer_collection` — no counts of logged/reviewed/rated beers, since
+that would incentivize logging more consumption activity to reach a
+threshold (see docs/DECISIONS.md): `collection_first_favorite`,
+`collection_first_wishlist`, and the compound `collection_curator`
+(requires both other two to have each been unlocked, not necessarily
+simultaneously true as live counts).

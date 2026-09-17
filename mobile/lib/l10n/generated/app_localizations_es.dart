@@ -587,4 +587,98 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get statisticsMonthDec => 'dic';
+
+  @override
+  String get profileAchievementsCardTitle => 'Logros';
+
+  @override
+  String get profileAchievementsCardSubtitle =>
+      'Consulta lo que has desbloqueado';
+
+  @override
+  String get achievementsScreenTitle => 'Logros';
+
+  @override
+  String get achievementsErrorUnauthorized =>
+      'Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.';
+
+  @override
+  String get achievementsErrorServiceUnavailable =>
+      'Esto no está disponible en este momento. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get achievementsErrorNetwork =>
+      'Revisa tu conexión a internet e inténtalo de nuevo.';
+
+  @override
+  String get achievementsErrorGeneric =>
+      'No pudimos cargar tus logros. Inténtalo de nuevo.';
+
+  @override
+  String get achievementsLockedLabel => 'Bloqueado';
+
+  @override
+  String achievementsUnlockedOnLabel(String date) {
+    return 'Desbloqueado el $date';
+  }
+
+  @override
+  String achievementsProgressFormat(int current, int target) {
+    return '$current / $target';
+  }
+
+  @override
+  String achievementsNewUnlockBannerOne(String name) {
+    return 'Logro desbloqueado: $name';
+  }
+
+  @override
+  String achievementsNewUnlockBannerMany(int count) {
+    return '$count nuevos logros desbloqueados';
+  }
+
+  @override
+  String get achievementsCategoryBeersTried => 'Cervezas probadas';
+
+  @override
+  String get achievementsCategoryCountries => 'Países';
+
+  @override
+  String get achievementsCategoryStyles => 'Estilos';
+
+  @override
+  String get achievementsCategoryBreweries => 'Cervecerías';
+
+  @override
+  String get achievementsCategoryReviews => 'Reseñas';
+
+  @override
+  String get achievementsCategoryRatings => 'Valoraciones';
+
+  @override
+  String get achievementsCategoryCollection => 'Colección';
+
+  @override
+  String get achievementsCategorySpecial => 'Especiales';
+
+  @override
+  String get achievementNameCollectionFirstFavorite => 'Primer favorito';
+
+  @override
+  String get achievementDescriptionCollectionFirstFavorite =>
+      'Añade una cerveza a tus favoritos.';
+
+  @override
+  String get achievementNameCollectionFirstWishlist => 'Primer deseo';
+
+  @override
+  String get achievementDescriptionCollectionFirstWishlist =>
+      'Añade una cerveza a tu lista de deseos.';
+
+  @override
+  String get achievementNameCollectionCurator => 'Curador';
+
+  @override
+  String get achievementDescriptionCollectionCurator =>
+      'Ten al menos una cerveza favorita y una en tu lista de deseos.';
 }

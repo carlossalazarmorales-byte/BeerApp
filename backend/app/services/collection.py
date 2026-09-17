@@ -2,13 +2,22 @@ import asyncpg
 
 from app.errors import NotFoundError
 from app.repositories.collection import CollectionRepository
+from app.repositories.scoped_connection import scoped_connection
 from app.schemas.collection import CollectionBeerOut, CollectionStateOut, CollectionStateUpdate
 from app.schemas.common import Page
+from app.services.achievement_evaluator import AchievementEvaluator
 
 
 class CollectionService:
-    def __init__(self, repository: CollectionRepository) -> None:
+    def __init__(
+        self,
+        repository: CollectionRepository,
+        pool: asyncpg.Pool,
+        achievement_evaluator: AchievementEvaluator,
+    ) -> None:
         self._repository = repository
+        self._pool = pool
+        self._achievement_evaluator = achievement_evaluator
 
     async def list_logged(
         self,
@@ -106,13 +115,22 @@ class CollectionService:
     async def set_state(
         self, *, user_id: str, beer_id: str, payload: CollectionStateUpdate
     ) -> CollectionStateOut:
-        try:
-            result = await self._repository.set_state(
-                user_id=user_id,
-                beer_id=beer_id,
-                is_favorite=payload.is_favorite,
-                is_wishlist=payload.is_wishlist,
-            )
-        except asyncpg.ForeignKeyViolationError as exc:
-            raise NotFoundError(f"Beer {beer_id} not found") from exc
+        # Owns the transaction so the Collection mutation and any achievement
+        # unlock it causes commit or roll back together -- see
+        # docs/DECISIONS.md. If evaluate_and_unlock raises, the exception
+        # propagates out of this `async with` block and the whole
+        # transaction, mutation included, rolls back rather than risking a
+        # permanently-earned achievement being silently lost.
+        async with scoped_connection(self._pool, user_id) as conn:
+            try:
+                result = await self._repository.set_state_on_connection(
+                    conn,
+                    user_id=user_id,
+                    beer_id=beer_id,
+                    is_favorite=payload.is_favorite,
+                    is_wishlist=payload.is_wishlist,
+                )
+            except asyncpg.ForeignKeyViolationError as exc:
+                raise NotFoundError(f"Beer {beer_id} not found") from exc
+            await self._achievement_evaluator.evaluate_and_unlock(conn, user_id=user_id)
         return CollectionStateOut.model_validate(result)

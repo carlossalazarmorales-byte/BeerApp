@@ -1,6 +1,7 @@
 import asyncpg
 from fastapi import Depends, Request
 
+from app.repositories.achievements import AchievementsRepository
 from app.repositories.beer_logs import BeerLogRepository
 from app.repositories.beer_styles import BeerStyleRepository
 from app.repositories.beers import BeerRepository
@@ -9,6 +10,8 @@ from app.repositories.collection import CollectionRepository
 from app.repositories.countries import CountryRepository
 from app.repositories.map import MapRepository
 from app.repositories.statistics import StatisticsRepository
+from app.services.achievement_evaluator import AchievementEvaluator
+from app.services.achievements import AchievementsService
 from app.services.beer_logs import BeerLogService
 from app.services.beer_styles import BeerStyleService
 from app.services.beers import BeerService
@@ -43,8 +46,23 @@ def get_beer_log_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> BeerLogSe
     return BeerLogService(BeerLogRepository(pool))
 
 
-def get_collection_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> CollectionService:
-    return CollectionService(CollectionRepository(pool))
+def get_achievements_repository() -> AchievementsRepository:
+    # No pool dependency -- every method takes an already-open connection
+    # supplied by the caller (see docs/DECISIONS.md).
+    return AchievementsRepository()
+
+
+def get_achievement_evaluator(
+    repository: AchievementsRepository = Depends(get_achievements_repository),
+) -> AchievementEvaluator:
+    return AchievementEvaluator(repository)
+
+
+def get_collection_service(
+    pool: asyncpg.Pool = Depends(get_db_pool),
+    achievement_evaluator: AchievementEvaluator = Depends(get_achievement_evaluator),
+) -> CollectionService:
+    return CollectionService(CollectionRepository(pool), pool, achievement_evaluator)
 
 
 def get_map_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> MapService:
@@ -53,3 +71,11 @@ def get_map_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> MapService:
 
 def get_statistics_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> StatisticsService:
     return StatisticsService(StatisticsRepository(pool))
+
+
+def get_achievements_service(
+    pool: asyncpg.Pool = Depends(get_db_pool),
+    repository: AchievementsRepository = Depends(get_achievements_repository),
+    evaluator: AchievementEvaluator = Depends(get_achievement_evaluator),
+) -> AchievementsService:
+    return AchievementsService(pool, repository, evaluator)

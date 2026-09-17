@@ -8,7 +8,16 @@ from app.auth.jwks import JWKSCache
 from app.config import get_settings
 from app.db import create_pool
 from app.errors import register_exception_handlers
-from app.routes import beer_logs, beer_styles, beers, breweries, collection, countries, statistics
+from app.routes import (
+    achievements,
+    beer_logs,
+    beer_styles,
+    beers,
+    breweries,
+    collection,
+    countries,
+    statistics,
+)
 from app.routes import map as map_routes
 
 
@@ -41,6 +50,7 @@ app.include_router(beer_logs.router)
 app.include_router(collection.router)
 app.include_router(map_routes.router)
 app.include_router(statistics.router)
+app.include_router(achievements.router)
 
 
 @app.get("/health", tags=["system"])

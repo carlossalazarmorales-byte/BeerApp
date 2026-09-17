@@ -1153,6 +1153,162 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dec'**
   String get statisticsMonthDec;
+
+  /// Title of the card on the Profile screen that navigates to Achievements.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get profileAchievementsCardTitle;
+
+  /// Subtitle of the card on the Profile screen that navigates to Achievements.
+  ///
+  /// In en, this message translates to:
+  /// **'See what you\'ve unlocked'**
+  String get profileAchievementsCardSubtitle;
+
+  /// App bar title for the Achievements screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievements'**
+  String get achievementsScreenTitle;
+
+  /// Shown when an Achievements request fails because there is no usable authenticated session.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again to continue.'**
+  String get achievementsErrorUnauthorized;
+
+  /// Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503).
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t available right now. Please try again in a moment.'**
+  String get achievementsErrorServiceUnavailable;
+
+  /// Shown when an Achievements request fails due to no network connectivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get achievementsErrorNetwork;
+
+  /// Fallback error message for Achievements requests, used instead of showing a raw backend error message.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load your achievements. Please try again.'**
+  String get achievementsErrorGeneric;
+
+  /// Status label shown on an achievement tile that has not been unlocked yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get achievementsLockedLabel;
+
+  /// Status label shown on an unlocked achievement tile, with the date it was unlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlocked on {date}'**
+  String achievementsUnlockedOnLabel(String date);
+
+  /// Progress label under an achievement's progress bar -- current count out of the target (or, for a compound achievement, conditions met out of total conditions).
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {target}'**
+  String achievementsProgressFormat(int current, int target);
+
+  /// Transient in-app banner shown when exactly one achievement is newly unlocked since the last refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Achievement unlocked: {name}'**
+  String achievementsNewUnlockBannerOne(String name);
+
+  /// Transient in-app banner shown when more than one achievement is newly unlocked since the last refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} new achievements unlocked'**
+  String achievementsNewUnlockBannerMany(int count);
+
+  /// Achievements category heading -- beers tried (no entries in the Phase 10 starter catalog).
+  ///
+  /// In en, this message translates to:
+  /// **'Beers Tried'**
+  String get achievementsCategoryBeersTried;
+
+  /// Achievements category heading -- countries (no entries in the Phase 10 starter catalog).
+  ///
+  /// In en, this message translates to:
+  /// **'Countries'**
+  String get achievementsCategoryCountries;
+
+  /// Achievements category heading -- styles (no entries in the Phase 10 starter catalog).
+  ///
+  /// In en, this message translates to:
+  /// **'Styles'**
+  String get achievementsCategoryStyles;
+
+  /// Achievements category heading -- breweries (no entries in the Phase 10 starter catalog).
+  ///
+  /// In en, this message translates to:
+  /// **'Breweries'**
+  String get achievementsCategoryBreweries;
+
+  /// Achievements category heading -- reviews (no entries in the Phase 10 starter catalog).
+  ///
+  /// In en, this message translates to:
+  /// **'Reviews'**
+  String get achievementsCategoryReviews;
+
+  /// Achievements category heading -- ratings (no entries in the Phase 10 starter catalog).
+  ///
+  /// In en, this message translates to:
+  /// **'Ratings'**
+  String get achievementsCategoryRatings;
+
+  /// Achievements category heading -- Collection (favorites/wishlist).
+  ///
+  /// In en, this message translates to:
+  /// **'Collection'**
+  String get achievementsCategoryCollection;
+
+  /// Achievements category heading -- special/compound milestones.
+  ///
+  /// In en, this message translates to:
+  /// **'Special'**
+  String get achievementsCategorySpecial;
+
+  /// Name of the collection_first_favorite achievement.
+  ///
+  /// In en, this message translates to:
+  /// **'First Favorite'**
+  String get achievementNameCollectionFirstFavorite;
+
+  /// Description of the collection_first_favorite achievement.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a beer to your favorites.'**
+  String get achievementDescriptionCollectionFirstFavorite;
+
+  /// Name of the collection_first_wishlist achievement.
+  ///
+  /// In en, this message translates to:
+  /// **'First Wishlist Add'**
+  String get achievementNameCollectionFirstWishlist;
+
+  /// Description of the collection_first_wishlist achievement.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a beer to your wishlist.'**
+  String get achievementDescriptionCollectionFirstWishlist;
+
+  /// Name of the collection_curator achievement.
+  ///
+  /// In en, this message translates to:
+  /// **'Curator'**
+  String get achievementNameCollectionCurator;
+
+  /// Description of the collection_curator achievement.
+  ///
+  /// In en, this message translates to:
+  /// **'Have at least one favorite and one wishlist beer.'**
+  String get achievementDescriptionCollectionCurator;
 }
 
 class _AppLocalizationsDelegate

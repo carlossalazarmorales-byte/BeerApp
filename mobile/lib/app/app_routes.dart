@@ -31,4 +31,7 @@ abstract final class AppRoutes {
   /// navigator, full-screen above the bottom-nav shell -- same reasoning as
   /// [beerDetail].
   static const String statistics = '/profile/statistics';
+
+  /// Achievements. Top-level route, same reasoning as [statistics].
+  static const String achievements = '/profile/achievements';
 }

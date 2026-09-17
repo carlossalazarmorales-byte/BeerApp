@@ -266,18 +266,77 @@ than each seeing whatever happened to be committed by the time it ran. See
 `docs/DECISIONS.md` for why `REPEATABLE READ` was chosen over merging
 everything into a single mega-query.
 
+## `public.user_achievements` (Phase 10)
+
+Persists only the *unlocked* moment of an achievement — never progress,
+which stays fully derived at read time from `user_beer_collection` (same
+philosophy as Statistics above). Achievements are permanent once unlocked
+(product decision, see `docs/DECISIONS.md`), which is what this table's
+shape and grants are built around.
+
+| column | type | notes |
+|---|---|---|
+| `id` | `uuid primary key default gen_random_uuid()` | |
+| `user_id` | `uuid not null references auth.users(id) on delete cascade` | owner identity FK |
+| `achievement_key` | `text not null` | **not** an FK or enum — validated only against `ACHIEVEMENT_CATALOG` in `backend/app/services/achievement_catalog.py` (see `docs/DECISIONS.md` for why the catalog is code, not a table). A persisted row whose key is no longer in the current catalog (a retired achievement) is silently ignored by the application, not an integrity error. |
+| `unlocked_at` | `timestamptz not null default now()` | written once; see below |
+
+Constraint: `unique(user_id, achievement_key)` — also the `ON CONFLICT DO
+NOTHING` target for the idempotent unlock write. No `created_at`/`updated_at`
+and no `set_updated_at` trigger: rows are write-once and are never updated.
+
+**Grants are deliberately `SELECT, INSERT` only** — no `UPDATE`, no `DELETE`
+— for `beerapp_backend`. This makes revocation or rewriting an achievement
+impossible at the database level, not merely by repository convention.
+
+**RLS uses two explicit, command-specific policies** rather than the single
+`for all` `backend_owns_rows` policy used on `user_beer_logs`/
+`user_beer_collection`:
+
+```sql
+create policy backend_select_own on public.user_achievements
+  for select to beerapp_backend
+  using (user_id = nullif(current_setting('app.user_id', true), '')::uuid);
+
+create policy backend_insert_own on public.user_achievements
+  for insert to beerapp_backend
+  with check (user_id = nullif(current_setting('app.user_id', true), '')::uuid);
+```
+
+This is a deliberate, narrow deviation, not a case the established
+convention required — `user_achievements` is the first write-once
+(insert-only) user-owned table, so splitting the policy by command gives
+defense-in-depth that mirrors the already-narrower grant: even if `UPDATE`/
+`DELETE` were mistakenly granted later, there would still be no matching
+policy to authorize rows under either command. Covered by
+`backend/tests/integration/test_user_achievements_rls.py` (written; not yet
+executed against a disposable database in this environment — see ROADMAP.md
+Phase 10 status). The grant/policy shape itself was independently confirmed
+by a read-only check directly against `beerapp-dev` when the migrations were
+applied.
+
+**`unlocked_at` semantics**: for an achievement evaluated synchronously
+alongside its triggering mutation (in Phase 10, every Collection `PATCH`
+via `AchievementEvaluator`, invoked in the *same* database transaction as
+the `user_beer_collection` write — see `docs/DECISIONS.md`), this is the
+timestamp of the first successful atomic transaction that detected and
+persisted the satisfied condition. For anything only ever caught by the
+`GET /achievements` repair/backfill evaluation, it means "first detected by
+the system" — never a reconstructed or fabricated historical moment.
+`ON CONFLICT DO NOTHING` guarantees it is never rewritten once set.
+
 ## Access model (RLS + roles)
 
 Catalog access is **API-only**: the mobile app never queries these four
 tables through Supabase PostgREST directly, not even as an authenticated
 user. This is enforced at the database level, not just by convention:
 
-| role | catalog privileges | `user_beer_logs` / `user_beer_collection` privileges |
-|---|---|---|
-| `anon` | none | none |
-| `authenticated` | none | none |
-| `beerapp_backend` | `SELECT` only, all four catalog tables — the running FastAPI app's connection (`DATABASE_URL`) | `SELECT`/`INSERT`/`UPDATE`/`DELETE` on both, own rows only per the request-scoped RLS policy above (Phase 6/7) |
-| `beerapp_seed` | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, all four catalog tables — `backend/scripts/seed_catalog.py` only (`SEED_DATABASE_URL`), never the running API | none |
+| role | catalog privileges | `user_beer_logs` / `user_beer_collection` privileges | `user_achievements` privileges |
+|---|---|---|---|
+| `anon` | none | none | none |
+| `authenticated` | none | none | none |
+| `beerapp_backend` | `SELECT` only, all four catalog tables — the running FastAPI app's connection (`DATABASE_URL`) | `SELECT`/`INSERT`/`UPDATE`/`DELETE` on both, own rows only per the request-scoped RLS policy above (Phase 6/7) | `SELECT`/`INSERT` only, own rows only (Phase 10) — no `UPDATE`/`DELETE` |
+| `beerapp_seed` | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, all four catalog tables — `backend/scripts/seed_catalog.py` only (`SEED_DATABASE_URL`), never the running API | none | none |
 
 Per-user ownership on `user_beer_logs`/`user_beer_collection` is enforced by
 the repository's explicit `WHERE user_id = $1` filtering plus the

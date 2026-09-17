@@ -11,6 +11,7 @@ import 'core/network/api_client.dart';
 import 'core/network/supabase_access_token_provider.dart';
 import 'core/network/supabase_session_source.dart';
 import 'core/onboarding/age_gate_controller.dart';
+import 'features/achievements/data/api_achievements_repository.dart';
 import 'features/auth/data/google_auth_client.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/data/supabase_profile_repository.dart';
@@ -74,6 +75,7 @@ Future<void> main() async {
   final collectionRepository = ApiCollectionRepository(apiClient);
   final mapRepository = ApiMapRepository(apiClient);
   final statisticsRepository = ApiStatisticsRepository(apiClient);
+  final achievementsRepository = ApiAchievementsRepository(apiClient);
   final collectionRefreshSignal = CollectionRefreshSignal();
 
   final router = createRouter(
@@ -86,6 +88,7 @@ Future<void> main() async {
     collectionRepository: collectionRepository,
     mapRepository: mapRepository,
     statisticsRepository: statisticsRepository,
+    achievementsRepository: achievementsRepository,
     refreshSignal: collectionRefreshSignal,
   );
 
