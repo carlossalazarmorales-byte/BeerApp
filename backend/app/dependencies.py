@@ -8,6 +8,7 @@ from app.repositories.breweries import BreweryRepository
 from app.repositories.collection import CollectionRepository
 from app.repositories.countries import CountryRepository
 from app.repositories.map import MapRepository
+from app.repositories.statistics import StatisticsRepository
 from app.services.beer_logs import BeerLogService
 from app.services.beer_styles import BeerStyleService
 from app.services.beers import BeerService
@@ -15,6 +16,7 @@ from app.services.breweries import BreweryService
 from app.services.collection import CollectionService
 from app.services.countries import CountryService
 from app.services.map import MapService
+from app.services.statistics import StatisticsService
 
 
 def get_db_pool(request: Request) -> asyncpg.Pool:
@@ -47,3 +49,7 @@ def get_collection_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> Collect
 
 def get_map_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> MapService:
     return MapService(MapRepository(pool))
+
+
+def get_statistics_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> StatisticsService:
+    return StatisticsService(StatisticsRepository(pool))

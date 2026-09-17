@@ -461,4 +461,120 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mapErrorGeneric => 'We couldn\'t load the map. Please try again.';
+
+  @override
+  String get profileStatisticsCardTitle => 'Statistics';
+
+  @override
+  String get profileStatisticsCardSubtitle => 'See your personal beer activity';
+
+  @override
+  String get statisticsScreenTitle => 'Statistics';
+
+  @override
+  String get statisticsEmptyMessage =>
+      'Log a beer or favorite one to see your statistics here.';
+
+  @override
+  String get statisticsErrorUnauthorized =>
+      'Your session has expired. Please sign in again to continue.';
+
+  @override
+  String get statisticsErrorServiceUnavailable =>
+      'This isn\'t available right now. Please try again in a moment.';
+
+  @override
+  String get statisticsErrorNetwork =>
+      'Check your internet connection and try again.';
+
+  @override
+  String get statisticsErrorGeneric =>
+      'We couldn\'t load your statistics. Please try again.';
+
+  @override
+  String get statisticsTotalUniqueBeersLabel => 'Unique beers';
+
+  @override
+  String get statisticsTotalLogsLabel => 'Total logs';
+
+  @override
+  String get statisticsCountriesDiscoveredLabel => 'Countries';
+
+  @override
+  String get statisticsStylesDiscoveredLabel => 'Styles';
+
+  @override
+  String get statisticsBreweriesDiscoveredLabel => 'Breweries';
+
+  @override
+  String get statisticsAverageRatingLabel => 'Average rating';
+
+  @override
+  String get statisticsAverageRatingNoneLabel => '—';
+
+  @override
+  String get statisticsAmountSpentSectionTitle => 'Amount spent';
+
+  @override
+  String get statisticsAmountSpentEmptyLabel => 'No priced logs yet.';
+
+  @override
+  String get statisticsFavoritesSectionTitle => 'Favorites';
+
+  @override
+  String get statisticsFavoriteStyleLabel => 'Style';
+
+  @override
+  String get statisticsFavoriteCountryLabel => 'Country';
+
+  @override
+  String get statisticsFavoriteBreweryLabel => 'Brewery';
+
+  @override
+  String get statisticsFavoriteNoneLabel => '—';
+
+  @override
+  String get statisticsMonthlyActivityChartTitle => 'Monthly activity';
+
+  @override
+  String get statisticsYearlyActivityChartTitle => 'Yearly activity';
+
+  @override
+  String get statisticsYearlyActivityEmptyLabel => 'No activity recorded yet.';
+
+  @override
+  String get statisticsMonthJan => 'Jan';
+
+  @override
+  String get statisticsMonthFeb => 'Feb';
+
+  @override
+  String get statisticsMonthMar => 'Mar';
+
+  @override
+  String get statisticsMonthApr => 'Apr';
+
+  @override
+  String get statisticsMonthMay => 'May';
+
+  @override
+  String get statisticsMonthJun => 'Jun';
+
+  @override
+  String get statisticsMonthJul => 'Jul';
+
+  @override
+  String get statisticsMonthAug => 'Aug';
+
+  @override
+  String get statisticsMonthSep => 'Sep';
+
+  @override
+  String get statisticsMonthOct => 'Oct';
+
+  @override
+  String get statisticsMonthNov => 'Nov';
+
+  @override
+  String get statisticsMonthDec => 'Dec';
 }

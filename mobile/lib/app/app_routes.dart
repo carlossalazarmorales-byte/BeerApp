@@ -25,4 +25,10 @@ abstract final class AppRoutes {
   static const String beerDetail = '/discover/beers/:beerId';
 
   static String beerDetailPath(String beerId) => '/discover/beers/$beerId';
+
+  /// Statistics. Declared as a top-level route (not nested inside the
+  /// Profile tab's `StatefulShellBranch`) so it builds on the root
+  /// navigator, full-screen above the bottom-nav shell -- same reasoning as
+  /// [beerDetail].
+  static const String statistics = '/profile/statistics';
 }

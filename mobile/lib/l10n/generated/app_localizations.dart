@@ -931,6 +931,228 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'We couldn\'t load the map. Please try again.'**
   String get mapErrorGeneric;
+
+  /// Title of the card on the Profile screen that navigates to Statistics.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get profileStatisticsCardTitle;
+
+  /// Subtitle of the card on the Profile screen that navigates to Statistics.
+  ///
+  /// In en, this message translates to:
+  /// **'See your personal beer activity'**
+  String get profileStatisticsCardSubtitle;
+
+  /// App bar title for the Statistics screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Statistics'**
+  String get statisticsScreenTitle;
+
+  /// Shown on the Statistics screen when the user has no logs and no favorites yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Log a beer or favorite one to see your statistics here.'**
+  String get statisticsEmptyMessage;
+
+  /// Shown when a Statistics request fails because there is no usable authenticated session.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again to continue.'**
+  String get statisticsErrorUnauthorized;
+
+  /// Shown when the backend can't verify the session or is otherwise temporarily unavailable (HTTP 503).
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t available right now. Please try again in a moment.'**
+  String get statisticsErrorServiceUnavailable;
+
+  /// Shown when a Statistics request fails due to no network connectivity.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your internet connection and try again.'**
+  String get statisticsErrorNetwork;
+
+  /// Fallback error message for Statistics requests, used instead of showing a raw backend error message.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t load your statistics. Please try again.'**
+  String get statisticsErrorGeneric;
+
+  /// Statistics overview tile label for the count of distinct beers logged.
+  ///
+  /// In en, this message translates to:
+  /// **'Unique beers'**
+  String get statisticsTotalUniqueBeersLabel;
+
+  /// Statistics overview tile label for the total number of log entries.
+  ///
+  /// In en, this message translates to:
+  /// **'Total logs'**
+  String get statisticsTotalLogsLabel;
+
+  /// Statistics overview tile label for the count of distinct countries discovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Countries'**
+  String get statisticsCountriesDiscoveredLabel;
+
+  /// Statistics overview tile label for the count of distinct beer styles discovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Styles'**
+  String get statisticsStylesDiscoveredLabel;
+
+  /// Statistics overview tile label for the count of distinct breweries discovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Breweries'**
+  String get statisticsBreweriesDiscoveredLabel;
+
+  /// Statistics overview tile label for the average of the user's own log ratings.
+  ///
+  /// In en, this message translates to:
+  /// **'Average rating'**
+  String get statisticsAverageRatingLabel;
+
+  /// Placeholder shown for average rating when the user has no rated logs.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get statisticsAverageRatingNoneLabel;
+
+  /// Section title for the per-currency amount-spent breakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount spent'**
+  String get statisticsAmountSpentSectionTitle;
+
+  /// Shown in the amount-spent section when the user has no logs with a price recorded.
+  ///
+  /// In en, this message translates to:
+  /// **'No priced logs yet.'**
+  String get statisticsAmountSpentEmptyLabel;
+
+  /// Section title for the favorite style/country/brewery breakdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get statisticsFavoritesSectionTitle;
+
+  /// Row label for the user's most-favorited beer style.
+  ///
+  /// In en, this message translates to:
+  /// **'Style'**
+  String get statisticsFavoriteStyleLabel;
+
+  /// Row label for the user's most-favorited beer country.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get statisticsFavoriteCountryLabel;
+
+  /// Row label for the user's most-favorited brewery.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewery'**
+  String get statisticsFavoriteBreweryLabel;
+
+  /// Placeholder shown for a favorite dimension when the user has zero Collection favorites.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get statisticsFavoriteNoneLabel;
+
+  /// Title for the trailing-12-month log-activity bar chart.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly activity'**
+  String get statisticsMonthlyActivityChartTitle;
+
+  /// Title for the all-time, per-year log-activity bar chart.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly activity'**
+  String get statisticsYearlyActivityChartTitle;
+
+  /// Shown in place of the yearly activity chart when the user has no logs at all.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity recorded yet.'**
+  String get statisticsYearlyActivityEmptyLabel;
+
+  /// Short (3-letter) month abbreviation for January, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Jan'**
+  String get statisticsMonthJan;
+
+  /// Short (3-letter) month abbreviation for February, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Feb'**
+  String get statisticsMonthFeb;
+
+  /// Short (3-letter) month abbreviation for March, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Mar'**
+  String get statisticsMonthMar;
+
+  /// Short (3-letter) month abbreviation for April, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Apr'**
+  String get statisticsMonthApr;
+
+  /// Short (3-letter) month abbreviation for May, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'May'**
+  String get statisticsMonthMay;
+
+  /// Short (3-letter) month abbreviation for June, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Jun'**
+  String get statisticsMonthJun;
+
+  /// Short (3-letter) month abbreviation for July, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Jul'**
+  String get statisticsMonthJul;
+
+  /// Short (3-letter) month abbreviation for August, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Aug'**
+  String get statisticsMonthAug;
+
+  /// Short (3-letter) month abbreviation for September, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Sep'**
+  String get statisticsMonthSep;
+
+  /// Short (3-letter) month abbreviation for October, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Oct'**
+  String get statisticsMonthOct;
+
+  /// Short (3-letter) month abbreviation for November, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Nov'**
+  String get statisticsMonthNov;
+
+  /// Short (3-letter) month abbreviation for December, used as a monthly activity chart axis label.
+  ///
+  /// In en, this message translates to:
+  /// **'Dec'**
+  String get statisticsMonthDec;
 }
 
 class _AppLocalizationsDelegate

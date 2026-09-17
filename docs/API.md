@@ -246,3 +246,94 @@ follow-up request:
 use, not a plain pooled connection, since those tables are RLS-protected on
 the transaction-local `app.user_id` setting. `GET /map/breweries` needs no
 such scoping — it reads only catalog tables.
+
+## Statistics (`/statistics`, Phase 9)
+
+A single aggregate resource summarizing the caller's own beer activity —
+descriptive only, never a goal/streak/leaderboard/consumption target (see
+CLAUDE.md's Responsible Product Design rules). One endpoint, no query
+parameters, no pagination:
+
+| method | path | notes |
+|---|---|---|
+| GET | `/statistics` | auth required, returns `StatisticsOut` directly — not the `Page[T]` envelope, since this is one aggregate object, not a list |
+
+Response shape (`monthly_activity` truncated to 2 of its always-exactly-12
+entries below for brevity):
+
+```json
+{
+  "total_unique_beers": 5,
+  "total_logs": 7,
+  "countries_discovered": 3,
+  "styles_discovered": 4,
+  "breweries_discovered": 5,
+  "average_rating": 3.6666666667,
+  "amount_spent": [
+    { "currency": "EUR", "total": "4.00" },
+    { "currency": "USD", "total": "12.50" }
+  ],
+  "monthly_activity": [
+    { "month": "2025-10-01", "log_count": 0 },
+    { "month": "2025-11-01", "log_count": 2 }
+  ],
+  "yearly_activity": [
+    { "year": 2024, "log_count": 3 },
+    { "year": 2026, "log_count": 4 }
+  ],
+  "favorite_style": "IPA",
+  "favorite_country": "Ireland",
+  "favorite_brewery": "Test Brewery"
+}
+```
+
+**Unique beers vs. total logs.** `total_logs` is `count(*)` over the caller's
+`user_beer_logs`; `total_unique_beers` is the count of *distinct* `beer_id`
+among them. The two diverge whenever a beer is logged more than once — there
+is no `unique(user_id, beer_id)` constraint on `user_beer_logs` specifically
+so this distinction stays meaningful (see docs/DECISIONS.md, Phase 6).
+
+**`average_rating`** is the unweighted mean of `rating` across the caller's
+own logs where `rating is not null` — unrated logs are excluded from both
+the numerator and the denominator (never treated as a 0). `null` when the
+caller has no rated logs. This is a different concept from Collection's
+`sort=rating` (the *latest* log's rating for one beer, Phase 7) — it's a
+personal aggregate across all of a user's own logs, not a per-beer aggregate
+across logs.
+
+**`amount_spent`** is grouped strictly **per currency**, one row per
+currency the caller has actually priced a log in — logs with a null `price`
+or `currency` are excluded entirely, and currencies are never summed
+together into one figure (there's no per-user default/preferred currency
+until Phase 12 profile editing, so a blind sum would silently misrepresent
+the true amount).
+
+**`monthly_activity`** is the trailing 12 **UTC calendar months**,
+**zero-filled** — always exactly 12 entries, oldest first, one per month
+including months with zero logs, keyed by the first day of that UTC month.
+Bucketing uses `consumed_at AT TIME ZONE 'UTC'`, independent of the
+database connection's session timezone.
+
+**`yearly_activity`** is **all UTC calendar years that have ≥1 log**,
+all-time — deliberately **not** zero-filled (a gap year with no logs simply
+has no entry), a different shape from `monthly_activity`'s rolling window.
+
+**`favorite_style`/`favorite_country`/`favorite_brewery`** are each the
+*mode* (most frequent) dimension among the caller's `user_beer_collection`
+rows with `is_favorite = true` — derived from **Collection favorites, not
+from log frequency or rating**. `null` when the caller has zero favorites
+(never an error, never a fabricated "most common" among nothing). Ties are
+broken deterministically: highest count first, then case-insensitive name
+ascending, then a stable id ascending as a final tie-break (so two entities
+with an identical display name still resolve consistently).
+
+**Country fallback.** `countries_discovered` and `favorite_country` use a
+beer's *effective* country: its own `beers.country_id` if set, otherwise its
+brewery's `breweries.country_id` — the identical
+`coalesce(b.country_id, br.country_id)` pattern `/map` already uses (see
+above), so a beer with no country of its own is never silently excluded
+from country-based statistics. Since `breweries.country_id` is `NOT NULL`,
+the effective country can never be null — unlike `style_id`, which can be
+genuinely absent for a beer and is excluded from `styles_discovered`/
+`favorite_style` in that case. This fallback is **not** applied to style or
+brewery — those are always exactly `beer.style_id`/`beer.brewery_id`.

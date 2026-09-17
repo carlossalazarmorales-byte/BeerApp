@@ -19,6 +19,7 @@ import 'features/catalog/data/api_catalog_repository.dart';
 import 'features/collection/data/api_collection_repository.dart';
 import 'features/logging/data/api_log_repository.dart';
 import 'features/map/data/api_map_repository.dart';
+import 'features/statistics/data/api_statistics_repository.dart';
 import 'shared/collection_refresh_signal.dart';
 
 Future<void> main() async {
@@ -72,6 +73,7 @@ Future<void> main() async {
   final logRepository = ApiLogRepository(apiClient);
   final collectionRepository = ApiCollectionRepository(apiClient);
   final mapRepository = ApiMapRepository(apiClient);
+  final statisticsRepository = ApiStatisticsRepository(apiClient);
   final collectionRefreshSignal = CollectionRefreshSignal();
 
   final router = createRouter(
@@ -83,6 +85,7 @@ Future<void> main() async {
     logRepository: logRepository,
     collectionRepository: collectionRepository,
     mapRepository: mapRepository,
+    statisticsRepository: statisticsRepository,
     refreshSignal: collectionRefreshSignal,
   );
 

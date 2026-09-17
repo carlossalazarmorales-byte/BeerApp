@@ -23,6 +23,8 @@ import '../features/map/domain/map_repository.dart';
 import '../features/map/presentation/map_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
+import '../features/statistics/domain/statistics_repository.dart';
+import '../features/statistics/presentation/statistics_screen.dart';
 import '../shared/collection_refresh_signal.dart';
 import '../shared/widgets/splash_screen.dart';
 import 'app_routes.dart';
@@ -97,6 +99,7 @@ GoRouter createRouter({
   required LogRepository logRepository,
   required CollectionRepository collectionRepository,
   required MapRepository mapRepository,
+  required StatisticsRepository statisticsRepository,
   required CollectionRefreshSignal refreshSignal,
 }) {
   return GoRouter(
@@ -160,6 +163,16 @@ GoRouter createRouter({
           collectionRepository: collectionRepository,
           refreshSignal: refreshSignal,
           beerId: state.pathParameters['beerId']!,
+        ),
+      ),
+      // Declared as a top-level route, not nested inside the Profile
+      // branch's `routes` below, for the same reasoning as [beerDetail]
+      // above -- full-screen above the bottom-nav shell.
+      GoRoute(
+        path: AppRoutes.statistics,
+        builder: (context, state) => StatisticsScreen(
+          repository: statisticsRepository,
+          refreshSignal: refreshSignal,
         ),
       ),
       StatefulShellRoute.indexedStack(

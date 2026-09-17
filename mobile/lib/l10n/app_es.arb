@@ -175,5 +175,50 @@
   "mapErrorUnauthorized": "Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.",
   "mapErrorServiceUnavailable": "Esto no está disponible en este momento. Inténtalo de nuevo en un momento.",
   "mapErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
-  "mapErrorGeneric": "No pudimos cargar el mapa. Inténtalo de nuevo."
+  "mapErrorGeneric": "No pudimos cargar el mapa. Inténtalo de nuevo.",
+
+  "profileStatisticsCardTitle": "Estadísticas",
+  "profileStatisticsCardSubtitle": "Consulta tu actividad cervecera personal",
+
+  "statisticsScreenTitle": "Estadísticas",
+  "statisticsEmptyMessage": "Registra una cerveza o marca una como favorita para ver tus estadísticas aquí.",
+
+  "statisticsErrorUnauthorized": "Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.",
+  "statisticsErrorServiceUnavailable": "Esto no está disponible en este momento. Inténtalo de nuevo en un momento.",
+  "statisticsErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
+  "statisticsErrorGeneric": "No pudimos cargar tus estadísticas. Inténtalo de nuevo.",
+
+  "statisticsTotalUniqueBeersLabel": "Cervezas únicas",
+  "statisticsTotalLogsLabel": "Registros totales",
+  "statisticsCountriesDiscoveredLabel": "Países",
+  "statisticsStylesDiscoveredLabel": "Estilos",
+  "statisticsBreweriesDiscoveredLabel": "Cervecerías",
+  "statisticsAverageRatingLabel": "Valoración media",
+  "statisticsAverageRatingNoneLabel": "—",
+
+  "statisticsAmountSpentSectionTitle": "Cantidad gastada",
+  "statisticsAmountSpentEmptyLabel": "Aún no hay registros con precio.",
+
+  "statisticsFavoritesSectionTitle": "Favoritos",
+  "statisticsFavoriteStyleLabel": "Estilo",
+  "statisticsFavoriteCountryLabel": "País",
+  "statisticsFavoriteBreweryLabel": "Cervecería",
+  "statisticsFavoriteNoneLabel": "—",
+
+  "statisticsMonthlyActivityChartTitle": "Actividad mensual",
+  "statisticsYearlyActivityChartTitle": "Actividad anual",
+  "statisticsYearlyActivityEmptyLabel": "Aún no hay actividad registrada.",
+
+  "statisticsMonthJan": "ene",
+  "statisticsMonthFeb": "feb",
+  "statisticsMonthMar": "mar",
+  "statisticsMonthApr": "abr",
+  "statisticsMonthMay": "may",
+  "statisticsMonthJun": "jun",
+  "statisticsMonthJul": "jul",
+  "statisticsMonthAug": "ago",
+  "statisticsMonthSep": "sep",
+  "statisticsMonthOct": "oct",
+  "statisticsMonthNov": "nov",
+  "statisticsMonthDec": "dic"
 }

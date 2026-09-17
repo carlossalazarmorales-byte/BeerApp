@@ -245,6 +245,27 @@ lookup and the Logged tab's join onto this table.
 `anon`/`authenticated` denied at both the grant and policy level. Verified by
 `backend/tests/integration/test_user_beer_collection_rls.py`.
 
+## Statistics (Phase 9)
+
+No new table, column, or migration — `GET /statistics` (`StatisticsRepository`)
+reads `user_beer_logs`, `user_beer_collection`, and the catalog tables
+entirely **read-only**, aggregating server-side via a handful of SQL
+queries/CTEs. It reuses `scoped_connection` and the same `backend_owns_rows`
+RLS policies described above; there is nothing Statistics-specific at the
+schema level.
+
+The one thing that *is* Statistics-specific: `scoped_connection` gained an
+optional `isolation` parameter (default `None`, preserving every existing
+caller's plain `READ COMMITTED` behavior unchanged — `BeerLogRepository`,
+`CollectionRepository`, and `MapRepository` all still call it with zero
+extra arguments). `StatisticsRepository` is the only caller that passes
+`isolation="repeatable_read"`, so its several read-only aggregate statements
+(overview counts, amount-spent-by-currency, monthly/yearly activity,
+favorites) all observe one consistent snapshot for the whole request, rather
+than each seeing whatever happened to be committed by the time it ran. See
+`docs/DECISIONS.md` for why `REPEATABLE READ` was chosen over merging
+everything into a single mega-query.
+
 ## Access model (RLS + roles)
 
 Catalog access is **API-only**: the mobile app never queries these four

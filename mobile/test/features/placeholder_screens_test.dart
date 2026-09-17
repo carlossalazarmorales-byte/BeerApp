@@ -1,34 +1,23 @@
-import 'package:beerapp/core/auth/auth_scope.dart';
-import 'package:beerapp/features/auth/presentation/auth_controller.dart';
-import 'package:beerapp/features/profile/presentation/profile_screen.dart';
 import 'package:beerapp/features/scan/presentation/scan_screen.dart';
 import 'package:beerapp/l10n/generated/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../fakes/fake_auth_repository.dart';
-import '../fakes/fake_profile_repository.dart';
-
-/// [ProfileScreen] reads [AuthScope.of], so every case is wrapped with one —
-/// harmless for the other 4 screens, which don't use it.
 Widget _wrap(Widget child) {
-  return AuthScope(
-    controller: AuthController(
-      authRepository: FakeAuthRepository(),
-      profileRepository: FakeProfileRepository(),
-    ),
-    child: MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: child,
-    ),
+  return MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: child,
   );
 }
 
 void main() {
+  // Profile (Phase 9) no longer belongs here -- it has a real UI now, not a
+  // PlaceholderScreen, and its own dedicated tests in
+  // test/features/profile/presentation/profile_screen_test.dart. Add a
+  // destination here only while it's still genuinely a PlaceholderScreen.
   final cases = <String, (Widget Function(), String)>{
     'Scan': (() => const ScanScreen(), 'Scan'),
-    'Profile': (() => const ProfileScreen(), 'Profile'),
   };
 
   for (final entry in cases.entries) {

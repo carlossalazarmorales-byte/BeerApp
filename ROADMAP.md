@@ -471,25 +471,54 @@ Goal: summarize personal beer activity.
 
 Tasks:
 
-- [ ] Total unique beers
-- [ ] Total logs
-- [ ] Countries discovered
-- [ ] Styles discovered
-- [ ] Breweries discovered
-- [ ] Average rating
-- [ ] Amount spent
-- [ ] Monthly activity
-- [ ] Yearly activity
-- [ ] Favorite style
-- [ ] Favorite country
-- [ ] Favorite brewery
-- [ ] Statistics UI
-- [ ] Basic charts
+- [x] Total unique beers
+- [x] Total logs
+- [x] Countries discovered
+- [x] Styles discovered
+- [x] Breweries discovered
+- [x] Average rating
+- [x] Amount spent
+- [x] Monthly activity
+- [x] Yearly activity
+- [x] Favorite style
+- [x] Favorite country
+- [x] Favorite brewery
+- [x] Statistics UI
+- [x] Basic charts
 
 Exit criteria:
 
-- Statistics match underlying log data
-- Calculations are tested
+- [x] Statistics match underlying log data — live-verified on a real Android emulator against the real local FastAPI backend and existing account data (see Status below)
+- [x] Calculations are tested — backend schema/service/route tests and Flutter controller/screen/widget tests pass in full; backend integration tests (`backend/tests/integration/test_statistics_queries.py`, `test_statistics_rls.py`) are written, covering RLS isolation, the trailing-12-months boundary, UTC bucketing, the country fallback, and deterministic favorite tie-breaks, but are **not executed** in this environment (see Status below)
+
+**Status (2026-09-17)**: complete. Backend (`pytest`, excluding
+`@pytest.mark.integration`) and Flutter (`flutter test`) suites both pass in
+full, `flutter analyze`/`dart format` and `ruff check`/`ruff format` clean.
+
+**Live Android smoke test — passed**, against the real local FastAPI backend
+and existing account data only (no fabricated logs/favorites/pricing):
+
+- Navigation: Profile → Statistics entry card, full-screen route, bottom nav hidden, Back returns cleanly — pass
+- Overview: unique beers / total logs consistent with existing account data, country/style/brewery counts plausible and cross-checked against Collection, average rating consistent with existing rated logs — pass
+- Amount spent: empty/no-priced-data display correct — pass; multi-currency live display — **not exercised** (the existing account has no priced logs, let alone multi-currency ones; no fabricated price/currency data was created to force this)
+- Favorites: favorite style/country/brewery match existing Collection favorites exactly — pass
+- Charts: monthly chart (12 buckets, zero-log months represented) and yearly chart (only years with data) both render correctly, no clipping/crash — pass. A live-found bug (hardcoded English month labels not respecting the app locale) was fixed before closing this phase — see `docs/DECISIONS.md`.
+- Refresh: `CollectionRefreshSignal`-driven refresh verified via an existing Favorite toggle through the normal UI, no fabricated log activity — pass. The log-derived refresh path specifically was **not separately exercised** (it shares the same signal/call site proven by the favorite-toggle check and by `StatisticsController`'s automated tests).
+- Error/retry: first-load backend failure showed the correct localized `ErrorState`, Retry recovered once the backend was back — pass
+- Localization/privacy: Spanish UI verified end-to-end, including the fixed month labels; no raw backend/SQL errors, no stack traces, no internal ids, no auth token or MapTiler key exposed, no location permission introduced — pass
+- Stability: repeated Profile → Statistics → Back, tab switching, pull-to-refresh, background/resume — pass, no crashes, no refresh loop, no stuck loading state
+
+**Still not run**: `backend/tests/integration/test_statistics_queries.py`
+and `test_statistics_rls.py` — no dedicated disposable
+`INTEGRATION_DATABASE_URL` is configured in this environment, so those
+tests skip rather than run, same caveat as Phases 6-8. This does not block
+the exit criteria above (the live smoke test independently exercised the
+RLS-scoped, per-user statistics paths against the real `beerapp-dev`
+project), but the integration suite should still be run against a
+disposable database before relying on it as an ongoing regression guard —
+in particular, it is the only place the multi-currency amount-spent
+grouping is actually proven, since live verification could not exercise it
+with real account data.
 
 ---
 

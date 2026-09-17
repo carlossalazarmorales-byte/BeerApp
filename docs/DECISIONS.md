@@ -1054,3 +1054,123 @@ reproducing the exact loading-start-vs-completed race. Re-verified live:
 exact-country and free-text region searches now zoom correctly into the
 result, single-point/identical-coordinate results still use the fixed
 degenerate zoom, and clearing a search never forces a fit.
+
+## 2026-09-17 — Phase 9: `fl_chart`, scoped narrowly to the two activity charts
+
+The first charting dependency added to the app (`mobile/pubspec.yaml`).
+Chosen over alternatives (`syncfusion_flutter_charts`, `graphic`,
+hand-rolled `CustomPainter` widgets) for being pure-Dart with no native
+platform code, widely used and actively maintained, and free of any
+functional overlap with an existing dependency. Deliberately scoped to only
+`MonthlyActivityChart`/`YearlyActivityChart` — the simple counts (unique
+beers, discovered countries/styles/breweries, amount spent, favorites) stay
+plain `AppCard`/`StatTile` widgets, never charted, since a bar/pie rendering
+of a single number adds visual weight without adding information.
+
+## 2026-09-17 — Phase 9: favorite style/country/brewery derive from Collection favorites, not log frequency or rating
+
+ROADMAP.md's "Favorite style"/"Favorite country"/"Favorite brewery" tasks
+don't specify a source. Two readings were considered: (a) the most
+frequently *logged* dimension, or highest-average-rated, across
+`user_beer_logs`; (b) the mode among the user's `user_beer_collection` rows
+with `is_favorite = true`. Chose (b) — a "favorite" is what the user
+explicitly marked as a favorite, not an inference from how often they logged
+something (which conflates "tried a lot" with "liked a lot"). This is a
+different concept from the Phase 7 decision that `sort=rating` means a
+beer's *latest log's* rating, not an average — that decision is about
+ranking already-collected beers within a tab; this one is about which
+*dimension* (style/country/brewery) is most represented among favorites.
+Neither contradicts the other.
+
+Ties are broken deterministically: highest count of favorited beers first,
+then case-insensitive name ascending, then a stable id ascending as the
+final tie-break, so two entities with an identical display name (a name
+collision on `breweries.name`, which — unlike `countries.name`/
+`beer_styles.name` — has no case-insensitive uniqueness constraint) still
+resolve to the same answer on every request rather than depending on
+incidental row order. Zero favorites yields `null` for all three fields,
+never an error and never a fabricated "most common" among nothing.
+
+## 2026-09-17 — Phase 9: amount spent grouped strictly per currency, never summed
+
+`user_beer_logs.price`/`currency` are per-log and independently nullable —
+nothing assigns a user a default/preferred currency until Phase 12 profile
+editing. Blindly summing `price` across logs with different currencies
+would produce a number with no real meaning (e.g. "16.50" from 12.50 USD +
+4.00 EUR). `amount_spent` is therefore a list, one entry per currency the
+user has actually priced a log in (`group by currency`), and any log
+missing either `price` or `currency` is excluded entirely rather than
+folded into a default/null-currency bucket. This is a correctness
+requirement, not a formatting preference — see docs/API.md.
+
+## 2026-09-17 — Phase 9: monthly activity is a zero-filled rolling window, yearly activity is all-time and not zero-filled
+
+`monthly_activity` and `yearly_activity` look like the same kind of
+statistic but are deliberately different shapes. Monthly is the trailing 12
+UTC calendar months, zero-filled via a `generate_series` CTE left-joined
+against the actual per-month counts — always exactly 12 entries, so a chart
+consuming it never needs to handle a variable-length x-axis or synthesize
+missing months itself. Yearly is all UTC calendar years that have ≥1 log,
+with no zero-fill — an all-time view has no natural "window" to zero-fill
+against, and a user's account could span many empty years if it were
+zero-filled from account creation. Both bucket via
+`consumed_at AT TIME ZONE 'UTC'` specifically (not relying on the
+database connection's session `timezone` GUC, which the pool can vary
+across reused physical connections) so bucketing is reproducible regardless
+of which pooled connection serves a given request.
+
+## 2026-09-17 — Phase 9: country-based statistics reuse `/map`'s effective-country fallback
+
+`countries_discovered` and `favorite_country` use
+`coalesce(b.country_id, br.country_id)` — a beer's own country if set,
+otherwise its brewery's — the identical pattern already established for
+`/map/beers` (see the 2026-09-16 Phase 8 coordinate-fallback entries above).
+Reusing it here rather than inventing a second country-resolution rule
+keeps "which country does this beer belong to" answered consistently
+everywhere in the app. Because `breweries.country_id` is `NOT NULL`, this
+fallback can never itself produce `null` — unlike `style_id`, which is
+genuinely nullable on `beers` and is excluded from `styles_discovered`/
+`favorite_style` when absent, there is no "beer excluded from country
+statistics" case to handle. The fallback is deliberately **not** extended to
+style or brewery — a beer's style and brewery are always exactly
+`beer.style_id`/`beer.brewery_id`, never inferred from anything else.
+
+## 2026-09-17 — Phase 9: `StatisticsRepository` opts into `REPEATABLE READ`; every other `scoped_connection` caller is unchanged
+
+`get_statistics` runs five separate SQL statements (overview counts,
+amount-spent-by-currency, monthly activity, yearly activity, favorites) to
+keep each one readable, rather than one large combined query. A plain `READ
+COMMITTED` transaction (`scoped_connection`'s existing default) doesn't
+guarantee all five see the same snapshot — a log or favorite committed by a
+concurrent request between two of the five statements could produce an
+internally inconsistent response (e.g. `total_logs` reflecting a new log
+that `monthly_activity` doesn't yet).
+
+Rather than collapsing the five queries into one hard-to-maintain statement,
+or changing every caller's isolation level, `scoped_connection` gained an
+optional `isolation` parameter (`backend/app/repositories/scoped_connection.py`),
+defaulting to `None` — the exact behavior every existing caller
+(`BeerLogRepository`, `CollectionRepository`, `MapRepository`) already had,
+verified unchanged since none of them pass it. `StatisticsRepository` is the
+only caller that passes `isolation="repeatable_read"`: a read-only aggregate
+is exactly the case `REPEATABLE READ` is for — the snapshot is fixed at the
+first statement and held for the whole transaction, with zero write-conflict
+risk since nothing in `get_statistics` writes.
+
+## 2026-09-17 — Phase 9: live Android verification found a hardcoded-English month-label bug
+
+Switching the app to Spanish correctly localized every other string on the
+Statistics screen, but the monthly activity chart's x-axis kept showing
+English month abbreviations ("Jan Feb Mar..."). Root cause:
+`MonthlyActivityChart` (`mobile/lib/features/statistics/presentation/widgets/monthly_activity_chart.dart`)
+built its labels from a hardcoded `const List<String> _monthAbbreviations`
+instead of routing them through `AppLocalizations`.
+
+Fixed by adding 12 short-month ARB keys (`statisticsMonthJan`...`statisticsMonthDec`)
+to `app_en.arb`/`app_es.arb` and a `_localizedMonthLabel(l10n, month)` helper
+in the same file, replacing the hardcoded list — still no `intl` dependency
+added, per the original scoping decision above. Covered by a new
+`monthly_activity_chart_test.dart` (English renders English abbreviations,
+Spanish renders Spanish ones and never the English ones). Re-verified live:
+the chart now reads "ene feb mar abr may jun jul ago sep oct nov dic" in
+Spanish with no clipping/overflow.

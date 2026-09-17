@@ -468,4 +468,123 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get mapErrorGeneric =>
       'No pudimos cargar el mapa. Inténtalo de nuevo.';
+
+  @override
+  String get profileStatisticsCardTitle => 'Estadísticas';
+
+  @override
+  String get profileStatisticsCardSubtitle =>
+      'Consulta tu actividad cervecera personal';
+
+  @override
+  String get statisticsScreenTitle => 'Estadísticas';
+
+  @override
+  String get statisticsEmptyMessage =>
+      'Registra una cerveza o marca una como favorita para ver tus estadísticas aquí.';
+
+  @override
+  String get statisticsErrorUnauthorized =>
+      'Tu sesión ha caducado. Vuelve a iniciar sesión para continuar.';
+
+  @override
+  String get statisticsErrorServiceUnavailable =>
+      'Esto no está disponible en este momento. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get statisticsErrorNetwork =>
+      'Revisa tu conexión a internet e inténtalo de nuevo.';
+
+  @override
+  String get statisticsErrorGeneric =>
+      'No pudimos cargar tus estadísticas. Inténtalo de nuevo.';
+
+  @override
+  String get statisticsTotalUniqueBeersLabel => 'Cervezas únicas';
+
+  @override
+  String get statisticsTotalLogsLabel => 'Registros totales';
+
+  @override
+  String get statisticsCountriesDiscoveredLabel => 'Países';
+
+  @override
+  String get statisticsStylesDiscoveredLabel => 'Estilos';
+
+  @override
+  String get statisticsBreweriesDiscoveredLabel => 'Cervecerías';
+
+  @override
+  String get statisticsAverageRatingLabel => 'Valoración media';
+
+  @override
+  String get statisticsAverageRatingNoneLabel => '—';
+
+  @override
+  String get statisticsAmountSpentSectionTitle => 'Cantidad gastada';
+
+  @override
+  String get statisticsAmountSpentEmptyLabel =>
+      'Aún no hay registros con precio.';
+
+  @override
+  String get statisticsFavoritesSectionTitle => 'Favoritos';
+
+  @override
+  String get statisticsFavoriteStyleLabel => 'Estilo';
+
+  @override
+  String get statisticsFavoriteCountryLabel => 'País';
+
+  @override
+  String get statisticsFavoriteBreweryLabel => 'Cervecería';
+
+  @override
+  String get statisticsFavoriteNoneLabel => '—';
+
+  @override
+  String get statisticsMonthlyActivityChartTitle => 'Actividad mensual';
+
+  @override
+  String get statisticsYearlyActivityChartTitle => 'Actividad anual';
+
+  @override
+  String get statisticsYearlyActivityEmptyLabel =>
+      'Aún no hay actividad registrada.';
+
+  @override
+  String get statisticsMonthJan => 'ene';
+
+  @override
+  String get statisticsMonthFeb => 'feb';
+
+  @override
+  String get statisticsMonthMar => 'mar';
+
+  @override
+  String get statisticsMonthApr => 'abr';
+
+  @override
+  String get statisticsMonthMay => 'may';
+
+  @override
+  String get statisticsMonthJun => 'jun';
+
+  @override
+  String get statisticsMonthJul => 'jul';
+
+  @override
+  String get statisticsMonthAug => 'ago';
+
+  @override
+  String get statisticsMonthSep => 'sep';
+
+  @override
+  String get statisticsMonthOct => 'oct';
+
+  @override
+  String get statisticsMonthNov => 'nov';
+
+  @override
+  String get statisticsMonthDec => 'dic';
 }
