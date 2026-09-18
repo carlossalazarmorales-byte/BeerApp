@@ -205,7 +205,7 @@ GoRouter createRouter({
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/discover',
+                path: AppRoutes.discover,
                 builder: (context, state) =>
                     DiscoverScreen(repository: catalogRepository),
               ),
@@ -215,7 +215,8 @@ GoRouter createRouter({
             routes: [
               GoRoute(
                 path: '/scan',
-                builder: (context, state) => const ScanScreen(),
+                builder: (context, state) =>
+                    ScanScreen(catalogRepository: catalogRepository),
               ),
             ],
           ),

@@ -15,7 +15,9 @@ import 'package:beerapp/features/catalog/domain/models/brewery.dart';
 import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
 import 'package:beerapp/features/catalog/presentation/beer_detail/beer_detail_screen.dart';
 import 'package:beerapp/features/map/presentation/map_screen.dart';
+import 'package:beerapp/features/discover/presentation/discover_screen.dart';
 import 'package:beerapp/features/profile/presentation/profile_screen.dart';
+import 'package:beerapp/features/scan/presentation/scan_screen.dart';
 import 'package:beerapp/shared/collection_refresh_signal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -308,6 +310,87 @@ void main() {
       // The Discover branch's own Navigator (and its already-loaded list)
       // was never torn down while covered by the detail route.
       expect(find.text('Test Pale Ale'), findsOneWidget);
+    },
+  );
+
+  testWidgets('the /scan branch builds without throwing', (tester) async {
+    final harness = _Harness(
+      ageAcknowledged: true,
+      initialUser: const AppUser(id: 'email-user-id'),
+      initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
+    );
+    await tester.pumpWidget(harness.app);
+    await tester.pumpAndSettle();
+
+    harness.router.go('/scan');
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ScanScreen), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'Scan\'s "Search manually" destination (context.go to Discover) reuses '
+    'the Discover branch\'s existing state rather than reloading it -- '
+    'recorded here as an actual finding, not assumed',
+    (tester) async {
+      final harness = _Harness(
+        ageAcknowledged: true,
+        initialUser: const AppUser(id: 'email-user-id'),
+        initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
+      );
+      harness.catalogRepository.beersByPage[1] = const PagedResult(
+        items: [
+          Beer(
+            id: 'beer-1',
+            officialName: 'Test Pale Ale',
+            breweryId: 'brewery-1',
+            verified: false,
+          ),
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      );
+
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      harness.router.go('/discover');
+      await tester.pumpAndSettle();
+      expect(find.text('Test Pale Ale'), findsOneWidget);
+      final discoverScreenBefore = tester.widget(find.byType(DiscoverScreen));
+      final loadCallsBefore = harness.catalogRepository.callLog
+          .where((c) => c.startsWith('getBeers'))
+          .length;
+
+      // The exact navigation ScanScreen's "Search manually" action performs
+      // (see scan_screen.dart's `_goToDiscover`) -- a single-route branch,
+      // so `context.go` is expected to resolve the same way `goBranch`
+      // would, per app_routes.dart's `discover` doc comment.
+      harness.router.go('/scan');
+      await tester.pumpAndSettle();
+      harness.router.go(AppRoutes.discover);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Test Pale Ale'), findsOneWidget);
+      final discoverScreenAfter = tester.widget(find.byType(DiscoverScreen));
+      final loadCallsAfter = harness.catalogRepository.callLog
+          .where((c) => c.startsWith('getBeers'))
+          .length;
+
+      expect(
+        identical(discoverScreenBefore, discoverScreenAfter),
+        isTrue,
+        reason:
+            'context.go(AppRoutes.discover) reuses the existing Discover '
+            'branch, confirmed here rather than assumed',
+      );
+      expect(
+        loadCallsAfter,
+        loadCallsBefore,
+        reason: 'no reload happened -- the previously-loaded list is reused',
+      );
     },
   );
 }

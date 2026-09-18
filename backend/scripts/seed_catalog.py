@@ -122,9 +122,7 @@ _BEER_STYLES: list[tuple[UUID, str, str, str | None, Decimal | None, Decimal | N
 ]
 
 # (id, name, country_iso, region, city, latitude, longitude)
-_BREWERIES: list[
-    tuple[UUID, str, str, str | None, str | None, Decimal | None, Decimal | None]
-] = [
+_BREWERIES: list[tuple[UUID, str, str, str | None, str | None, Decimal | None, Decimal | None]] = [
     (
         UUID("00000000-0000-4000-9002-000000000001"),
         "St. James's Gate Brewery",
@@ -197,7 +195,11 @@ _BEERS: list[tuple] = [
         None,
         Decimal("4.2"),
         45,
-        "5000213007072",
+        # Checksum-corrected EAN-13 dev fixture (GS1 mod-10 check digit for
+        # payload 500021300707 is 5, not the 2 this previously ended in --
+        # see app/services/barcode.py). Synthetic-looking but a genuinely
+        # valid canonical code, for scanner dev/testing.
+        "5000213007075",
     ),
     (
         UUID("00000000-0000-4000-9003-000000000002"),
@@ -211,7 +213,9 @@ _BEERS: list[tuple] = [
         None,
         Decimal("5.4"),
         14,
-        None,
+        # Deliberately synthetic, checksum-valid EAN-13 dev fixture -- never
+        # presented as a real commercial code.
+        "2222222222222",
     ),
     (
         UUID("00000000-0000-4000-9003-000000000003"),
@@ -225,7 +229,8 @@ _BEERS: list[tuple] = [
         None,
         Decimal("4.4"),
         40,
-        None,
+        # Deliberately synthetic, checksum-valid EAN-8 dev fixture.
+        "11111115",
     ),
     (
         UUID("00000000-0000-4000-9003-000000000004"),
@@ -323,9 +328,7 @@ async def _seed_countries(conn: asyncpg.Connection) -> dict[str, UUID]:
     return ids
 
 
-async def _seed_beer_styles(
-    conn: asyncpg.Connection, country_ids: dict[str, UUID]
-) -> None:
+async def _seed_beer_styles(conn: asyncpg.Connection, country_ids: dict[str, UUID]) -> None:
     for style_id, name, category, origin_iso, abv_min, abv_max in _BEER_STYLES:
         origin_country_id = country_ids.get(origin_iso) if origin_iso else None
         await conn.execute(
@@ -349,9 +352,7 @@ async def _seed_beer_styles(
         )
 
 
-async def _seed_breweries(
-    conn: asyncpg.Connection, country_ids: dict[str, UUID]
-) -> None:
+async def _seed_breweries(conn: asyncpg.Connection, country_ids: dict[str, UUID]) -> None:
     for brewery_id, name, country_iso, region, city, latitude, longitude in _BREWERIES:
         await conn.execute(
             """

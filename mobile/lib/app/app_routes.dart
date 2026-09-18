@@ -18,6 +18,13 @@ abstract final class AppRoutes {
   /// The authenticated shell's default destination (Map tab).
   static const String home = '/map';
 
+  /// Discover tab -- also the "search manually" fallback destination from
+  /// the Scan screen (permission denied/unsupported/not-found/error
+  /// states). A single-route `StatefulShellBranch` (no nested sub-routes),
+  /// so `context.go(discover)` resolves straight to that branch like
+  /// `navigationShell.goBranch` would, with no extra navigation plumbing.
+  static const String discover = '/discover';
+
   /// Beer detail. Declared as a top-level route (not nested inside the
   /// Discover tab's `StatefulShellBranch`) so it builds on the root
   /// navigator, full-screen above the bottom-nav shell, rather than staying

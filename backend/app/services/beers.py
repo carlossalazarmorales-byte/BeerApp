@@ -45,3 +45,9 @@ class BeerService:
         if row is None:
             raise NotFoundError(f"Beer {beer_id} not found")
         return BeerOut.model_validate(dict(row))
+
+    async def get_beer_by_barcode(self, barcode: str) -> BeerOut:
+        row = await self._repository.get_by_barcode(barcode)
+        if row is None:
+            raise NotFoundError(f"Beer with barcode {barcode} not found")
+        return BeerOut.model_validate(dict(row))

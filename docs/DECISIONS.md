@@ -1319,3 +1319,154 @@ way to specify a condition, `prerequisite_keys` (other catalog keys that
 must already be permanently unlocked), used instead of `requirements` for
 compound entries — permanence-safe by construction, since it checks the
 already-unlocked set rather than live metrics evaluated together.
+
+## 2026-09-18 — Phase 11: dedicated `GET /beers/barcode/{barcode}`, canonicalization enforced at the request boundary
+
+Considered and rejected: extending `GET /beers` with a `barcode` filter
+(the precedent Phase 5's `q` set — see the "gains `q`, not a parallel search
+endpoint" entry above). Rejected here specifically because a barcode lookup
+is single-result-or-404 semantics, not a searched/filtered *list* — forcing
+it through the `Page[T]` envelope would be a worse fit than the small
+duplication of a second endpoint, and unlike `q`, a barcode lookup shares no
+pagination/filter-composition logic with `list_beers` worth reusing.
+
+Canonicalization/validation (`backend/app/services/barcode.py`) is wired in
+via a Pydantic v2 `Annotated[str, AfterValidator(canonicalize_barcode)]` on
+the route's path parameter, not a service-layer check after the fact. A
+`ValueError` raised inside the validator becomes an ordinary FastAPI
+`RequestValidationError` → the existing 422 handler — no new exception class,
+no new handler, and validation happens before the repository is ever
+touched. `canonicalize_barcode` has its own direct unit tests
+(`backend/tests/services/test_barcode_canonicalization.py`), independent of
+the route.
+
+## 2026-09-18 — Phase 11: `mobile_scanner`, version-pinned after reading its source, not assumed from memory
+
+Chosen over `flutter_barcode_scanner` (less actively maintained, more opaque
+native UI, harder to control camera lifecycle manually) and `camera` +
+`google_mlkit_barcode_scanning` (two packages, more transitive dependencies,
+more moving parts for the same outcome). No cloud service, no account, no
+API key — camera frames never leave the device; the backend only ever
+receives an already-decoded digit string.
+
+Pinned to `^7.4.2` (Dart `^3.7.0` / Flutter `>=3.29.0` required — compatible
+with this project's Flutter 3.47.4 / Dart 3.13.3) after fetching and reading
+its actual changelog/source rather than implementing against a remembered or
+assumed API shape. This directly resolved several version-specific design
+questions instead of guessing:
+
+- `MobileScannerController(autoStart: false, formats: [...])` and manual
+  `start()`/`stop()`/`dispose()` are current, valid API for this version.
+- The plugin already self-guards a double `start()` call
+  (`MobileScannerErrorCode.controllerInitializing`/`controllerAlreadyInitialized`)
+  and, critically, throws a distinct `controllerNotAttached` if `start()` is
+  called before a `MobileScanner` widget has actually mounted — this is the
+  mechanism `ScanController`'s lifecycle design (below) is built around,
+  rather than an assumption about when it's "probably safe" to call it.
+  Verified directly against the installed package's source
+  (`mobile_scanner_controller.dart`/`mobile_scanner_error_code.dart`), not
+  the package's own documentation prose alone.
+- The currently-recommended detection pattern is listening to
+  `controller.barcodes` directly, not the `onDetect` widget callback —
+  `ScanController` takes an injectable `barcodeStream` (defaulting to
+  `cameraController.barcodes`) specifically so tests can feed synthetic
+  `BarcodeCapture`s without touching platform channels at all.
+- `controller.dispose()` is `async`; `ChangeNotifier.dispose()` (and
+  therefore `State.dispose()`) is not. `ScanController.dispose()` sets a
+  synchronous `_disposed` flag first (checked by every late-completing
+  callback before it touches state or calls `notifyListeners()`), cancels
+  its stream subscription synchronously, then chains
+  `cameraController.stop().then((_) => cameraController.dispose())`
+  unawaited with a `catchError` — stop-then-dispose in the correct order,
+  errors logged rather than left as an unhandled async rejection (this also
+  covers the legitimate case of disposing a controller that was never
+  successfully started, which reaches a real platform call and can
+  genuinely fail on some devices/emulators).
+
+No `permission_handler` dependency was added. `mobile_scanner` already owns
+camera permission end-to-end (`MobileScannerController.value.hasCameraPermission`,
+the `permissionDenied` error code) — adding a second package to manage the
+same OS permission would create two independent paths that could disagree
+about its state. The one capability `permission_handler` would have added —
+distinguishing "denied" from "permanently denied" to show an "Open Settings"
+button — was deliberately not built: live verification on an Android
+emulator confirmed that after two denials, a fresh `start()` attempt just
+silently fails to re-prompt (Android's own behavior, not something the app
+needs to detect), and the denied-state copy explains this in words ("enable
+it in your device's system settings") instead. A settings-launcher button
+can be added later if real user feedback calls for it, without weakening the
+current one-package-owns-permission design in the meantime.
+
+## 2026-09-18 — Phase 11: camera lifecycle stops before navigating, guarded restart after, `TickerMode` (not a hand-rolled visibility signal) drives tab-active state
+
+Three responsibilities were deliberately kept on three separate methods
+(`ScanController.resetForScanning` / `startIfEligible` / `stopScanner`)
+rather than one combined "retry" call, specifically so a decoded barcode's
+navigation sequence could be gotten right: on a successful lookup, the
+controller sets a `_navigationInProgress` guard, calls `stopScanner()`, and
+only then flips to `found`. The **screen** (not the controller) reacts by
+`await`ing `context.push(AppRoutes.beerDetailPath(...))` — the camera stays
+stopped for the beer detail screen's entire lifetime, including if the user
+backgrounds the app while it's open. Only once that `push` future resolves
+(user returned) does the screen clear the guard and attempt a *guarded*
+restart — eligible only if the Scan tab is still active and the app is still
+resumed, since returning from a push can land on any tab, not necessarily
+back on Scan.
+
+`TickerMode.valuesOf(context).enabled` (read in `didChangeDependencies`,
+`TickerMode.of` having been deprecated in a Flutter release before this
+project's 3.47.4) is the signal for "is the Scan tab actually the active
+`StatefulShellRoute.indexedStack` branch" — go_router keeps every branch's
+navigator mounted, so `ScanScreen`'s own `initState`/`dispose` never fire on
+an ordinary tab switch, and `TickerMode` is what go_router itself flips for
+the inactive branches. No custom visibility-tracking mechanism was built.
+`WidgetsBindingObserver`/`AppLifecycleState` covers the orthogonal
+app-background/foreground case; both signals gate `startIfEligible()`
+independently.
+
+Live emulator verification (see `ROADMAP.md`'s Phase 11 status) confirmed
+this design actually holds, via `adb logcat`'s `CameraService` lines, not
+just by reading the code: switching away from Scan stops the camera,
+switching back reopens it cleanly with no `controllerNotAttached`/
+`controllerAlreadyInitialized` errors, and the same holds across app
+background/foreground.
+
+## 2026-09-18 — Phase 11: `beers.barcode` stays a single nullable column; multi-barcode support explicitly deferred
+
+The column and its unique partial index already existed (added in Phase 3,
+anticipating this phase — see `docs/DATABASE.md`). Reusing it as-is, rather
+than introducing a normalized `beer_barcodes` table to support multiple
+codes per beer (e.g. regional packaging variants), was the deliberate
+smallest-correct choice for this milestone: no current requirement needs
+more than one barcode per beer, and normalizing ahead of an actual need
+would be exactly the kind of speculative groundwork this project's rules
+warn against. This is recorded as an explicit, known limitation — **at most
+one canonical barcode per beer** — not silently described as if the current
+schema already supported packaging variants. A `beer_barcodes` table is the
+correct future shape if that need materializes; no code here assumes the
+column can't eventually be superseded by one.
+
+UPC-E was deferred for the same reason from the decoding side: no
+unambiguous canonical mapping to the existing EAN-8/EAN-13/UPC-A→GTIN-13
+scheme was established, so it is neither enabled in the mobile scanner's
+`formats` list nor accepted by `canonicalize_barcode` — an 8-digit UPC-E
+input is rejected, not silently treated as EAN-8.
+
+## 2026-09-18 — Phase 11: an existing "13-digit-shaped" seed barcode was actually invalid; fixed, not just replaced
+
+While implementing the shared `canonicalize_barcode` check-digit validation,
+the pre-existing "Guinness Draught" dev seed barcode (`5000213007072`,
+present since Phase 3) was hand- and then programmatically verified against
+the standard GS1 mod-10 algorithm and found to fail it — the correct check
+digit for that payload is `5`, not `2`. This was not a hypothetical risk:
+it's exactly the class of bug this session's own barcode-canonicalization
+work was written to catch. Corrected to `5000213007075` in
+`backend/scripts/seed_catalog.py`, with two more deliberately synthetic
+(never presented as real commercial codes), checksum-valid fixtures added
+(one more EAN-13, one EAN-8) so dev/testing has multiple real lookups —
+while most seeded beers deliberately keep `barcode = null`, since a beer
+with no barcode is normal product behavior, not a gap to fill in. A
+regression test (`TestSeedCatalogBarcodesAreValid` in
+`backend/tests/services/test_barcode_canonicalization.py`) now verifies
+every non-null seeded barcode programmatically rather than by eyeballing it,
+so this class of bug can't silently reappear.

@@ -35,10 +35,6 @@ class AppLocalizationsEs extends AppLocalizations {
       'Encuentra nuevas cervecerías, estilos y cervezas que vale la pena probar.';
 
   @override
-  String get scanScreenDescription =>
-      'Escanea la etiqueta de una cerveza para añadirla a tu colección en segundos.';
-
-  @override
   String get profileScreenDescription =>
       'Gestiona tu perfil, logros y preferencias.';
 
@@ -205,6 +201,27 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get catalogErrorGeneric =>
       'No pudimos cargar el catálogo de cervezas. Inténtalo de nuevo.';
+
+  @override
+  String get scanSearchManuallyAction => 'Buscar manualmente';
+
+  @override
+  String get scanPermissionDeniedMessage =>
+      'El acceso a la cámara solo es necesario para escanear códigos de barras. Si \"Reintentar cámara\" no muestra ningún aviso, activa el acceso a la cámara para BeerApp en los ajustes del sistema. Mientras tanto, aún puedes buscar cervezas manualmente.';
+
+  @override
+  String get scanTryCameraAgainAction => 'Reintentar cámara';
+
+  @override
+  String get scanUnsupportedMessage =>
+      'El escaneo no está disponible en este dispositivo. Aún puedes buscar cervezas manualmente.';
+
+  @override
+  String get scanNotFoundMessage =>
+      'No encontramos ninguna cerveza con ese código de barras en nuestro catálogo.';
+
+  @override
+  String get scanAgainAction => 'Escanear de nuevo';
 
   @override
   String get discoverSearchHint =>

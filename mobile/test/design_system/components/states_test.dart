@@ -53,4 +53,51 @@ void main() {
 
     expect(retried, isTrue);
   });
+
+  testWidgets('ErrorState uses a custom retry label when given', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      _wrap(ErrorState(retryLabel: 'Try camera again', onRetry: () {})),
+    );
+
+    expect(find.text('Try camera again'), findsOneWidget);
+    expect(find.text('Retry'), findsNothing);
+  });
+
+  testWidgets(
+    'ErrorState renders no secondary action unless both label and callback are given',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrap(const ErrorState(secondaryLabel: 'Search manually')),
+      );
+      expect(find.text('Search manually'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'ErrorState fires the secondary action callback when tapped, alongside retry',
+    (tester) async {
+      var retried = false;
+      var searchedManually = false;
+      await tester.pumpWidget(
+        _wrap(
+          ErrorState(
+            onRetry: () => retried = true,
+            secondaryLabel: 'Search manually',
+            onSecondaryAction: () => searchedManually = true,
+          ),
+        ),
+      );
+
+      expect(find.text('Retry'), findsOneWidget);
+      expect(find.text('Search manually'), findsOneWidget);
+
+      await tester.tap(find.text('Search manually'));
+      await tester.pump();
+
+      expect(searchedManually, isTrue);
+      expect(retried, isFalse);
+    },
+  );
 }

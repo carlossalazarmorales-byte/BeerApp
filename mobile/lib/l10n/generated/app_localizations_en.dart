@@ -35,10 +35,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Find new breweries, styles and beers worth trying.';
 
   @override
-  String get scanScreenDescription =>
-      'Scan a beer label to add it to your collection in seconds.';
-
-  @override
   String get profileScreenDescription =>
       'Manage your profile, achievements and preferences.';
 
@@ -204,6 +200,27 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get catalogErrorGeneric =>
       'We couldn\'t load the beer catalog. Please try again.';
+
+  @override
+  String get scanSearchManuallyAction => 'Search manually';
+
+  @override
+  String get scanPermissionDeniedMessage =>
+      'Camera access is needed only for scanning barcodes. If \"Try camera again\" doesn\'t prompt you, enable camera access for BeerApp in your device\'s system settings. You can still search for beers manually in the meantime.';
+
+  @override
+  String get scanTryCameraAgainAction => 'Try camera again';
+
+  @override
+  String get scanUnsupportedMessage =>
+      'Scanning isn\'t available on this device. You can still search for beers manually.';
+
+  @override
+  String get scanNotFoundMessage =>
+      'We couldn\'t find a beer with that barcode in our catalog.';
+
+  @override
+  String get scanAgainAction => 'Scan again';
 
   @override
   String get discoverSearchHint => 'Search beers, breweries, styles, countries';

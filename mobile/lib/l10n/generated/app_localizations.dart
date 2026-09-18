@@ -146,12 +146,6 @@ abstract class AppLocalizations {
   /// **'Find new breweries, styles and beers worth trying.'**
   String get discoverScreenDescription;
 
-  /// Placeholder description for the Scan screen.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan a beer label to add it to your collection in seconds.'**
-  String get scanScreenDescription;
-
   /// Placeholder description for the Profile screen.
   ///
   /// In en, this message translates to:
@@ -451,6 +445,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'We couldn\'t load the beer catalog. Please try again.'**
   String get catalogErrorGeneric;
+
+  /// Button label, shown on every non-scanning Scan screen state, to fall back to the normal Discover search screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Search manually'**
+  String get scanSearchManuallyAction;
+
+  /// Shown on the Scan screen when camera permission has been denied. If the OS will no longer show the permission prompt, enabling it requires the device's system settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera access is needed only for scanning barcodes. If \"Try camera again\" doesn\'t prompt you, enable camera access for BeerApp in your device\'s system settings. You can still search for beers manually in the meantime.'**
+  String get scanPermissionDeniedMessage;
+
+  /// Button label to retry requesting camera permission/starting the scanner, shown when permission was denied.
+  ///
+  /// In en, this message translates to:
+  /// **'Try camera again'**
+  String get scanTryCameraAgainAction;
+
+  /// Shown on the Scan screen when the device has no usable camera/scanning support.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning isn\'t available on this device. You can still search for beers manually.'**
+  String get scanUnsupportedMessage;
+
+  /// Shown on the Scan screen when a decoded barcode doesn't match any beer.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find a beer with that barcode in our catalog.'**
+  String get scanNotFoundMessage;
+
+  /// Button label to reset the scanner and scan another barcode.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan again'**
+  String get scanAgainAction;
 
   /// Placeholder text for the Discover search field.
   ///

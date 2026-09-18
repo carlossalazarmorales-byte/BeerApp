@@ -35,6 +35,7 @@ class FakeCatalogRepository implements CatalogRepository {
   Map<String, PagedResult<Beer>> beersByRequest = {};
 
   Map<String, Beer> beersById = {};
+  Map<String, Beer> beersByBarcode = {};
   Map<String, Brewery> breweriesById = {};
 
   /// Keyed by the requested page number, mirroring [beersByPage].
@@ -44,6 +45,7 @@ class FakeCatalogRepository implements CatalogRepository {
   Object? getBeerStylesError;
   Object? getBeersError;
   Object? getBeerError;
+  Object? getBeerByBarcodeError;
   Object? getBreweryError;
   Object? getBreweriesError;
 
@@ -126,6 +128,20 @@ class FakeCatalogRepository implements CatalogRepository {
     if (error != null) throw error;
     final beer = beersById[id];
     if (beer == null) throw StateError('FakeCatalogRepository: no beer $id');
+    return beer;
+  }
+
+  @override
+  Future<Beer> getBeerByBarcode(String barcode) async {
+    final callKey = 'getBeerByBarcode:$barcode';
+    callLog.add(callKey);
+    await _maybeDelay(callKey);
+    final error = getBeerByBarcodeError;
+    if (error != null) throw error;
+    final beer = beersByBarcode[barcode];
+    if (beer == null) {
+      throw StateError('FakeCatalogRepository: no beer for barcode $barcode');
+    }
     return beer;
   }
 

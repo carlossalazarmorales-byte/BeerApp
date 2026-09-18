@@ -60,6 +60,7 @@ admin-gated; there is no catalog write endpoint yet, see
 | GET | `/breweries/{id}` | |
 | GET | `/beers` | `?country_id=&style_id=&brewery_id=&q=&page=&page_size=` |
 | GET | `/beers/{id}` | |
+| GET | `/beers/barcode/{barcode}` | Phase 11 — see below |
 
 These correspond to `ROADMAP.md` Phase 4's "Beer list API"/"Beer detail API"
 tasks — the read-API foundation moved forward into Phase 3 (allowed as "small
@@ -95,6 +96,49 @@ field, not its brewery's country. A beer with no `country_id` set won't be
 found by searching its brewery's country name. Not a regression — no country
 search existed before Phase 5 — but worth knowing when a search doesn't
 surface an expected result.
+
+## Barcode lookup (`GET /beers/barcode/{barcode}`, Phase 11)
+
+A dedicated single-result endpoint, not a filter on `GET /beers` — a barcode
+lookup returns at most one beer, not a page, so it doesn't fit the `Page[T]`
+envelope every other list endpoint uses. No route-collision risk with
+`GET /beers/{id}`: they differ in path-segment count
+(`/beers/barcode/{barcode}` is two segments after `/beers`, `/beers/{id}` is
+one), so FastAPI/Starlette's structural route matching separates them
+regardless of declaration order.
+
+The `barcode` path parameter is canonicalized and validated server-side
+before any database lookup — the backend is the sole source of truth for
+validity, never trusting whatever a scanning client already normalized:
+
+- Accepted input shapes: EAN-13 (13 digits), EAN-8 (8 digits), or UPC-A (12
+  digits). UPC-A is zero-prefixed to its canonical 13-digit GTIN form before
+  lookup, so the **same physical product resolves identically** whether a
+  given platform/scanner reports it as 12-digit UPC-A or as 13-digit
+  EAN-13-with-a-leading-zero — `GET /beers/barcode/111111111117` and
+  `GET /beers/barcode/0111111111117` return the same beer if it exists.
+- The GS1 mod-10 check digit is validated (see
+  `backend/app/services/barcode.py`) — a well-shaped but checksum-invalid
+  code is rejected, not looked up.
+- UPC-E is **not** supported yet — deferred until an unambiguous canonical
+  mapping is established (see `docs/DECISIONS.md`).
+
+Semantics:
+
+- **200** — canonical `BeerOut` for a known barcode.
+- **404** — the barcode is validly shaped but matches no beer in the
+  catalog. A normal outcome, not an error — most beers have no barcode at
+  all, and an unrecognized one is expected, not exceptional.
+- **422** — the path value isn't digits-only, isn't one of the supported
+  lengths, or fails the check digit. Raised automatically by a Pydantic
+  `AfterValidator` wrapping `canonicalize_barcode` — no custom exception
+  class or handler was needed for this.
+
+Never creates a `Beer`, a log, or a contribution — this is a pure catalog
+lookup, reused by the mobile Scanner feature purely as a shortcut into the
+same beer-detail flow manual search already reaches (see `PRODUCT.md` §13
+and `docs/DECISIONS.md`). `public.beers.barcode` stores **at most one**
+canonical barcode per beer — see `docs/DATABASE.md` for that limitation.
 
 ## Beer logs (`/beer-logs`, Phase 6)
 

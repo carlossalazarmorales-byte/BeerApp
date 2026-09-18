@@ -109,7 +109,7 @@ def _beer_out() -> BeerOut:
         ibu=None,
         description=None,
         image_url=None,
-        barcode="5000213007072",
+        barcode="5000213007075",
         verified=True,
         source="dev-seed",
         created_at=_NOW,
@@ -121,6 +121,7 @@ class _FakeBeerService:
     def __init__(self, *, found: bool = True) -> None:
         self._found = found
         self.received_q: str | None = None
+        self.received_barcode: str | None = None
 
     async def list_beers(
         self,
@@ -139,6 +140,12 @@ class _FakeBeerService:
     async def get_beer(self, beer_id: str) -> BeerOut:
         if not self._found:
             raise NotFoundError(f"Beer {beer_id} not found")
+        return _beer_out()
+
+    async def get_beer_by_barcode(self, barcode: str) -> BeerOut:
+        self.received_barcode = barcode
+        if not self._found:
+            raise NotFoundError(f"Beer with barcode {barcode} not found")
         return _beer_out()
 
 
@@ -307,7 +314,84 @@ def test_get_beer_found_returns_data(client, authenticated):
     assert response.status_code == 200
     body = response.json()
     assert body["official_name"] == "Guinness Draught"
-    assert body["barcode"] == "5000213007072"
+    assert body["barcode"] == "5000213007075"
+
+
+def test_get_beer_by_barcode_without_token_is_unauthorized(client, unauthenticated):
+    response = client.get("/beers/barcode/5000213007075")
+    assert response.status_code == 401
+
+
+def test_get_beer_by_barcode_not_found_is_404(client, authenticated):
+    _override(get_beer_service, _FakeBeerService(found=False))
+    try:
+        response = client.get("/beers/barcode/5000213007075")
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert response.status_code == 404
+
+
+def test_get_beer_by_barcode_found_returns_data(client, authenticated):
+    fake = _FakeBeerService(found=True)
+    _override(get_beer_service, fake)
+    try:
+        response = client.get("/beers/barcode/5000213007075")
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["official_name"] == "Guinness Draught"
+    assert body["barcode"] == "5000213007075"
+    assert fake.received_barcode == "5000213007075"
+
+
+def test_get_beer_by_barcode_upca_input_resolves_to_canonical_gtin13(client, authenticated):
+    # A checksum-valid 12-digit UPC-A code must reach the service already
+    # canonicalized to its 13-digit GTIN form -- proving the same physical
+    # product resolves identically regardless of which representation a
+    # scanner/platform reports.
+    fake = _FakeBeerService(found=True)
+    _override(get_beer_service, fake)
+    try:
+        response = client.get("/beers/barcode/111111111117")
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert response.status_code == 200
+    assert fake.received_barcode == "0111111111117"
+
+
+def test_get_beer_by_barcode_non_digit_is_422(client, authenticated):
+    _override(get_beer_service, _FakeBeerService())
+    try:
+        response = client.get("/beers/barcode/not-a-barcode")
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert response.status_code == 422
+
+
+def test_get_beer_by_barcode_wrong_length_is_422(client, authenticated):
+    _override(get_beer_service, _FakeBeerService())
+    try:
+        response = client.get("/beers/barcode/123456789")
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert response.status_code == 422
+
+
+def test_get_beer_by_barcode_bad_check_digit_is_422(client, authenticated):
+    _override(get_beer_service, _FakeBeerService())
+    try:
+        # Same payload as the valid fixture above, wrong check digit.
+        response = client.get("/beers/barcode/5000213007072")
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert response.status_code == 422
 
 
 def test_list_beers_passes_q_through(client, authenticated):

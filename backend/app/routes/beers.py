@@ -1,12 +1,21 @@
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
+from pydantic import AfterValidator
 
 from app.auth.dependencies import get_current_user
 from app.dependencies import get_beer_service
 from app.schemas.beers import BeerOut
 from app.schemas.common import Page
+from app.services.barcode import canonicalize_barcode
 from app.services.beers import BeerService
+
+# A canonicalization failure (wrong shape, unsupported length, bad check
+# digit) raises ValueError, which Pydantic surfaces as a normal request
+# validation error -- routed to the existing RequestValidationError -> 422
+# handler with no new exception class or handler needed.
+CanonicalBarcode = Annotated[str, AfterValidator(canonicalize_barcode)]
 
 router = APIRouter(
     prefix="/beers",
@@ -41,3 +50,11 @@ async def get_beer(
     service: BeerService = Depends(get_beer_service),
 ) -> BeerOut:
     return await service.get_beer(str(beer_id))
+
+
+@router.get("/barcode/{barcode}", response_model=BeerOut)
+async def get_beer_by_barcode(
+    barcode: CanonicalBarcode,
+    service: BeerService = Depends(get_beer_service),
+) -> BeerOut:
+    return await service.get_beer_by_barcode(barcode)

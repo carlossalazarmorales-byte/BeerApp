@@ -12,7 +12,6 @@
   "comingSoonBadge": "Próximamente",
 
   "discoverScreenDescription": "Encuentra nuevas cervecerías, estilos y cervezas que vale la pena probar.",
-  "scanScreenDescription": "Escanea la etiqueta de una cerveza para añadirla a tu colección en segundos.",
   "profileScreenDescription": "Gestiona tu perfil, logros y preferencias.",
   "logoutAction": "Cerrar sesión",
   "profileScreenGreeting": "Sesión iniciada como {name}.",
@@ -75,6 +74,13 @@
   "catalogErrorNetwork": "Revisa tu conexión a internet e inténtalo de nuevo.",
   "catalogErrorNotFound": "No se pudo encontrar esta cerveza.",
   "catalogErrorGeneric": "No pudimos cargar el catálogo de cervezas. Inténtalo de nuevo.",
+
+  "scanSearchManuallyAction": "Buscar manualmente",
+  "scanPermissionDeniedMessage": "El acceso a la cámara solo es necesario para escanear códigos de barras. Si \"Reintentar cámara\" no muestra ningún aviso, activa el acceso a la cámara para BeerApp en los ajustes del sistema. Mientras tanto, aún puedes buscar cervezas manualmente.",
+  "scanTryCameraAgainAction": "Reintentar cámara",
+  "scanUnsupportedMessage": "El escaneo no está disponible en este dispositivo. Aún puedes buscar cervezas manualmente.",
+  "scanNotFoundMessage": "No encontramos ninguna cerveza con ese código de barras en nuestro catálogo.",
+  "scanAgainAction": "Escanear de nuevo",
 
   "discoverSearchHint": "Busca cervezas, cervecerías, estilos, países",
   "discoverSearchClearAction": "Borrar búsqueda",

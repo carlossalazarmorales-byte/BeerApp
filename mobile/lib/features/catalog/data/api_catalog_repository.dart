@@ -85,6 +85,14 @@ class ApiCatalogRepository implements CatalogRepository {
   }
 
   @override
+  Future<Beer> getBeerByBarcode(String barcode) async {
+    final json = await _client.getJson(
+      '/beers/barcode/$barcode',
+    ) as Map<String, dynamic>;
+    return Beer.fromJson(json);
+  }
+
+  @override
   Future<Brewery> getBrewery(String id) async {
     final json =
         await _client.getJson('/breweries/$id') as Map<String, dynamic>;

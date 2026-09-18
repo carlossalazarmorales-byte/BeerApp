@@ -23,6 +23,13 @@ abstract class CatalogRepository {
 
   Future<Beer> getBeer(String id);
 
+  /// Resolves a scanned barcode to its matching beer via
+  /// `GET /beers/barcode/{barcode}`. The backend canonicalizes/validates
+  /// the value (UPC-A/EAN-13/EAN-8, check-digit verified); throws
+  /// [NotFoundApiException] when no beer has that barcode -- a normal
+  /// outcome (a beer without a barcode is normal too), not an error.
+  Future<Beer> getBeerByBarcode(String barcode);
+
   Future<Brewery> getBrewery(String id);
 
   /// Paginated brewery listing, backed by `GET /breweries`. Added for

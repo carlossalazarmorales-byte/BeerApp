@@ -82,6 +82,12 @@ class _FakeBeerRepository:
     async def get_by_id(self, beer_id: str):
         return None
 
+    async def get_by_barcode(self, barcode: str):
+        for row in self._rows:
+            if row.get("barcode") == barcode:
+                return row
+        return None
+
 
 def test_brewery_service_builds_page_envelope_from_repository_result():
     repository = _FakeBreweryRepository([_brewery_row("Achouffe")], total=37)
@@ -122,6 +128,26 @@ def test_beer_service_get_by_id_raises_not_found_when_repository_returns_none():
 
     with pytest.raises(NotFoundError):
         asyncio.run(service.get_beer("44444444-4444-4444-4444-444444444444"))
+
+
+def test_beer_service_get_by_barcode_returns_matching_beer():
+    row = _beer_row("La Chouffe")
+    row["barcode"] = "5000213007075"
+    repository = _FakeBeerRepository([row], total=1)
+    service = BeerService(repository)
+
+    beer = asyncio.run(service.get_beer_by_barcode("5000213007075"))
+
+    assert beer.official_name == "La Chouffe"
+    assert beer.barcode == "5000213007075"
+
+
+def test_beer_service_get_by_barcode_raises_not_found_when_repository_returns_none():
+    repository = _FakeBeerRepository([], total=0)
+    service = BeerService(repository)
+
+    with pytest.raises(NotFoundError):
+        asyncio.run(service.get_beer_by_barcode("5000213007075"))
 
 
 def test_beer_service_strips_surrounding_whitespace_from_q():

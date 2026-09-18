@@ -640,14 +640,14 @@ Goal: reduce friction when identifying a beer.
 
 First milestone:
 
-- [ ] Camera permission
-- [ ] Barcode scanner
-- [ ] Barcode lookup
-- [ ] Matching result
-- [ ] No-result fallback
-- [ ] Manual search fallback
+- [x] Camera permission
+- [x] Barcode scanner
+- [x] Barcode lookup
+- [x] Matching result
+- [x] No-result fallback
+- [x] Manual search fallback
 
-Later:
+Later (deferred, not in scope for this milestone):
 
 - [ ] Label image recognition
 - [ ] Suggested matches
@@ -656,7 +656,97 @@ Later:
 
 Exit criteria:
 
-- Common supported barcodes can open a matching beer
+- [x] Common supported barcodes can open a matching beer — proven end-to-end
+  for EAN-13/EAN-8/UPC-A via backend canonicalization tests and a live
+  granted-permission scan of a seeded barcode's catalog lookup; actual
+  physical-camera decode of a real printed barcode is NOT EXERCISED (see
+  status note below) — this project's emulator has no way to present a
+  genuinely scannable barcode image to the camera pipeline.
+
+**Status (2026-09-18)**: complete, with one explicit gap. Backend (`pytest`,
+excluding `@pytest.mark.integration`, 200 passed) and Flutter (`flutter
+test`, 299 passed) suites both pass in full; `flutter analyze`/`dart format`
+and `ruff check`/`ruff format` clean.
+
+**IMPLEMENTED / AUTOMATED VERIFIED** (backend + widget/controller tests, not
+live device behavior):
+
+- Barcode canonicalization: EAN-13/EAN-8 accepted as-is, UPC-A zero-prefixed
+  to its canonical GTIN-13, GS1 check-digit validated, UPC-E deferred —
+  `backend/tests/services/test_barcode_canonicalization.py`
+- `GET /beers/barcode/{barcode}`: 200 with canonical `BeerOut` (including a
+  12-digit UPC-A request resolving to the identical beer as its 13-digit
+  canonical form), 404 for a well-shaped unknown barcode, 422 for
+  non-digit/wrong-length/bad-checksum input, 401 unauthenticated —
+  `backend/tests/routes/test_catalog_routes.py`
+- Repository lookup (found / unknown / null-barcode-never-matches) — written
+  against `backend/tests/integration/test_beer_search.py`'s pattern in
+  `backend/tests/integration/test_beer_barcode_lookup.py` (opt-in,
+  `INTEGRATION_DATABASE_URL`-gated — see the gap note below)
+- Seed barcodes are checksum-verified programmatically, not merely
+  plausible-looking (this caught and fixed an actually-invalid seed value —
+  see `docs/DECISIONS.md`)
+- Scanner state machine: successful lookup → `found`; unknown barcode →
+  `notFound`, never `error`; a second detection while resolving triggers
+  exactly one lookup; a duplicate of an already-shown `notFound` code is
+  debounced; a detection arriving while a navigation is already in progress
+  is ignored (at most one `BeerDetail` push per decoded barcode); a
+  post-dispose barcode event is silently ignored (no notify, no throw) —
+  `mobile/test/features/scan/presentation/scan_controller_test.dart`
+- Scan screen renders the correct not-found/error UI and actions, and a
+  found result triggers exactly one navigation push even under duplicate
+  detections — `mobile/test/features/scan/presentation/scan_screen_test.dart`
+- `context.go(AppRoutes.discover)` (the "Search manually" destination)
+  genuinely reuses the existing Discover branch (same widget instance, no
+  reload) rather than this being assumed —
+  `mobile/test/app/router_test.dart`
+
+**LIVE EMULATOR VERIFIED** (Android emulator, `beerapp-dev` backend running
+locally, real signed-in session):
+
+- Camera permission prompt appears only on first entering the Scan tab, never
+  at app startup
+- Denying permission shows the correct denied-state message with "Try camera
+  again" and "Search manually" actions; re-entering the Scan tab after
+  denial shows the same state without an unwanted re-prompt
+- After two denials, Android silently stops re-prompting (no dialog on a
+  further "Try camera again") — the app correctly stays on the denied state
+  without crashing or looping; this live finding is what prompted adding
+  explicit "enable it in system settings" guidance to the denied-state copy
+- "Search manually" from the denied state navigates to the real Discover
+  screen
+- Granting permission ("While using the app") reaches the live
+  `MobileScanner` camera viewfinder with no error and no black screen
+- Camera lifecycle verified via `adb logcat`, not just visually: switching
+  away from the Scan tab stops the camera (`CameraService: Stop camera
+  streaming`); switching back reopens it cleanly (`Camera open completed`,
+  no `controllerNotAttached`/`controllerAlreadyInitialized` errors);
+  backgrounding the app (home button) stops the camera; foregrounding it
+  restarts the camera cleanly — repeated with no crash
+
+**NOT EXERCISED:**
+
+- Actual decoding of a real physical/printed barcode by the on-device camera
+  pipeline. The emulator's virtual camera scene renders a live feed (a
+  virtual room) but has no mechanism used here to present a genuinely
+  scannable EAN/UPC barcode image, so the found/not-found *decode* path
+  itself was only exercised through automated tests (a synthetic barcode
+  stream, not the real `MobileScannerController`), never a live scan of a
+  real code. Per instruction, no debug-only "pretend this barcode was
+  scanned" bypass was added to production code to work around this.
+- iOS device/simulator behavior — this environment's live verification is
+  Android-emulator-only.
+
+**Real PostgreSQL integration suite: NOT RUN in the default test command.**
+`INTEGRATION_DATABASE_URL` is not configured in this environment, same
+caveat as every earlier phase; `backend/tests/integration/test_beer_barcode_lookup.py`
+exists and was written against the same pattern as the already-established
+`test_beer_search.py`, but has not been executed against a disposable
+database — not claimed as a pass. The seed/catalog write itself (via
+`SEED_DATABASE_URL`/`beerapp_seed`) **was** run live in this session and
+succeeded (`backend/scripts/seed_catalog.py`), so the corrected/new barcode
+fixtures used in live verification above are real rows in `beerapp-dev`, not
+a simulated state.
 
 ---
 

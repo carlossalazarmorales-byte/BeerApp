@@ -100,7 +100,7 @@ free text on `breweries`/`beers`, exactly as `PRODUCT.md` §7 lists it. See
 | `abv` | `numeric(4,2)`, nullable | `0–100` |
 | `ibu` | `integer`, nullable | `>= 0`, no invented upper bound |
 | `description` / `image_url` | `text`, nullable | |
-| `barcode` | `text`, nullable | unique partial index `WHERE barcode IS NOT NULL`; future scanner lookup (Phase 11) |
+| `barcode` | `text`, nullable | unique partial index `WHERE barcode IS NOT NULL`; scanner lookup via `GET /beers/barcode/{barcode}` (Phase 11, see `docs/API.md`). Stores the canonical GTIN form only (EAN-13/EAN-8 as-is, UPC-A zero-prefixed) — **at most one barcode per beer**; a future packaging/market variant needing multiple codes for one beer would require a normalized `beer_barcodes` table, not built now (see `docs/DECISIONS.md`) |
 | `verified` | `boolean not null default false` | |
 | `source` | `text`, nullable | |
 | `created_at` / `updated_at` | `timestamptz` | as above |

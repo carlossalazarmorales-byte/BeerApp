@@ -91,3 +91,8 @@ class BeerRepository:
         query = f"select {_COLUMNS} from public.beers b where b.id = $1"
         async with self._pool.acquire() as conn:
             return await conn.fetchrow(query, beer_id)
+
+    async def get_by_barcode(self, barcode: str) -> asyncpg.Record | None:
+        query = f"select {_COLUMNS} from public.beers b where b.barcode = $1"
+        async with self._pool.acquire() as conn:
+            return await conn.fetchrow(query, barcode)

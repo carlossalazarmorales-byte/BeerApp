@@ -36,10 +36,6 @@
   "@discoverScreenDescription": {
     "description": "Placeholder description for the Discover screen."
   },
-  "scanScreenDescription": "Scan a beer label to add it to your collection in seconds.",
-  "@scanScreenDescription": {
-    "description": "Placeholder description for the Scan screen."
-  },
   "profileScreenDescription": "Manage your profile, achievements and preferences.",
   "@profileScreenDescription": {
     "description": "Placeholder description for the Profile screen."
@@ -192,6 +188,31 @@
   "catalogErrorGeneric": "We couldn't load the beer catalog. Please try again.",
   "@catalogErrorGeneric": {
     "description": "Fallback error message for catalog requests, used instead of showing a raw backend error message."
+  },
+
+  "scanSearchManuallyAction": "Search manually",
+  "@scanSearchManuallyAction": {
+    "description": "Button label, shown on every non-scanning Scan screen state, to fall back to the normal Discover search screen."
+  },
+  "scanPermissionDeniedMessage": "Camera access is needed only for scanning barcodes. If \"Try camera again\" doesn't prompt you, enable camera access for BeerApp in your device's system settings. You can still search for beers manually in the meantime.",
+  "@scanPermissionDeniedMessage": {
+    "description": "Shown on the Scan screen when camera permission has been denied. If the OS will no longer show the permission prompt, enabling it requires the device's system settings."
+  },
+  "scanTryCameraAgainAction": "Try camera again",
+  "@scanTryCameraAgainAction": {
+    "description": "Button label to retry requesting camera permission/starting the scanner, shown when permission was denied."
+  },
+  "scanUnsupportedMessage": "Scanning isn't available on this device. You can still search for beers manually.",
+  "@scanUnsupportedMessage": {
+    "description": "Shown on the Scan screen when the device has no usable camera/scanning support."
+  },
+  "scanNotFoundMessage": "We couldn't find a beer with that barcode in our catalog.",
+  "@scanNotFoundMessage": {
+    "description": "Shown on the Scan screen when a decoded barcode doesn't match any beer."
+  },
+  "scanAgainAction": "Scan again",
+  "@scanAgainAction": {
+    "description": "Button label to reset the scanner and scan another barcode."
   },
 
   "discoverSearchHint": "Search beers, breweries, styles, countries",

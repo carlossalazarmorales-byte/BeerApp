@@ -29,6 +29,15 @@ dependencies:
   app_links: ^7.2.1
   maplibre_gl: ^0.27.1
   fl_chart: ^1.2.0
+  # Barcode scanning for Phase 11 (Scanner). CameraX/ML Kit on Android,
+  # AVFoundation/Vision on iOS -- no cloud service, no account, no API key.
+  # Camera permission is requested/owned entirely by this package
+  # (MobileScannerController.value.hasCameraPermission, the
+  # permissionDenied error code); no permission_handler dependency is
+  # added on top of it. Version pinned deliberately after reviewing its
+  # source/changelog against this project's Flutter/Dart SDK -- see
+  # docs/DECISIONS.md.
+  mobile_scanner: ^7.4.2
 
 dev_dependencies:
   flutter_test:

@@ -3,6 +3,12 @@
          debug/profile manifests via the Flutter template; needed here too
          since this is the manifest a release build uses. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Scanner (Phase 11): camera only, requested at runtime when the user
+         actually enters the Scan tab, never at app startup. No
+         storage/media/photos permission is requested; scanning is
+         camera-frame-only and frames never leave the device. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <application
         android:label="beerapp"
         android:name="${applicationName}"
