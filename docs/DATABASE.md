@@ -20,22 +20,32 @@ the user-owned tables too). Migrations live under `supabase/migrations/`.
   local Docker dev stack) — `supabase migration new`, hand-edited SQL,
   `supabase db push --dry-run` then `supabase db push`. See `docs/DECISIONS.md`.
 
-## `public.profiles` (Phase 2)
+## `public.profiles` (Phase 2, extended Phase 12)
 
-1:1 with `auth.users`, deliberately minimal — only what Phase 2 code actually
-reads or writes:
+1:1 with `auth.users`, deliberately minimal — only what application code
+actually reads or writes:
 
 | column | type | notes |
 |---|---|---|
 | `id` | `uuid primary key references auth.users(id) on delete cascade` | same UUID as the auth user |
 | `username` | `text`, nullable | non-null immediately for email signups; null for Google signups until `/complete-profile` is completed. Never a placeholder value. |
 | `display_name` | `text`, nullable | falls back to `username` in the UI |
+| `preferred_currency` | `text`, nullable | Phase 12; `CHECK (preferred_currency is null or preferred_currency ~ '^[A-Z]{3}$')` — the identical shape as `user_beer_logs.currency`'s CHECK. A Settings preference only: never rewrites/derives from any existing `user_beer_logs.currency` value, and Statistics' per-currency `amount_spent` grouping is unaffected (see `docs/DECISIONS.md`). |
 | `created_at` | `timestamptz not null default now()` | |
 | `updated_at` | `timestamptz not null default now()` | auto-updated via trigger |
 
 **RLS**: `select_own`/`update_own` policies restrict a user to their own row.
 No client-facing `INSERT`/`DELETE` policy. Unaffected by Phase 3 — no FK from
 any catalog table to `profiles`, preserving `CLAUDE.md`'s Data Model Rule.
+Both policies are row-level (`auth.uid() = id`), and the table-level
+`grant select, update ... to authenticated` has no column list, so neither
+needed a migration change to cover `preferred_currency` — see
+`docs/DECISIONS.md`.
+
+Avatar and preferred units remain deliberately unmodeled in Phase 12 — see
+`docs/DECISIONS.md` for the deferral rationale. Language preference is also
+not a column here: it's a local, device-only override (see
+`mobile/lib/core/locale/`), never persisted server-side.
 
 ## Catalog tables (Phase 3)
 

@@ -9,8 +9,6 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../domain/profile.dart';
 import '../domain/profile_repository.dart';
 
-final RegExp _usernamePattern = RegExp(r'^[a-z0-9_]{3,20}$');
-
 /// Shown only in `AppAuthStatus.authenticatedIncompleteProfile` — i.e. only
 /// for OAuth (Google) sign-ups, which cannot supply a BeerApp username
 /// before `auth.users` is created. The router allows no other route until
@@ -95,7 +93,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
                   errorText: _errorMessage,
                   validator: (value) {
                     final normalized = (value ?? '').trim().toLowerCase();
-                    return _usernamePattern.hasMatch(normalized)
+                    return usernamePattern.hasMatch(normalized)
                         ? null
                         : l10n.usernameInvalidError;
                   },

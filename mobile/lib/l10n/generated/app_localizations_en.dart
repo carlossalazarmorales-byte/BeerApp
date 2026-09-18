@@ -687,4 +687,111 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get achievementDescriptionCollectionCurator =>
       'Have at least one favorite and one wishlist beer.';
+
+  @override
+  String get profileEditProfileCardTitle => 'Edit Profile';
+
+  @override
+  String get profileEditProfileCardSubtitle => 'Username and display name';
+
+  @override
+  String get profileSettingsCardTitle => 'Settings';
+
+  @override
+  String get profileSettingsCardSubtitle => 'Currency, language and account';
+
+  @override
+  String get editProfileScreenTitle => 'Edit Profile';
+
+  @override
+  String get displayNameHint => 'Display name (optional)';
+
+  @override
+  String get editProfileSaveAction => 'Save';
+
+  @override
+  String get editProfileSuccessMessage => 'Profile updated.';
+
+  @override
+  String get settingsScreenTitle => 'Settings';
+
+  @override
+  String get settingsCurrencyRowTitle => 'Preferred currency';
+
+  @override
+  String get settingsCurrencyNotSet => 'Not set';
+
+  @override
+  String get settingsCurrencyPickerTitle => 'Preferred currency';
+
+  @override
+  String get settingsCurrencyClearOption => 'Not set';
+
+  @override
+  String get settingsCurrencyInvalidError => 'That currency isn\'t valid.';
+
+  @override
+  String get settingsLanguageRowTitle => 'Language';
+
+  @override
+  String get settingsLanguagePickerTitle => 'Language';
+
+  @override
+  String get settingsLanguageSystemOption => 'System default';
+
+  @override
+  String get settingsLanguageEnglishOption => 'English';
+
+  @override
+  String get settingsLanguageSpanishOption => 'Español';
+
+  @override
+  String get settingsChangePasswordRowTitle => 'Change password';
+
+  @override
+  String get settingsChangePasswordRowSubtitle =>
+      'We\'ll email you a reset link';
+
+  @override
+  String get settingsChangePasswordConfirmation =>
+      'Check your email for a link to reset your password.';
+
+  @override
+  String get settingsPrivacySettingsRowTitle => 'Privacy settings';
+
+  @override
+  String get settingsPrivacyPolicyRowTitle => 'Privacy Policy';
+
+  @override
+  String get settingsTermsOfServiceRowTitle => 'Terms of Service';
+
+  @override
+  String get settingsLegalPlaceholderDescription =>
+      'This content isn\'t available yet. Check back before release.';
+
+  @override
+  String get settingsDeleteAccountRowTitle => 'Delete account';
+
+  @override
+  String get settingsDeleteAccountRowSubtitle =>
+      'Permanently erase your account and data';
+
+  @override
+  String get deleteAccountDialogTitle => 'Delete your account?';
+
+  @override
+  String get deleteAccountDialogMessage =>
+      'This permanently deletes your account, including your logs, collection, and achievements. This can\'t be undone.';
+
+  @override
+  String deleteAccountDialogConfirmHint(String username) {
+    return 'Type your username, $username, to confirm.';
+  }
+
+  @override
+  String get deleteAccountConfirmAction => 'Delete account';
+
+  @override
+  String get deleteAccountGenericError =>
+      'Couldn\'t delete your account. Please try again.';
 }

@@ -1,6 +1,7 @@
 import 'package:beerapp/app/app.dart';
 import 'package:beerapp/app/app_routes.dart';
 import 'package:beerapp/app/router.dart';
+import 'package:beerapp/core/locale/locale_controller.dart';
 import 'package:beerapp/core/onboarding/age_gate_controller.dart';
 import 'package:beerapp/design_system/components/navigation/bottom_nav_bar.dart';
 import 'package:beerapp/features/auth/domain/auth_models.dart';
@@ -16,17 +17,21 @@ import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
 import 'package:beerapp/features/catalog/presentation/beer_detail/beer_detail_screen.dart';
 import 'package:beerapp/features/map/presentation/map_screen.dart';
 import 'package:beerapp/features/discover/presentation/discover_screen.dart';
+import 'package:beerapp/features/profile/presentation/edit_profile_screen.dart';
 import 'package:beerapp/features/profile/presentation/profile_screen.dart';
+import 'package:beerapp/features/profile/presentation/settings_screen.dart';
 import 'package:beerapp/features/scan/presentation/scan_screen.dart';
 import 'package:beerapp/shared/collection_refresh_signal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 
+import '../fakes/fake_account_repository.dart';
 import '../fakes/fake_age_gate_storage.dart';
 import '../fakes/fake_auth_repository.dart';
 import '../fakes/fake_catalog_repository.dart';
 import '../fakes/fake_collection_repository.dart';
+import '../fakes/fake_locale_preference_storage.dart';
 import '../fakes/fake_log_repository.dart';
 import '../fakes/fake_map_repository.dart';
 import '../fakes/fake_profile_repository.dart';
@@ -66,9 +71,13 @@ class _Harness {
       authRepository: authRepository,
       profileRepository: profileRepository,
     );
+    final localeController = LocaleController(
+      storage: FakeLocalePreferenceStorage(),
+    );
     final router = createRouter(
       authRepository: authRepository,
       profileRepository: profileRepository,
+      accountRepository: FakeAccountRepository(),
       authController: authController,
       ageGateController: ageGateController,
       catalogRepository: catalogRepository,
@@ -86,6 +95,7 @@ class _Harness {
       catalogRepository: catalogRepository,
       ageGateController: ageGateController,
       authController: authController,
+      localeController: localeController,
       router: router,
     );
   }
@@ -96,6 +106,7 @@ class _Harness {
     required this.catalogRepository,
     required this.ageGateController,
     required this.authController,
+    required this.localeController,
     required this.router,
   });
 
@@ -104,12 +115,14 @@ class _Harness {
   final FakeCatalogRepository catalogRepository;
   final AgeGateController ageGateController;
   final AuthController authController;
+  final LocaleController localeController;
   final GoRouter router;
 
   Widget get app => BeerApp(
     router: router,
     authController: authController,
     ageGateController: ageGateController,
+    localeController: localeController,
   );
 }
 
@@ -312,6 +325,49 @@ void main() {
       expect(find.text('Test Pale Ale'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'Edit Profile and Settings are full-screen routes above the shell, '
+    'reachable when authenticatedComplete',
+    (tester) async {
+      final harness = _Harness(
+        ageAcknowledged: true,
+        initialUser: const AppUser(id: 'email-user-id'),
+        initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
+      );
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      harness.router.push(AppRoutes.editProfile);
+      await tester.pumpAndSettle();
+      expect(find.byType(EditProfileScreen), findsOneWidget);
+      expect(find.byType(BottomNavBar), findsNothing);
+      harness.router.pop();
+      await tester.pumpAndSettle();
+
+      harness.router.push(AppRoutes.settings);
+      await tester.pumpAndSettle();
+      expect(find.byType(SettingsScreen), findsOneWidget);
+      expect(find.byType(BottomNavBar), findsNothing);
+    },
+  );
+
+  testWidgets('an incomplete profile cannot reach Settings -- redirected to '
+      '/complete-profile like any other non-exempt route', (tester) async {
+    final harness = _Harness(
+      ageAcknowledged: true,
+      initialUser: const AppUser(id: 'google-user-id'),
+      initialProfile: const Profile(id: 'google-user-id', username: null),
+    );
+    await tester.pumpWidget(harness.app);
+    await tester.pumpAndSettle();
+
+    harness.router.go(AppRoutes.settings);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SettingsScreen), findsNothing);
+    expect(find.byType(CompleteProfileScreen), findsOneWidget);
+  });
 
   testWidgets('the /scan branch builds without throwing', (tester) async {
     final harness = _Harness(

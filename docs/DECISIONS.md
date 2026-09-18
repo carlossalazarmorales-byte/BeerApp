@@ -1470,3 +1470,171 @@ regression test (`TestSeedCatalogBarcodesAreValid` in
 `backend/tests/services/test_barcode_canonicalization.py`) now verifies
 every non-null seeded barcode programmatically rather than by eyeballing it,
 so this class of bug can't silently reappear.
+
+## 2026-09-18 — Phase 12: `preferred_currency` stays direct-Supabase; account deletion goes through FastAPI
+
+Two profile-lifecycle changes land in the same phase, and they deliberately
+take opposite architectures — recorded here so the asymmetry reads as a
+decision, not an inconsistency.
+
+`preferred_currency` is a simple owned-row read/write, exactly like
+`username`/`display_name` before it: the existing `select_own`/`update_own`
+RLS policies and the table-level `grant select, update ... to authenticated`
+already cover it with zero migration changes beyond `ALTER TABLE ADD
+COLUMN`/`ADD CONSTRAINT` (see `docs/DATABASE.md`). Routing this single field
+through FastAPI would add a network hop and a new backend surface for a
+write Supabase's own RLS already secures correctly — it would be new
+architecture for no behavioral benefit, breaking the established "profiles
+is 100% direct-Supabase" pattern from Phase 2 for no reason.
+
+Account deletion is different in kind, not degree. Deleting an `auth.users`
+row requires the Supabase Auth **Admin** API, which needs a service-level
+secret no mobile client may ever hold (`CLAUDE.md`'s "never expose
+service-role keys to the mobile client"). That secret can only live
+server-side, so this one operation necessarily goes through FastAPI even
+though nothing else about `profiles` does. `AccountService`/`SupabaseAdminClient`
+(`backend/app/services/`) touch no Postgres table at all — they call the
+Admin API only, letting the existing `ON DELETE CASCADE` foreign keys (see
+`docs/DATABASE.md`) handle every dependent row.
+
+## 2026-09-18 — Phase 12: current Supabase secret-key model (`SUPABASE_SECRET_KEY`), optional at boot
+
+Supabase is transitioning away from the legacy `service_role` API key toward
+`sb_publishable_...`/`sb_secret_...` keys (confirmed against current official
+Supabase docs during planning, not assumed from memory — see the next entry).
+`backend/app/config.py`'s `supabase_secret_key: str | None = None` uses this
+current naming and key shape, not `SUPABASE_SERVICE_ROLE_KEY`/a legacy JWT.
+
+Made optional (`| None`, no `Settings` validation failure when unset)
+rather than required, unlike `supabase_url`/`database_url`: this is the
+first backend secret that gates exactly one endpoint (`DELETE /account`)
+rather than something every request needs. Requiring it would mean a
+developer who hasn't configured account deletion yet can't run the backend
+at all — disproportionate for one feature. `SupabaseAdminClient.delete_user`
+checks for a missing key itself and raises `SupabaseAdminClientNotConfigured`
+(a `SupabaseAdminClientError` subtype) before attempting any request, which
+the route maps to `503` — "this feature isn't available right now," not a
+boot-time failure or a `500`. `.env.example` documents the field with an
+empty placeholder only; the real value is configured directly in the
+git-ignored local `.env`, never requested in chat, never logged, never
+returned in any API response.
+
+## 2026-09-18 — Phase 12: Supabase Admin API auth is `apikey`-header-only, verified against current docs, not assumed from the legacy pattern
+
+Before implementing `SupabaseAdminClient`, the current Supabase Admin API
+contract was fetched and read directly
+(https://supabase.com/docs/guides/getting-started/migrating-to-new-api-keys),
+rather than assuming the legacy `Authorization: Bearer <service_role-jwt>`
+pattern still applies to the new key format. It doesn't: `sb_secret_...`
+keys are not JWTs, and the docs explicitly warn that sending one on
+`Authorization: Bearer` (which many Supabase clients do by default for the
+old key shape) causes the platform to try to parse it as a JWT and reject
+the request with "Invalid JWT". The correct, verified shape is the `apikey`
+header only. `SupabaseAdminClient.delete_user`
+(`backend/app/services/supabase_admin_client.py`) sends exactly that, and
+`backend/tests/services/test_supabase_admin_client.py` asserts both halves
+of this directly — the header is present and correct, and no `Authorization`
+header is ever sent — so a future regression back to the legacy pattern
+would fail a test rather than fail silently against a live project.
+
+## 2026-09-18 — Phase 12: avatar and preferred units deferred entirely
+
+ROADMAP.md's Phase 12 checklist names both `Avatar` and `Preferred units` as
+tasks. Both are deferred rather than built, on explicit product direction
+given before implementation:
+
+- **Avatar** would require a new `avatar_url` column, a Supabase Storage
+  bucket, an image picker/cropper dependency, and camera/media permissions —
+  real new infrastructure with no current consumer, exactly the kind of
+  speculative groundwork `CLAUDE.md`/`ROADMAP.md` warn against. `ProfileScreen`
+  keeps its existing placeholder icon; no column was added.
+- **Preferred units** was scoped down for a concrete reason, not just
+  deferred by default: nothing in the app today actually *displays*
+  `serving_volume_ml` with any unit formatting at all — it's a raw ml
+  integer everywhere (the log form, any future log detail view). Adding a
+  `preferred_units` column and picker with no consuming display logic would
+  be a preference nobody's UI reads yet.
+
+Both remain unchecked in `ROADMAP.md`'s Phase 12 section with an explicit
+deferral note, per Roadmap Rule 9 (annotate, never silently drop).
+
+## 2026-09-18 — Phase 12: legal links are a static in-app placeholder, not real content
+
+`ROADMAP.md`'s "Legal links" task is satisfied by two Settings rows
+(Privacy Policy, Terms of Service) that navigate to the existing
+`mobile/lib/shared/widgets/placeholder_screen.dart` — the same "coming soon"
+widget used for genuinely-not-built-yet Phase 1 destinations — rather than
+linking to any real document. No `url_launcher`, no `WebView`, no fabricated
+URL: none of that infrastructure has a real destination to point at yet.
+Real legal content (and the decision of how to present it — in-app page vs.
+external link) is explicitly a pre-release concern, tracked under
+`ROADMAP.md`'s existing Phase 14/15 sections, not invented here to fill the
+row.
+
+## 2026-09-18 — Phase 12: `profile_complete` achievement remains unenabled
+
+Phase 10 deferred a `profile_complete` achievement specifically because
+FastAPI had no grant on `public.profiles` at all, noting it "can be
+revisited alongside Phase 12." Revisited, and still not built: this phase's
+only new backend code (`AccountService`/`SupabaseAdminClient`) calls the
+Supabase Auth Admin API, not Postgres, and never acquires any `SELECT`/
+`UPDATE` grant on `profiles`. The precondition Phase 10 was waiting on still
+doesn't hold, so nothing here changes that achievement's status — recorded
+as a deliberate non-change, not an oversight.
+
+## 2026-09-18 — Phase 12: `updateEditableProfile` is one atomic Postgrest call, not two sequential writes
+
+The first design considered for Edit Profile called the existing
+`ProfileRepository.setUsername` and a new, independent `setDisplayName`
+sequentially. Rejected: if the username write succeeds and the display-name
+write then fails (or vice versa), the profile ends up in a state the user
+never asked for and the screen has no correct way to report — "it partially
+saved" is not a state this app's error model has a message for anywhere
+else. `SupabaseProfileRepository.updateEditableProfile`
+(`mobile/lib/features/auth/data/supabase_profile_repository.dart`) issues a
+single `.update({'username': ..., 'display_name': ...})` Postgrest call
+instead — one statement, so the row is guaranteed either fully updated or
+not updated at all. `setUsername` itself is untouched and still used by the
+onboarding `CompleteProfileScreen` flow, which only ever has a username to
+write. Both methods share one static, independently-tested error-mapping
+function (`mapUsernameWriteError`), since `display_name` has no format
+constraint of its own — the username CHECK/unique index is still the only
+constraint either write path can violate.
+
+## 2026-09-18 — Phase 12: post-delete local sign-out relies on gotrue's verified `_signOut` sequencing, not a new session-clearing API
+
+After a confirmed `DELETE /account` succeeds, the deleted user's local
+Supabase session still needs to clear immediately so the app reaches
+`unauthenticated` — but the account is already gone server-side, so the
+existing `signOut()`'s network revoke call could plausibly fail. Read
+directly from the installed `gotrue-2.27.2` package source
+(`gotrue_client.dart`'s `_signOut`, not assumed): for any scope other than
+`others` (the default, `local`, included), local session state is cleared
+and the `signedOut` event fires **synchronously, unconditionally, before**
+the network revoke call is even attempted; only 401/403/404 from that call
+are swallowed, anything else rethrows. `SignOutScope.local` is *not* a
+"skip the network call" mode either — it still posts to
+`/logout?scope=local`, just requesting a narrower server-side revocation;
+this SDK version has no built-in "local-only, no network attempt" method.
+
+Given that, local state is already guaranteed correct the moment
+`signOut()` is called, regardless of what it does next — so the fix is at
+the call site, not a new SDK capability: Settings' delete-account flow
+wraps the post-delete `signOut()` call in a try/catch that discards any
+exception, rather than surfacing a false "something went wrong" error on a
+screen that's already navigating away. `FakeAuthRepository.signOut()`
+(`mobile/test/fakes/fake_auth_repository.dart`) was updated to clear local
+state and fire `signedOut` *before* consulting `errorToThrow`, mirroring
+this exact verified sequencing, so the regression test in
+`settings_screen_test.dart` (a throwing `signOut()` still reaching
+`unauthenticated` with no error shown) actually exercises the real ordering
+rather than a fake that happened to already behave differently.
+
+**Documented residual risk, not closed this phase**: deleting `auth.users`
+invalidates refresh sessions, but an already-issued **access** JWT is a
+stateless, signature-verified token `get_current_user` never checks against
+a revocation list — it remains technically valid until its own `exp`
+(commonly ~1 hour) even after the account and all cascaded data are gone.
+Every table it could still address now has zero rows for that id, so no
+other user's data is exposed, but this must never be described as instant
+invalidation of already-issued access tokens.

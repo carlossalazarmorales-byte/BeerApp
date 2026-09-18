@@ -259,5 +259,46 @@
   "achievementNameCollectionFirstWishlist": "Primer deseo",
   "achievementDescriptionCollectionFirstWishlist": "Añade una cerveza a tu lista de deseos.",
   "achievementNameCollectionCurator": "Curador",
-  "achievementDescriptionCollectionCurator": "Ten al menos una cerveza favorita y una en tu lista de deseos."
+  "achievementDescriptionCollectionCurator": "Ten al menos una cerveza favorita y una en tu lista de deseos.",
+
+  "profileEditProfileCardTitle": "Editar perfil",
+  "profileEditProfileCardSubtitle": "Nombre de usuario y nombre visible",
+  "profileSettingsCardTitle": "Ajustes",
+  "profileSettingsCardSubtitle": "Moneda, idioma y cuenta",
+
+  "editProfileScreenTitle": "Editar perfil",
+  "displayNameHint": "Nombre visible (opcional)",
+  "editProfileSaveAction": "Guardar",
+  "editProfileSuccessMessage": "Perfil actualizado.",
+
+  "settingsScreenTitle": "Ajustes",
+
+  "settingsCurrencyRowTitle": "Moneda preferida",
+  "settingsCurrencyNotSet": "Sin definir",
+  "settingsCurrencyPickerTitle": "Moneda preferida",
+  "settingsCurrencyClearOption": "Sin definir",
+  "settingsCurrencyInvalidError": "Esa moneda no es válida.",
+
+  "settingsLanguageRowTitle": "Idioma",
+  "settingsLanguagePickerTitle": "Idioma",
+  "settingsLanguageSystemOption": "Predeterminado del sistema",
+  "settingsLanguageEnglishOption": "English",
+  "settingsLanguageSpanishOption": "Español",
+
+  "settingsChangePasswordRowTitle": "Cambiar contraseña",
+  "settingsChangePasswordRowSubtitle": "Te enviaremos un enlace por correo",
+  "settingsChangePasswordConfirmation": "Revisa tu correo para restablecer tu contraseña.",
+
+  "settingsPrivacySettingsRowTitle": "Ajustes de privacidad",
+  "settingsPrivacyPolicyRowTitle": "Política de privacidad",
+  "settingsTermsOfServiceRowTitle": "Términos del servicio",
+  "settingsLegalPlaceholderDescription": "Este contenido aún no está disponible. Vuelve a consultarlo antes del lanzamiento.",
+
+  "settingsDeleteAccountRowTitle": "Eliminar cuenta",
+  "settingsDeleteAccountRowSubtitle": "Borra permanentemente tu cuenta y tus datos",
+  "deleteAccountDialogTitle": "¿Eliminar tu cuenta?",
+  "deleteAccountDialogMessage": "Esto elimina permanentemente tu cuenta, incluidos tus registros, tu colección y tus logros. Esta acción no se puede deshacer.",
+  "deleteAccountDialogConfirmHint": "Escribe tu nombre de usuario, {username}, para confirmar.",
+  "deleteAccountConfirmAction": "Eliminar cuenta",
+  "deleteAccountGenericError": "No se pudo eliminar tu cuenta. Inténtalo de nuevo."
 }

@@ -1339,6 +1339,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Have at least one favorite and one wishlist beer.'**
   String get achievementDescriptionCollectionCurator;
+
+  /// Title of the card on the Profile screen that navigates to Edit Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get profileEditProfileCardTitle;
+
+  /// Subtitle of the card on the Profile screen that navigates to Edit Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Username and display name'**
+  String get profileEditProfileCardSubtitle;
+
+  /// Title of the card on the Profile screen that navigates to Settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get profileSettingsCardTitle;
+
+  /// Subtitle of the card on the Profile screen that navigates to Settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency, language and account'**
+  String get profileSettingsCardSubtitle;
+
+  /// App bar title for the Edit Profile screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit Profile'**
+  String get editProfileScreenTitle;
+
+  /// Placeholder for the display name input field on Edit Profile.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name (optional)'**
+  String get displayNameHint;
+
+  /// Submit button label on the Edit Profile screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get editProfileSaveAction;
+
+  /// Snackbar shown after Edit Profile saves successfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile updated.'**
+  String get editProfileSuccessMessage;
+
+  /// App bar title for the Settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsScreenTitle;
+
+  /// Title of the Settings row that opens the preferred-currency picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred currency'**
+  String get settingsCurrencyRowTitle;
+
+  /// Shown as the preferred-currency row's subtitle when no currency has been chosen yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get settingsCurrencyNotSet;
+
+  /// Title of the bottom sheet listing selectable currency codes.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred currency'**
+  String get settingsCurrencyPickerTitle;
+
+  /// Option in the currency picker that clears the preferred currency back to unset.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get settingsCurrencyClearOption;
+
+  /// Shown when the database rejects a preferred-currency value (CHECK constraint).
+  ///
+  /// In en, this message translates to:
+  /// **'That currency isn\'t valid.'**
+  String get settingsCurrencyInvalidError;
+
+  /// Title of the Settings row that opens the language picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsLanguageRowTitle;
+
+  /// Title of the bottom sheet listing selectable languages.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get settingsLanguagePickerTitle;
+
+  /// Language picker option that clears the override and follows the device's system locale.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get settingsLanguageSystemOption;
+
+  /// Language picker option for English.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get settingsLanguageEnglishOption;
+
+  /// Language picker option for Spanish.
+  ///
+  /// In en, this message translates to:
+  /// **'Español'**
+  String get settingsLanguageSpanishOption;
+
+  /// Title of the Settings row that triggers a password-reset email.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get settingsChangePasswordRowTitle;
+
+  /// Subtitle of the Settings change-password row.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'ll email you a reset link'**
+  String get settingsChangePasswordRowSubtitle;
+
+  /// Snackbar shown after the Settings change-password row successfully triggers a reset email.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your email for a link to reset your password.'**
+  String get settingsChangePasswordConfirmation;
+
+  /// Title of the Settings row that opens the privacy-settings placeholder (ROADMAP.md Phase 12's dedicated 'Privacy settings placeholder' task -- distinct from the Privacy Policy document row below).
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy settings'**
+  String get settingsPrivacySettingsRowTitle;
+
+  /// Title of the Settings row that opens the Privacy Policy placeholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get settingsPrivacyPolicyRowTitle;
+
+  /// Title of the Settings row that opens the Terms of Service placeholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Service'**
+  String get settingsTermsOfServiceRowTitle;
+
+  /// Description shown on the Privacy Policy / Terms of Service placeholder screen.
+  ///
+  /// In en, this message translates to:
+  /// **'This content isn\'t available yet. Check back before release.'**
+  String get settingsLegalPlaceholderDescription;
+
+  /// Title of the Settings row that opens the delete-account confirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get settingsDeleteAccountRowTitle;
+
+  /// Subtitle of the Settings delete-account row.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently erase your account and data'**
+  String get settingsDeleteAccountRowSubtitle;
+
+  /// Title of the delete-account confirmation dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account?'**
+  String get deleteAccountDialogTitle;
+
+  /// Body of the delete-account confirmation dialog, explaining what is deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'This permanently deletes your account, including your logs, collection, and achievements. This can\'t be undone.'**
+  String get deleteAccountDialogMessage;
+
+  /// Instruction in the delete-account dialog telling the user to type their own username to enable the destructive action.
+  ///
+  /// In en, this message translates to:
+  /// **'Type your username, {username}, to confirm.'**
+  String deleteAccountDialogConfirmHint(String username);
+
+  /// Destructive confirm button label in the delete-account dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccountConfirmAction;
+
+  /// Shown when DELETE /account fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t delete your account. Please try again.'**
+  String get deleteAccountGenericError;
 }
 
 class _AppLocalizationsDelegate

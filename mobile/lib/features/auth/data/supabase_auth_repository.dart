@@ -15,7 +15,7 @@ class SupabaseAuthRepository implements AuthRepository {
   @override
   AppUser? get currentUser {
     final user = _client.auth.currentUser;
-    return user == null ? null : AppUser(id: user.id);
+    return user == null ? null : AppUser(id: user.id, email: user.email);
   }
 
   @override

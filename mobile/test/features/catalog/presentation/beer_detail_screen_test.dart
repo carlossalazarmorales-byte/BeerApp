@@ -1,6 +1,10 @@
+import 'package:beerapp/core/auth/auth_scope.dart';
 import 'package:beerapp/core/network/api_exception.dart';
 import 'package:beerapp/design_system/components/states/error_state.dart';
 import 'package:beerapp/design_system/components/states/loading_state.dart';
+import 'package:beerapp/features/auth/domain/auth_models.dart';
+import 'package:beerapp/features/auth/domain/profile.dart';
+import 'package:beerapp/features/auth/presentation/auth_controller.dart';
 import 'package:beerapp/features/catalog/domain/models/beer.dart';
 import 'package:beerapp/features/catalog/domain/models/beer_style.dart';
 import 'package:beerapp/features/catalog/domain/models/brewery.dart';
@@ -11,15 +15,38 @@ import 'package:beerapp/shared/collection_refresh_signal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../fakes/fake_auth_repository.dart';
 import '../../../fakes/fake_catalog_repository.dart';
 import '../../../fakes/fake_collection_repository.dart';
 import '../../../fakes/fake_log_repository.dart';
+import '../../../fakes/fake_profile_repository.dart';
+
+// LogFormSheet (reachable from BeerDetailScreen's log action) reads
+// AuthScope.of(context) to seed a new log's currency field from the
+// signed-in user's preferred_currency (Phase 12) -- an AuthScope must wrap
+// this screen in tests exactly as it does in the real app (BeerApp wraps
+// the whole routed app in one), or that lookup throws.
+AuthController _signedInController() {
+  final authRepository = FakeAuthRepository(
+    initialUser: const AppUser(id: 'user-1'),
+  );
+  final profileRepository = FakeProfileRepository()
+    ..currentUserId = 'user-1'
+    ..seed(const Profile(id: 'user-1', username: 'beerfan'));
+  return AuthController(
+    authRepository: authRepository,
+    profileRepository: profileRepository,
+  );
+}
 
 Widget _wrap(Widget child) {
-  return MaterialApp(
-    localizationsDelegates: AppLocalizations.localizationsDelegates,
-    supportedLocales: AppLocalizations.supportedLocales,
-    home: child,
+  return AuthScope(
+    controller: _signedInController(),
+    child: MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: child,
+    ),
   );
 }
 

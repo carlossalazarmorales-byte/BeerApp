@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/auth/auth_scope.dart';
 import '../../../../design_system/components/buttons/primary_button.dart';
 import '../../../../design_system/components/inputs/app_text_field.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
@@ -45,6 +46,11 @@ class _LogFormSheetState extends State<LogFormSheet> {
   bool _detailsExpanded = false;
   bool _isSubmitting = false;
 
+  /// Guards the one-time preferred-currency seed below so it never
+  /// reapplies on a later rebuild (e.g. after `setState`) and never
+  /// overwrites a user's own edit.
+  bool _preferredCurrencySeeded = false;
+
   late final TextEditingController _reviewController;
   late final TextEditingController _servingNoteController;
   late final TextEditingController _priceController;
@@ -76,6 +82,28 @@ class _LogFormSheetState extends State<LogFormSheet> {
             existing.price != null ||
             existing.venueName != null ||
             existing.servingVolumeMl != null);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // AuthScope.of(context) needs an inherited-widget lookup, which isn't
+    // reliably available in initState -- didChangeDependencies is the
+    // correct place. Seeds the currency field from the signed-in user's
+    // preferred_currency exactly once: only for a brand-new log (never an
+    // edit of an existing one, whose stored currency must never be
+    // overwritten), and only if the field is still empty at that moment
+    // (so a user who already typed something, or a later rebuild, never
+    // gets it silently reapplied/clobbered).
+    if (widget.existing == null &&
+        !_preferredCurrencySeeded &&
+        _currencyController.text.isEmpty) {
+      final preferred = AuthScope.of(context).profile?.preferredCurrency;
+      if (preferred != null) {
+        _currencyController.text = preferred;
+      }
+      _preferredCurrencySeeded = true;
+    }
   }
 
   @override

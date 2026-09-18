@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/onboarding/age_gate_controller.dart';
 import '../features/achievements/domain/achievements_repository.dart';
 import '../features/achievements/presentation/achievements_screen.dart';
+import '../features/auth/domain/account_repository.dart';
 import '../features/auth/domain/auth_repository.dart';
 import '../features/auth/domain/profile_repository.dart';
 import '../features/auth/presentation/auth_controller.dart';
@@ -23,7 +24,9 @@ import '../features/discover/presentation/discover_screen.dart';
 import '../features/logging/domain/log_repository.dart';
 import '../features/map/domain/map_repository.dart';
 import '../features/map/presentation/map_screen.dart';
+import '../features/profile/presentation/edit_profile_screen.dart';
 import '../features/profile/presentation/profile_screen.dart';
+import '../features/profile/presentation/settings_screen.dart';
 import '../features/scan/presentation/scan_screen.dart';
 import '../features/statistics/domain/statistics_repository.dart';
 import '../features/statistics/presentation/statistics_screen.dart';
@@ -95,6 +98,7 @@ String? _redirect(
 GoRouter createRouter({
   required AuthRepository authRepository,
   required ProfileRepository profileRepository,
+  required AccountRepository accountRepository,
   required AuthController authController,
   required AgeGateController ageGateController,
   required CatalogRepository catalogRepository,
@@ -184,6 +188,21 @@ GoRouter createRouter({
         builder: (context, state) => AchievementsScreen(
           repository: achievementsRepository,
           refreshSignal: refreshSignal,
+        ),
+      ),
+      // Declared as a top-level route, same reasoning as [statistics] above.
+      GoRoute(
+        path: AppRoutes.editProfile,
+        builder: (context, state) =>
+            EditProfileScreen(profileRepository: profileRepository),
+      ),
+      // Declared as a top-level route, same reasoning as [statistics] above.
+      GoRoute(
+        path: AppRoutes.settings,
+        builder: (context, state) => SettingsScreen(
+          profileRepository: profileRepository,
+          authRepository: authRepository,
+          accountRepository: accountRepository,
         ),
       ),
       StatefulShellRoute.indexedStack(

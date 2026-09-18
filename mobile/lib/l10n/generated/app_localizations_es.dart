@@ -698,4 +698,112 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get achievementDescriptionCollectionCurator =>
       'Ten al menos una cerveza favorita y una en tu lista de deseos.';
+
+  @override
+  String get profileEditProfileCardTitle => 'Editar perfil';
+
+  @override
+  String get profileEditProfileCardSubtitle =>
+      'Nombre de usuario y nombre visible';
+
+  @override
+  String get profileSettingsCardTitle => 'Ajustes';
+
+  @override
+  String get profileSettingsCardSubtitle => 'Moneda, idioma y cuenta';
+
+  @override
+  String get editProfileScreenTitle => 'Editar perfil';
+
+  @override
+  String get displayNameHint => 'Nombre visible (opcional)';
+
+  @override
+  String get editProfileSaveAction => 'Guardar';
+
+  @override
+  String get editProfileSuccessMessage => 'Perfil actualizado.';
+
+  @override
+  String get settingsScreenTitle => 'Ajustes';
+
+  @override
+  String get settingsCurrencyRowTitle => 'Moneda preferida';
+
+  @override
+  String get settingsCurrencyNotSet => 'Sin definir';
+
+  @override
+  String get settingsCurrencyPickerTitle => 'Moneda preferida';
+
+  @override
+  String get settingsCurrencyClearOption => 'Sin definir';
+
+  @override
+  String get settingsCurrencyInvalidError => 'Esa moneda no es válida.';
+
+  @override
+  String get settingsLanguageRowTitle => 'Idioma';
+
+  @override
+  String get settingsLanguagePickerTitle => 'Idioma';
+
+  @override
+  String get settingsLanguageSystemOption => 'Predeterminado del sistema';
+
+  @override
+  String get settingsLanguageEnglishOption => 'English';
+
+  @override
+  String get settingsLanguageSpanishOption => 'Español';
+
+  @override
+  String get settingsChangePasswordRowTitle => 'Cambiar contraseña';
+
+  @override
+  String get settingsChangePasswordRowSubtitle =>
+      'Te enviaremos un enlace por correo';
+
+  @override
+  String get settingsChangePasswordConfirmation =>
+      'Revisa tu correo para restablecer tu contraseña.';
+
+  @override
+  String get settingsPrivacySettingsRowTitle => 'Ajustes de privacidad';
+
+  @override
+  String get settingsPrivacyPolicyRowTitle => 'Política de privacidad';
+
+  @override
+  String get settingsTermsOfServiceRowTitle => 'Términos del servicio';
+
+  @override
+  String get settingsLegalPlaceholderDescription =>
+      'Este contenido aún no está disponible. Vuelve a consultarlo antes del lanzamiento.';
+
+  @override
+  String get settingsDeleteAccountRowTitle => 'Eliminar cuenta';
+
+  @override
+  String get settingsDeleteAccountRowSubtitle =>
+      'Borra permanentemente tu cuenta y tus datos';
+
+  @override
+  String get deleteAccountDialogTitle => '¿Eliminar tu cuenta?';
+
+  @override
+  String get deleteAccountDialogMessage =>
+      'Esto elimina permanentemente tu cuenta, incluidos tus registros, tu colección y tus logros. Esta acción no se puede deshacer.';
+
+  @override
+  String deleteAccountDialogConfirmHint(String username) {
+    return 'Escribe tu nombre de usuario, $username, para confirmar.';
+  }
+
+  @override
+  String get deleteAccountConfirmAction => 'Eliminar cuenta';
+
+  @override
+  String get deleteAccountGenericError =>
+      'No se pudo eliminar tu cuenta. Inténtalo de nuevo.';
 }

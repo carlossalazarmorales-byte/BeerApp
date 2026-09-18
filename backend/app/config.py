@@ -23,6 +23,14 @@ class Settings(BaseSettings):
     supabase_url: str
     supabase_publishable_key: str = ""
 
+    # Phase 12: Supabase's current secret-key model (sb_secret_..., replaces
+    # the legacy service_role JWT), used only by SupabaseAdminClient for
+    # DELETE /account's call to the Auth Admin API. Optional so the app keeps
+    # booting normally when it's unset -- only DELETE /account itself
+    # degrades (503) in that case. Never logged, never returned in any
+    # response, never referenced from mobile/config/*. See docs/DECISIONS.md.
+    supabase_secret_key: str | None = None
+
     # Least-privilege `beerapp_backend` role connection -- SELECT only on
     # the four catalog tables. Never the admin/seed credential; see
     # docs/DATABASE.md. Intentionally the only DB credential declared here --

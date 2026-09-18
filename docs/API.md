@@ -452,3 +452,38 @@ threshold (see docs/DECISIONS.md): `collection_first_favorite`,
 `collection_first_wishlist`, and the compound `collection_curator`
 (requires both other two to have each been unlocked, not necessarily
 simultaneously true as live counts).
+
+## Account (`/account`, Phase 12)
+
+The first endpoint backed by the Supabase Auth **Admin** API rather than the
+`beerapp_backend` Postgres pool — account deletion requires privilege no
+Postgres role grants, only Supabase's own Admin API, authenticated with a
+dedicated backend-only secret key (current key model: `sb_secret_...` on the
+`apikey` header, never `Authorization: Bearer` — see `docs/DECISIONS.md`).
+`public.profiles` itself remains untouched by FastAPI otherwise — this
+endpoint never reads/writes any table directly.
+
+| method | path | notes |
+|---|---|---|
+| DELETE | `/account` | auth required, deletes the caller's own account (never a client-supplied id — always the verified JWT's `sub`). `204` on success, empty body. |
+
+**Cascade, not manual deletion.** Deleting the `auth.users` row via the Admin
+API cascades automatically to `profiles`, `user_beer_logs`,
+`user_beer_collection`, and `user_achievements` through their existing
+`ON DELETE CASCADE` foreign keys (see `docs/DATABASE.md`) — this endpoint
+does not, and does not need to, delete from any of those tables itself.
+
+**`503`** — the Admin API call fails (network/non-2xx) *or* the secret key
+isn't configured in this deployment; both are infrastructure conditions, not
+the caller's fault, and both surface identically so the client shows the
+same "try again later" state either way. Never a `500` for either case, and
+never a `404`/`403` distinguishing "already deleted" from a live account —
+the underlying Admin API call is idempotent (a `404` from Supabase is
+treated as success), so a retried `DELETE /account` is always safe.
+
+**Residual token-validity note** (see `docs/DECISIONS.md` for the full
+reasoning): deleting the account invalidates its refresh sessions, but an
+already-issued access JWT remains a stateless, signature-verified token
+until its own expiry — `get_current_user` does not check a revocation list.
+Every table this token could still address now has zero rows for that id,
+so this is a documented, accepted gap, not a data-exposure risk.

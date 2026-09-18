@@ -35,6 +35,21 @@ GoRouter _router() => GoRouter(
       builder: (context, state) =>
           const Scaffold(body: Text('Statistics Screen')),
     ),
+    GoRoute(
+      path: AppRoutes.achievements,
+      builder: (context, state) =>
+          const Scaffold(body: Text('Achievements Screen')),
+    ),
+    GoRoute(
+      path: AppRoutes.editProfile,
+      builder: (context, state) =>
+          const Scaffold(body: Text('Edit Profile Screen')),
+    ),
+    GoRoute(
+      path: AppRoutes.settings,
+      builder: (context, state) =>
+          const Scaffold(body: Text('Settings Screen')),
+    ),
   ],
 );
 
@@ -93,5 +108,50 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Statistics Screen'), findsOneWidget);
+  });
+
+  testWidgets('shows the Achievements entry card and navigates to it', (
+    tester,
+  ) async {
+    final authController = _signedInController(displayName: 'Carlos');
+
+    await tester.pumpWidget(_harness(_router(), authController));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Achievements'), findsOneWidget);
+    await tester.tap(find.text('Achievements'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Achievements Screen'), findsOneWidget);
+  });
+
+  testWidgets('shows the Edit Profile entry card and navigates to it', (
+    tester,
+  ) async {
+    final authController = _signedInController(displayName: 'Carlos');
+
+    await tester.pumpWidget(_harness(_router(), authController));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Profile'), findsOneWidget);
+    await tester.tap(find.text('Edit Profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Edit Profile Screen'), findsOneWidget);
+  });
+
+  testWidgets('shows the Settings entry card and navigates to it', (
+    tester,
+  ) async {
+    final authController = _signedInController(displayName: 'Carlos');
+
+    await tester.pumpWidget(_harness(_router(), authController));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings'), findsOneWidget);
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Settings Screen'), findsOneWidget);
   });
 }

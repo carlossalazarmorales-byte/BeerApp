@@ -7,11 +7,13 @@ import 'app/app.dart';
 import 'app/router.dart';
 import 'core/auth/auth_deep_link_handler.dart';
 import 'core/config/env.dart';
+import 'core/locale/locale_controller.dart';
 import 'core/network/api_client.dart';
 import 'core/network/supabase_access_token_provider.dart';
 import 'core/network/supabase_session_source.dart';
 import 'core/onboarding/age_gate_controller.dart';
 import 'features/achievements/data/api_achievements_repository.dart';
+import 'features/auth/data/api_account_repository.dart';
 import 'features/auth/data/google_auth_client.dart';
 import 'features/auth/data/supabase_auth_repository.dart';
 import 'features/auth/data/supabase_profile_repository.dart';
@@ -57,6 +59,7 @@ Future<void> main() async {
     profileRepository: profileRepository,
   );
   final ageGateController = AgeGateController();
+  final localeController = LocaleController();
 
   // Owned for the process's entire lifetime, the same lifecycle as
   // Supabase.instance.client -- intentionally never closed, since a Flutter
@@ -76,11 +79,13 @@ Future<void> main() async {
   final mapRepository = ApiMapRepository(apiClient);
   final statisticsRepository = ApiStatisticsRepository(apiClient);
   final achievementsRepository = ApiAchievementsRepository(apiClient);
+  final accountRepository = ApiAccountRepository(apiClient);
   final collectionRefreshSignal = CollectionRefreshSignal();
 
   final router = createRouter(
     authRepository: authRepository,
     profileRepository: profileRepository,
+    accountRepository: accountRepository,
     authController: authController,
     ageGateController: ageGateController,
     catalogRepository: catalogRepository,
@@ -102,6 +107,7 @@ Future<void> main() async {
       router: router,
       authController: authController,
       ageGateController: ageGateController,
+      localeController: localeController,
     ),
   );
 }

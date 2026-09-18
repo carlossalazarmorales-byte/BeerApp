@@ -41,4 +41,12 @@ abstract final class AppRoutes {
 
   /// Achievements. Top-level route, same reasoning as [statistics].
   static const String achievements = '/profile/achievements';
+
+  /// Edit Profile. Top-level route (not nested inside the Profile tab's
+  /// `StatefulShellBranch`), same reasoning as [statistics] -- full-screen
+  /// above the bottom-nav shell.
+  static const String editProfile = '/profile/edit';
+
+  /// Settings. Top-level route, same reasoning as [editProfile].
+  static const String settings = '/profile/settings';
 }

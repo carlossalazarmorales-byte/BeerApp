@@ -10,12 +10,12 @@ import '../../../design_system/tokens/app_spacing.dart';
 import '../../../design_system/tokens/app_typography.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
-/// Profile destination. Full profile editing (avatar, currency/units,
-/// language preference) is Phase 12 — this screen currently shows the
-/// signed-in identity plus an entry point to Statistics (Phase 9). Owns its
+/// Profile destination: signed-in identity plus entry points to Edit
+/// Profile, Settings, Statistics, and Achievements. Avatar editing and
+/// preferred units remain deferred (see docs/DECISIONS.md). Owns its
 /// `Scaffold` directly rather than the shared `PlaceholderScreen` widget --
 /// that widget's layout is fixed (icon/title/description/badge only) and
-/// has no slot for a navigable card.
+/// has no slot for navigable cards.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -99,6 +99,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: AppSpacing.xl),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                shape: RoundedRectangleBorder(borderRadius: AppRadii.lgRadius),
+                leading: const Icon(
+                  Icons.edit_outlined,
+                  color: AppColors.primary,
+                ),
+                title: Text(l10n.profileEditProfileCardTitle),
+                subtitle: Text(l10n.profileEditProfileCardSubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(AppRoutes.editProfile),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                shape: RoundedRectangleBorder(borderRadius: AppRadii.lgRadius),
+                leading: const Icon(
+                  Icons.settings_outlined,
+                  color: AppColors.primary,
+                ),
+                title: Text(l10n.profileSettingsCardTitle),
+                subtitle: Text(l10n.profileSettingsCardSubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(AppRoutes.settings),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
           AppCard(
             padding: EdgeInsets.zero,
             // ListTile needs a Material ancestor for its ink splashes;

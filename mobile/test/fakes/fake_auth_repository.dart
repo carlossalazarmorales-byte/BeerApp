@@ -14,6 +14,16 @@ class FakeAuthRepository implements AuthRepository {
   /// Set by a test to make the next sign-in/sign-up/sign-out call throw.
   Object? errorToThrow;
 
+  /// Set by a test to make the next [sendPasswordResetEmail] call throw —
+  /// separate from [errorToThrow] so a test can exercise a failing
+  /// "change password" trigger without also making sign-out fail.
+  Object? passwordResetEmailErrorToThrow;
+
+  /// Every email [sendPasswordResetEmail] was called with, in order —
+  /// lets a test assert Settings' "Change password" row used the signed-in
+  /// user's own email with no navigation/re-entry required.
+  final List<String> passwordResetEmailCalls = [];
+
   @override
   AppUser? get currentUser => _currentUser;
 
@@ -42,13 +52,24 @@ class FakeAuthRepository implements AuthRepository {
 
   @override
   Future<void> signOut() async {
-    if (errorToThrow != null) throw errorToThrow!;
+    // Mirrors the real gotrue SDK's verified _signOut behavior (see
+    // docs/DECISIONS.md, Phase 12): local session state clears and
+    // `signedOut` fires synchronously, unconditionally, *before* any
+    // network-revoke failure is thrown — never the other way around. This
+    // is what the Settings delete-account try/catch-around-signOut()
+    // sequencing test relies on.
     _currentUser = null;
     _controller.add(AuthEvent.signedOut);
+    if (errorToThrow != null) throw errorToThrow!;
   }
 
   @override
-  Future<void> sendPasswordResetEmail(String email) async {}
+  Future<void> sendPasswordResetEmail(String email) async {
+    passwordResetEmailCalls.add(email);
+    if (passwordResetEmailErrorToThrow != null) {
+      throw passwordResetEmailErrorToThrow!;
+    }
+  }
 
   @override
   Future<void> updatePassword(String newPassword) async {
@@ -61,8 +82,8 @@ class FakeAuthRepository implements AuthRepository {
     emitSignedIn('fake-google-user-id');
   }
 
-  void emitSignedIn(String userId) {
-    _currentUser = AppUser(id: userId);
+  void emitSignedIn(String userId, {String? email}) {
+    _currentUser = AppUser(id: userId, email: email);
     _controller.add(AuthEvent.signedIn);
   }
 

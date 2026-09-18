@@ -756,21 +756,67 @@ Goal: complete the user's personal area.
 
 Tasks:
 
-- [ ] Avatar
-- [ ] Display name
-- [ ] Username
-- [ ] Preferred currency
-- [ ] Preferred units
-- [ ] Language
-- [ ] Account settings
-- [ ] Privacy settings placeholder
-- [ ] Logout
-- [ ] Delete account flow
-- [ ] Legal links
+- [ ] Avatar — deferred entirely this phase (no column, no UI, no Storage bucket, no image picker/camera permissions). See `docs/DECISIONS.md`.
+- [x] Display name — new `ProfileRepository.updateEditableProfile`, editable from `EditProfileScreen`
+- [x] Username — editable from `EditProfileScreen`, reusing the existing validation/uniqueness rules; onboarding's `setUsername` untouched
+- [x] Preferred currency — new nullable `profiles.preferred_currency` column, Settings picker, prefills (never overwrites) a new beer log's currency field
+- [ ] Preferred units — deferred entirely this phase (no column, no picker, no conversion layer — nothing today displays `serving_volume_ml` with any unit formatting to plug a preference into). See `docs/DECISIONS.md`.
+- [x] Language — local, device-only override (`mobile/lib/core/locale/`), EN/ES/system, not a `profiles` column
+- [x] Account settings — Settings screen: currency, language, change password (reuses the existing reset-email flow)
+- [x] Privacy settings placeholder — dedicated "Privacy settings" row in Settings, routes to the existing placeholder screen (localized EN/ES); no toggles, backend fields, tracking, or permissions — the smallest correct implementation of this specific task
+- [x] Logout — pre-existing, unchanged; still reachable from `ProfileScreen`
+- [x] Delete account flow — new `DELETE /account` (FastAPI, Supabase Auth Admin API), typed-username confirmation dialog, cascades via existing `ON DELETE CASCADE` FKs
+- [x] Legal links — Privacy Policy / Terms of Service rows, static in-app placeholder only (no real content yet). See `docs/DECISIONS.md`.
 
 Exit criteria:
 
-- User can manage account essentials
+- [x] User can manage account essentials — display name, username, preferred currency, language, and account deletion are all editable from Profile → Edit Profile / Settings; avatar and preferred units are the two explicitly deferred exceptions (see `docs/DECISIONS.md`)
+
+**Status (2026-09-18)**: implementation complete, automated-test-verified.
+See this phase's entries in `docs/DECISIONS.md` for the material
+architecture decisions (direct-Supabase vs. FastAPI split, the current
+Supabase secret-key model, the atomic profile-edit write, the verified
+post-delete sign-out sequencing, and the two explicit deferrals).
+
+Backend (`pytest`, excludes `@pytest.mark.integration`, 214 passed) and
+Flutter (`flutter test`, 335 passed) suites both pass in full,
+`flutter analyze`/`dart format` and `ruff check`/`ruff format` clean (for
+every file touched this phase — three pre-existing files elsewhere already
+had unrelated formatting drift before this phase and were left untouched).
+The migration (`20260918120000_add_profiles_preferred_currency.sql`) was
+applied to `beerapp-dev` via `supabase db push`, confirmed by a clean
+`supabase db lint --linked --level error`.
+
+**Live emulator verification: NOT EXERCISED**, for two independent,
+transparent reasons, not skipped silently:
+
+1. No sign-in credentials or email-inbox access were available in this
+   session to reach an authenticated screen — BeerApp requires email
+   verification on sign-up (`PRODUCT.md` §6), so a throwaway account
+   couldn't be completed either. Covered instead by the automated Flutter
+   widget/controller tests (`edit_profile_screen_test.dart`,
+   `settings_screen_test.dart`, `log_form_sheet_test.dart`,
+   `router_test.dart`'s new-route reachability cases).
+2. `DELETE /account`'s real Supabase Auth Admin API call was not exercised
+   against a live account: `SUPABASE_SECRET_KEY` is deliberately left
+   unconfigured in `.env` (never filled in by the assistant — see
+   `docs/DECISIONS.md`), so a live attempt today would only re-confirm the
+   already-covered `503` "not configured" path, not real deletion. The
+   Admin API request shape itself (`apikey` header, 404-as-success,
+   non-2xx handling) is verified by
+   `backend/tests/services/test_supabase_admin_client.py` against a mocked
+   transport, not a live call.
+
+Per explicit product instruction, no beer log, favorite, wishlist, or
+achievement activity was created, edited, or fabricated at any point during
+this phase's verification — the preferred-currency log-form-prefill
+behavior and the delete-account cascade are both verified through
+automated tests only, never through live consumption-adjacent data.
+Live verification (both items above) remains an open follow-up whenever
+credentials/a configured secret key are available — not required to
+consider this phase's implementation done, since ROADMAP.md's own
+convention (see Phases 6-11) already treats "automated suite passes, live
+pass deferred for a stated reason" as a legitimate, reportable state.
 
 ---
 

@@ -1,9 +1,16 @@
 /// A signed-in Supabase user, reduced to what the app layer needs — keeps
 /// Supabase's `User` type out of the domain/presentation layers.
 class AppUser {
-  const AppUser({required this.id});
+  const AppUser({required this.id, this.email});
 
   final String id;
+
+  /// Nullable because Supabase's own `User.email` is nullable (not every
+  /// auth method populates it), even though both methods this app supports
+  /// today (email/password, Google ID-token) do in practice. Added in
+  /// Phase 12 so Settings' "Change password" row can trigger the existing
+  /// reset-email flow without asking the user to retype their address.
+  final String? email;
 }
 
 /// Auth events the app actually reacts to. Supabase emits several other
