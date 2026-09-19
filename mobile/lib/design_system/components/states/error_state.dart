@@ -21,6 +21,8 @@ class ErrorState extends StatelessWidget {
     this.retryLabel,
     this.secondaryLabel,
     this.onSecondaryAction,
+    this.tertiaryLabel,
+    this.onTertiaryAction,
   });
 
   final String? message;
@@ -37,6 +39,13 @@ class ErrorState extends StatelessWidget {
   /// [onSecondaryAction] is null.
   final String? secondaryLabel;
   final VoidCallback? onSecondaryAction;
+
+  /// Label for an optional third text-button action, shown below the
+  /// secondary one -- added for the Scanner's "not found" state, which offers
+  /// "Scan again", "Search manually" and "Suggest this beer". Ignored if
+  /// [onTertiaryAction] is null.
+  final String? tertiaryLabel;
+  final VoidCallback? onTertiaryAction;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +77,13 @@ class ErrorState extends StatelessWidget {
               TextButton(
                 onPressed: onSecondaryAction,
                 child: Text(secondaryLabel!),
+              ),
+            ],
+            if (onTertiaryAction != null && tertiaryLabel != null) ...[
+              const SizedBox(height: AppSpacing.xs),
+              TextButton(
+                onPressed: onTertiaryAction,
+                child: Text(tertiaryLabel!),
               ),
             ],
           ],

@@ -20,6 +20,7 @@ import 'features/auth/data/supabase_profile_repository.dart';
 import 'features/auth/presentation/auth_controller.dart';
 import 'features/catalog/data/api_catalog_repository.dart';
 import 'features/collection/data/api_collection_repository.dart';
+import 'features/contributions/data/api_contribution_repository.dart';
 import 'features/logging/data/api_log_repository.dart';
 import 'features/map/data/api_map_repository.dart';
 import 'features/statistics/data/api_statistics_repository.dart';
@@ -80,6 +81,7 @@ Future<void> main() async {
   final statisticsRepository = ApiStatisticsRepository(apiClient);
   final achievementsRepository = ApiAchievementsRepository(apiClient);
   final accountRepository = ApiAccountRepository(apiClient);
+  final contributionRepository = ApiContributionRepository(apiClient);
   final collectionRefreshSignal = CollectionRefreshSignal();
 
   final router = createRouter(
@@ -94,6 +96,7 @@ Future<void> main() async {
     mapRepository: mapRepository,
     statisticsRepository: statisticsRepository,
     achievementsRepository: achievementsRepository,
+    contributionRepository: contributionRepository,
     refreshSignal: collectionRefreshSignal,
   );
 

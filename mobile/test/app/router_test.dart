@@ -15,6 +15,9 @@ import 'package:beerapp/features/catalog/domain/models/beer.dart';
 import 'package:beerapp/features/catalog/domain/models/brewery.dart';
 import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
 import 'package:beerapp/features/catalog/presentation/beer_detail/beer_detail_screen.dart';
+import 'package:beerapp/features/contributions/presentation/contributions_screen.dart';
+import 'package:beerapp/features/contributions/presentation/suggest_beer_screen.dart';
+import 'package:beerapp/features/contributions/presentation/suggest_brewery_screen.dart';
 import 'package:beerapp/features/map/presentation/map_screen.dart';
 import 'package:beerapp/features/discover/presentation/discover_screen.dart';
 import 'package:beerapp/features/profile/presentation/edit_profile_screen.dart';
@@ -31,6 +34,7 @@ import '../fakes/fake_age_gate_storage.dart';
 import '../fakes/fake_auth_repository.dart';
 import '../fakes/fake_catalog_repository.dart';
 import '../fakes/fake_collection_repository.dart';
+import '../fakes/fake_contribution_repository.dart';
 import '../fakes/fake_locale_preference_storage.dart';
 import '../fakes/fake_log_repository.dart';
 import '../fakes/fake_map_repository.dart';
@@ -86,6 +90,7 @@ class _Harness {
       mapRepository: FakeMapRepository(),
       statisticsRepository: FakeStatisticsRepository(),
       achievementsRepository: FakeAchievementsRepository(),
+      contributionRepository: FakeContributionRepository(),
       refreshSignal: CollectionRefreshSignal(),
     );
 
@@ -351,6 +356,102 @@ void main() {
       expect(find.byType(BottomNavBar), findsNothing);
     },
   );
+
+  testWidgets(
+    'Contributions and both suggest forms are full-screen routes above the '
+    'shell, reachable when authenticatedComplete',
+    (tester) async {
+      final harness = _Harness(
+        ageAcknowledged: true,
+        initialUser: const AppUser(id: 'email-user-id'),
+        initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
+      );
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      harness.router.push(AppRoutes.contributions);
+      await tester.pumpAndSettle();
+      expect(find.byType(ContributionsScreen), findsOneWidget);
+      expect(find.byType(BottomNavBar), findsNothing);
+
+      harness.router.push(AppRoutes.suggestBeer);
+      await tester.pumpAndSettle();
+      expect(find.byType(SuggestBeerScreen), findsOneWidget);
+      harness.router.pop();
+      await tester.pumpAndSettle();
+
+      harness.router.push(AppRoutes.suggestBrewery);
+      await tester.pumpAndSettle();
+      expect(find.byType(SuggestBreweryScreen), findsOneWidget);
+    },
+  );
+
+  testWidgets('the suggest-a-beer route prefills the name and barcode from '
+      'its query, including reserved characters', (tester) async {
+    final harness = _Harness(
+      ageAcknowledged: true,
+      initialUser: const AppUser(id: 'email-user-id'),
+      initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
+    );
+    await tester.pumpWidget(harness.app);
+    await tester.pumpAndSettle();
+
+    harness.router.push(
+      AppRoutes.suggestBeerPath(name: 'Foo & Bar/1', barcode: '4006381333931'),
+    );
+    await tester.pumpAndSettle();
+
+    final screen = tester.widget<SuggestBeerScreen>(
+      find.byType(SuggestBeerScreen),
+    );
+    expect(screen.initialName, 'Foo & Bar/1');
+    expect(screen.initialBarcode, '4006381333931');
+  });
+
+  testWidgets('the suggest-a-beer route without a query has no prefill', (
+    tester,
+  ) async {
+    final harness = _Harness(
+      ageAcknowledged: true,
+      initialUser: const AppUser(id: 'email-user-id'),
+      initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
+    );
+    await tester.pumpWidget(harness.app);
+    await tester.pumpAndSettle();
+
+    harness.router.push(AppRoutes.suggestBeer);
+    await tester.pumpAndSettle();
+
+    final screen = tester.widget<SuggestBeerScreen>(
+      find.byType(SuggestBeerScreen),
+    );
+    expect(screen.initialName, isNull);
+    expect(screen.initialBarcode, isNull);
+    expect(AppRoutes.suggestBeerPath(), AppRoutes.suggestBeer);
+  });
+
+  testWidgets('contribution routes need a signed-in user with a complete '
+      'profile', (tester) async {
+    final signedOut = _Harness(ageAcknowledged: true);
+    await tester.pumpWidget(signedOut.app);
+    await tester.pumpAndSettle();
+    signedOut.router.go(AppRoutes.suggestBeer);
+    await tester.pumpAndSettle();
+    expect(find.byType(SuggestBeerScreen), findsNothing);
+    expect(find.byType(SignInScreen), findsOneWidget);
+
+    final incomplete = _Harness(
+      ageAcknowledged: true,
+      initialUser: const AppUser(id: 'google-user-id'),
+      initialProfile: const Profile(id: 'google-user-id', username: null),
+    );
+    await tester.pumpWidget(incomplete.app);
+    await tester.pumpAndSettle();
+    incomplete.router.go(AppRoutes.contributions);
+    await tester.pumpAndSettle();
+    expect(find.byType(ContributionsScreen), findsNothing);
+    expect(find.byType(CompleteProfileScreen), findsOneWidget);
+  });
 
   testWidgets('an incomplete profile cannot reach Settings -- redirected to '
       '/complete-profile like any other non-exempt route', (tester) async {

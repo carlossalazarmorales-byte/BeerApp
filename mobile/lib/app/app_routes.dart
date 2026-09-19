@@ -49,4 +49,27 @@ abstract final class AppRoutes {
 
   /// Settings. Top-level route, same reasoning as [editProfile].
   static const String settings = '/profile/settings';
+
+  /// Contributions (the user's own submission history). Top-level route,
+  /// same reasoning as [statistics].
+  static const String contributions = '/profile/contributions';
+
+  /// Suggest-a-beer form. Top-level route; pops `true` once a suggestion was
+  /// stored. Accepts optional `name` (a failed Discover search) and
+  /// `barcode` (a failed scan) query parameters as prefill -- see
+  /// [suggestBeerPath].
+  static const String suggestBeer = '/profile/contributions/beer';
+
+  /// Suggest-a-brewery form. Top-level route; pops `true` once stored.
+  static const String suggestBrewery = '/profile/contributions/brewery';
+
+  /// [suggestBeer] with optional prefill. Values are query-encoded, so a beer
+  /// name containing `&`, `/` or spaces round-trips intact.
+  static String suggestBeerPath({String? name, String? barcode}) {
+    final query = <String, String>{'name': ?name, 'barcode': ?barcode};
+    return Uri(
+      path: suggestBeer,
+      queryParameters: query.isEmpty ? null : query,
+    ).toString();
+  }
 }

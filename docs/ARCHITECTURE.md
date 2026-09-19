@@ -110,6 +110,19 @@ explicitly on every query in addition to it; the helper only centralizes the
 "open a transaction and set `app.user_id`" plumbing, not the query logic
 itself.
 
+**A third kind of data: contributions (Phase 13).** Users can *propose*
+missing beers and breweries, and a proposal is neither catalog data nor
+personal consumption data: it lives in its own user-owned tables
+(`beer_contributions`, `brewery_contributions`), private to its author, on the
+same API-only/`app.user_id` model as the tables above. The invariant that
+matters: **a contribution never becomes a catalog row by itself** — no code
+path in this phase writes `beers`/`breweries`/`beer_styles`/`countries`, the
+backend role has no privilege to, and the mobile app has no route to. A
+suggestion reaches the canonical catalog only through a future, privileged,
+moderator-only approval step that does not exist yet (there is no admin
+identity to authorize it — see `docs/DECISIONS.md`). Creating a contribution
+also never creates a log, favorite, wishlist entry or achievement.
+
 ## Collection freshness (Phase 7)
 
 The Collection screen (unique beers tried, favorites, wishlist) must reflect

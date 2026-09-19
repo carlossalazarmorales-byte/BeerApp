@@ -50,6 +50,11 @@ GoRouter _router() => GoRouter(
       builder: (context, state) =>
           const Scaffold(body: Text('Settings Screen')),
     ),
+    GoRoute(
+      path: AppRoutes.contributions,
+      builder: (context, state) =>
+          const Scaffold(body: Text('Contributions Screen')),
+    ),
   ],
 );
 
@@ -153,5 +158,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Settings Screen'), findsOneWidget);
+  });
+
+  testWidgets('shows the Contributions entry card and navigates to it', (
+    tester,
+  ) async {
+    // Contributions is the last card; a taller surface keeps every card fully
+    // on screen (the default 800x600 clips it at the edge).
+    tester.view.physicalSize = const Size(800, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final authController = _signedInController(displayName: 'Carlos');
+
+    await tester.pumpWidget(_harness(_router(), authController));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Suggest missing beers and breweries'), findsOneWidget);
+
+    await tester.tap(find.text('Contributions'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Contributions Screen'), findsOneWidget);
   });
 }

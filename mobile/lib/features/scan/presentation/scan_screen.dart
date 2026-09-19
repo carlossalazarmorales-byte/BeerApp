@@ -182,12 +182,22 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
         );
 
       case ScanStatus.notFound:
+        final scannedCode = state.lastDetectedCode;
         return ErrorState(
           message: l10n.scanNotFoundMessage,
           retryLabel: l10n.scanAgainAction,
           onRetry: _activate,
           secondaryLabel: l10n.scanSearchManuallyAction,
           onSecondaryAction: _goToDiscover,
+          // Manual search stays the primary path; this only opens the
+          // suggest-a-beer form prefilled with the scanned code. It adds
+          // nothing to the catalog by itself.
+          tertiaryLabel: l10n.contributionSuggestThisBeerAction,
+          onTertiaryAction: scannedCode == null
+              ? null
+              : () => context.push(
+                  AppRoutes.suggestBeerPath(barcode: scannedCode),
+                ),
         );
 
       case ScanStatus.error:

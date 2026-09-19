@@ -47,6 +47,19 @@ class InvalidRequestApiException extends ApiException {
   });
 }
 
+/// 409 — a well-formed request that collides with existing state. First used
+/// by Phase 13 contributions. Unlike the other subtypes, [code] is a specific
+/// machine-readable reason (e.g. `barcode_in_catalog`, `already_submitted`)
+/// that callers branch on -- the localized text still comes from the
+/// feature's own error mapping, never from [message].
+class ConflictApiException extends ApiException {
+  const ConflictApiException({
+    required super.message,
+    super.statusCode,
+    super.code,
+  });
+}
+
 /// 422 — malformed request shape (bad UUID, out-of-range page/page_size).
 class ValidationApiException extends ApiException {
   const ValidationApiException({

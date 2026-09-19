@@ -1638,3 +1638,182 @@ a revocation list — it remains technically valid until its own `exp`
 Every table it could still address now has zero rows for that id, so no
 other user's data is exposed, but this must never be described as instant
 invalidation of already-issued access tokens.
+
+## 2026-09-18 — Phase 13: a contribution is a private proposal in its own tables, never a catalog row
+
+Two typed tables — `beer_contributions` and `brewery_contributions` — rather
+than inserting an unverified row into `beers`/`breweries`, and rather than one
+generic `contributions` table with a JSON payload.
+
+Rejected: **unverified catalog rows** (`PRODUCT.md` §21's "submitted as
+unverified"). Catalog reads (`BeerRepository`, `MapRepository`, statistics,
+achievements) deliberately do not filter on `verified`, so an unverified
+`beers` row would appear in Discover, on the map and in a user's statistics the
+instant it was inserted — exactly what ROADMAP's exit criterion ("user
+contributions cannot overwrite verified catalog data directly") and the
+`CLAUDE.md` Data Model Rule forbid. Read here as: the *submission* is
+unverified/pending, and a catalog row appears only after moderation.
+`PRODUCT.md` §21 was clarified accordingly.
+
+Rejected: **one generic table + JSON**. The two entities have different
+required fields and constraints (a brewery needs a country; a beer's brewery is
+canonical-or-proposed, its style optional), so a single table would be sparse
+with cross-column CHECKs, and a JSON payload would give up the foreign keys,
+CHECKs and typed columns that make a future moderator's job safe. The cost is
+some structural repetition between the two tables (the lifecycle columns) —
+accepted.
+
+The structural guarantee, not a convention: no repository method writes a
+catalog table, `beerapp_backend` holds no privilege to (`SELECT` only there,
+unchanged), and the mobile app has no route to. Enforced and tested at the
+privilege level (`test_backend_role_still_cannot_write_any_catalog_table`) and
+end to end (`test_a_submission_never_touches_a_verified_catalog_row`).
+
+## 2026-09-18 — Phase 13: contributions are FastAPI-mediated, not direct Supabase writes
+
+Not chosen merely because `profiles` uses direct Supabase, nor merely because
+FastAPI exists — chosen because every requirement points the same way. A
+submission must (1) validate references against the canonical catalog, (2)
+reuse the one barcode canonicalizer/checksum in Python
+(`backend/app/services/barcode.py`) rather than duplicate it in Dart or RLS
+SQL, (3) run duplicate checks against tables the client cannot read, (4) fix
+`status` server-side (the request schema has no such field), and (5) do check +
+insert in one transaction. Direct writes under `authenticated` RLS could do
+only the last of those. It reuses the `user_achievements` pattern exactly:
+`SELECT`/`INSERT`-only grants to `beerapp_backend`, two command-specific
+`app.user_id` policies, `scoped_connection`; no new role, secret or
+dependency, and `authenticated` gets nothing.
+
+## 2026-09-18 — Phase 13: free-text proposals for a missing brewery, style or country
+
+Decided with the user: a beer whose brewery is not in the catalog carries
+`proposed_brewery_name` (exactly one of it and `brewery_id`), and the forms
+offer a "Not listed" option for brewery, style and country that reveals a text
+field and sends `proposed_brewery_name` / `proposed_style_name` /
+`proposed_country_name`. Recorded explicitly as a *proposal*: it never creates
+a `countries`/`beer_styles`/`breweries` row. There is intentionally **no
+foreign key or reference from a beer contribution to a brewery contribution**;
+the user is never forced to submit a brewery first, and "Suggest a brewery"
+stays an independent feature satisfying ROADMAP's own "Brewery submission"
+task. This matters in practice: the dev seed has only 10 countries and 8
+styles, so canonical-only pickers would have blocked real users. The cost is
+that a moderator must resolve a proposed name to a canonical row at approval
+time.
+
+## 2026-09-18 — Phase 13: duplicate detection is deterministic; hard blocks vs. soft warnings
+
+Names are not unique in the catalog by design (`beers.official_name` and
+`breweries.name` carry no unique constraint), so a same-name match can only
+ever be a *warning*. The rules:
+
+- **Hard block (`409`)**: a catalog beer already owns the barcode
+  (`barcode_in_catalog`); the caller already has an identical pending
+  suggestion (`already_submitted`, backed by per-user partial unique indexes so
+  a retry/double-tap cannot create two rows).
+- **Soft, non-blocking** (returned by a read-only
+  `GET .../duplicate-candidates`, not a `409`, which keeps the error envelope
+  unchanged): same-name catalog beers at the same/matching brewery, same-name
+  catalog breweries, and `pending_barcode_duplicate_exists`.
+
+Deterministic on purpose (case-insensitive equality on a trimmed,
+whitespace-collapsed name; no fuzzy matching, no `unaccent`): predictable,
+testable, index-friendly. Catalog-side comparison uses `lower(name)` so it is
+served by the existing `beers_official_name_idx`/`breweries_name_idx`; a name
+alone never matches (it must align with the brewery), or "Pilsner" would match
+half the catalog. Known limits: accent-insensitive matching and cross-user
+name duplicates are not handled — the latter are private by design and left to
+the future moderator.
+
+## 2026-09-18 — Phase 13: another user's pending barcode is flagged, not blocked, via a boolean-only `SECURITY DEFINER` function
+
+Decided with the user ("allow and flag"). Two users may both have the same
+barcode pending; the second submitter sees a non-blocking warning ("Another
+pending suggestion may already include this barcode") and may still submit.
+A hard block was rejected: with no moderator yet, one wrong first submission
+would hold a barcode indefinitely.
+
+The flag needs one cross-user fact that owner-only RLS (correctly) hides. The
+policy is **not** widened and `beerapp_backend` is **not** given cross-user read
+access: a narrowly scoped `private.other_user_pending_beer_barcode_exists(text)
+returns boolean` answers it. It is the first `SECURITY DEFINER` function since
+`private.handle_new_user()` and follows its precedent (non-API-exposed `private`
+schema, `set search_path = ''`, schema-qualified body, no dynamic SQL,
+`EXECUTE` revoked from `PUBLIC`/`anon`/`authenticated`, granted only to
+`beerapp_backend`). Identity is read from `app.user_id` inside the function, not
+passed in, so "exclude my own rows" cannot be bypassed, and no identity yields
+`false` (fails closed). The API and UI carry only the boolean — never the row,
+its id, its owner, or any detail. The one new privilege is `USAGE` on schema
+`private` for `beerapp_backend`, which grants no table access. Its behavior and
+privileges are covered by real-Postgres tests (`test_contributions_rls.py`).
+There is deliberately no unique index on a pending barcode; a non-unique partial
+index serves the function and a future moderator's lookup.
+
+## 2026-09-18 — Phase 13: the moderation lifecycle is in the schema now; approval is deferred and blocked on admin identity
+
+ROADMAP asks for a "moderation-ready data model", so `status`
+(`pending`/`approved`/`rejected`), `reviewed_at`, `review_note` and
+`resolved_beer_id`/`resolved_brewery_id` exist now, tied together by CHECKs
+(`(status = 'pending') = (reviewed_at is null)`, `(status = 'approved') =
+(resolved_* is not null)`, no note while pending). **Only `pending` is reachable**:
+no endpoint, role or UI can set another status, `beerapp_backend` has no
+`UPDATE`/`DELETE`, and the `INSERT` policy pins `status = 'pending'`. The client
+also treats an unrecognized status as `unknown`, never as approved.
+
+**Approval is deliberately not implemented, and this is a blocker rather than
+an oversight**: BeerApp has no admin/moderator identity or role architecture
+(`PRODUCT.md` §22 keeps administration out of the mobile app), so any "approve"
+endpoint would have to invent one, which would be insecure. Design intent for
+when it exists — one privileged, server-side transaction that locks the pending
+row, re-checks the barcode/name against `beers`, inserts or merges the canonical
+row with the right `verified`/`source`, and marks the contribution approved with
+`resolved_*` set; callable by no normal user. Until then contributions stay
+pending and the catalog is unchanged, which is the documented state.
+
+## 2026-09-18 — Phase 13: `ConflictError` / HTTP 409 with machine-readable codes
+
+First 409 in the API. `ConflictError(code, message)` puts a *specific* code in
+the standard `{error: {code, message}}` envelope (`barcode_in_catalog`,
+`already_submitted`) instead of the generic `conflict`, because the client must
+branch on which of the two happened without parsing prose; the envelope's shape
+is unchanged. The service maps `asyncpg` violations by **constraint name**
+(`UniqueViolationError` on the four own-duplicate indexes →
+`already_submitted`; `ForeignKeyViolationError` on the three catalog FKs → `404`
+like `beer_logs`), so those names are part of the contract and are given
+explicitly in the migrations and pinned by a test. An unrecognized violation
+(including `user_id_fkey`, e.g. a still-valid JWT for a just-deleted account) is
+re-raised as a `500` rather than misreported. Flutter maps `409` to
+`ConflictApiException` (keeps `code`); localized text always comes from the
+feature's own mapping, never from the backend message.
+
+## 2026-09-18 — Phase 13: contributions are immutable and private this phase
+
+No edit, withdraw, delete, per-item detail, or other users' visibility: ROADMAP
+asks for submission *history*, not editing, and immutability is enforced by the
+grants (no `UPDATE`/`DELETE`). A contributor's identity is never exposed in any
+API or UI; the only cross-user signal is the boolean above. Rate limiting, trust
+scoring and other abuse tooling belong to Phase 14, not here; the safeguards
+that belong naturally to this design are in place (auth required, length/shape
+constraints, ownership from the JWT only, own-duplicate uniqueness,
+server-controlled status). Images, media and Supabase Storage were not touched
+(none is required, matching Phase 12's deferral).
+
+## 2026-09-18 — Phase 13: findings recorded while verifying (not fixed here)
+
+- **The older integration suite had never been run against a real database.**
+  Executed for the first time against a disposable local Postgres 16, 79 of its
+  111 pre-existing tests fail, for test-side reasons (see the status note in
+  `docs/DATABASE.md`). Not fixed: outside this phase, and each cause is only
+  read from the error output. Phase 13's own 81 integration tests pass.
+- **Phase 11's note on UPC-E is slightly overstated.** An 8-digit input is
+  accepted whenever it happens to carry a valid EAN-8 check digit (e.g.
+  `01234565`), so "an 8-digit UPC-E input is rejected, not silently treated as
+  EAN-8" holds only for UPC-E codes that fail that check. The behavior is the
+  inherent ambiguity of an 8-digit code, unchanged here; the claim, not the code,
+  needed the caveat.
+- **Verification technique.** With no configured `INTEGRATION_DATABASE_URL`, the
+  migrations and tests were run against an embedded Postgres 16 installed
+  outside the repository (scratch directory, no repo dependency added) with a
+  minimal `auth.users`/`anon`/`authenticated` scaffold — a faithful check of the
+  SQL, constraints, RLS and function privileges, but *not* a Supabase project: it
+  does not exercise Supabase's own `auth` schema, PostgREST, or the real Supabase
+  roles/defaults.

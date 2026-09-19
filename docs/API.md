@@ -32,6 +32,11 @@ verifies tokens Supabase already issued.
   resource (beer logs), also covers "exists, but isn't yours" — deliberately
   indistinguishable from "doesn't exist" at all, never a 403, so a client
   can't use the status code to probe for another user's data.
+- **409** — a well-formed request that collides with existing state. First
+  used by Phase 13 contributions. Unlike the other errors, `error.code` is a
+  specific machine-readable reason (`barcode_in_catalog`, `already_submitted`)
+  rather than the generic `conflict`, so a client can tell two different 409s
+  apart without parsing the message.
 - **422** — malformed UUIDs, invalid typed query/path parameters,
   out-of-range `page`/`page_size`, and any other request-shape validation
   FastAPI/Pydantic owns. This is the default outcome for "the input didn't
@@ -469,7 +474,8 @@ endpoint never reads/writes any table directly.
 
 **Cascade, not manual deletion.** Deleting the `auth.users` row via the Admin
 API cascades automatically to `profiles`, `user_beer_logs`,
-`user_beer_collection`, and `user_achievements` through their existing
+`user_beer_collection`, `user_achievements`, and — since Phase 13 —
+`beer_contributions` and `brewery_contributions` through their existing
 `ON DELETE CASCADE` foreign keys (see `docs/DATABASE.md`) — this endpoint
 does not, and does not need to, delete from any of those tables itself.
 
@@ -487,3 +493,86 @@ already-issued access JWT remains a stateless, signature-verified token
 until its own expiry — `get_current_user` does not check a revocation list.
 Every table this token could still address now has zero rows for that id,
 so this is a documented, accepted gap, not a data-exposure risk.
+
+## Contributions (`/beer-contributions`, `/brewery-contributions`, `/contributions`, Phase 13)
+
+A user *proposes* a beer or brewery missing from the catalog. **A contribution
+is not a catalog entry**: submitting one stores a private `pending` row and
+nothing else — it never creates, edits or verifies a `Beer`/`Brewery`, is never
+visible in Discover/Map/Statistics/Achievements, and creates no log, favorite,
+wishlist entry or achievement. Everything is FastAPI-mediated (the mobile app
+has no direct database access to these tables) and every route needs a valid
+session. The owner is **always** the verified JWT's `sub`: there is no
+`user_id` parameter or body field anywhere, and request bodies are
+`extra="forbid"`, so `user_id`, `status` and every review field are rejected
+with `422`.
+
+| method | path | notes |
+|---|---|---|
+| POST | `/beer-contributions` | `201` with the stored (pending) suggestion |
+| POST | `/brewery-contributions` | `201` with the stored (pending) suggestion |
+| GET | `/contributions` | the caller's **own** history, both kinds, newest first; `?page=&page_size=` |
+| GET | `/beer-contributions/duplicate-candidates` | read-only duplicate check, same fields as a submission |
+| GET | `/brewery-contributions/duplicate-candidates` | read-only duplicate check |
+
+**Beer submission** — `official_name` (required, 1–200 after whitespace
+normalization); the brewery as **exactly one** of `brewery_id` (canonical) or
+`proposed_brewery_name` (free text, for a brewery the catalog lacks — a beer
+suggestion never depends on, or references, a separate brewery suggestion);
+optional `style_id` **or** `proposed_style_name` (not both); optional `abv`
+(0–99.99, ≤ 2 decimals); optional `barcode`, canonicalized by the same
+`canonicalize_barcode` as `GET /beers/barcode/{barcode}` (EAN-8/EAN-13/UPC-A →
+canonical GTIN, GS1 check digit; UPC-E is not supported), an invalid barcode
+being an ordinary `422`. **Brewery submission** — `name` (required), `country_id`
+**or** `proposed_country_name` (exactly one), optional `region`/`city`. Text is
+trimmed and internal whitespace collapsed server-side. No coordinates, website,
+description, image or notes are collected. Responses carry the stored fields,
+`status` and `created_at` — never `user_id`.
+
+**Errors.** `404` — a referenced `brewery_id`/`style_id`/`country_id` does not
+exist (same convention as `beer_id` on beer logs). `409` — two **hard blocks**:
+`barcode_in_catalog` (a catalog beer already owns that barcode — the client
+resolves it with the existing `GET /beers/barcode/{barcode}`) and
+`already_submitted` (the caller already has an identical *pending* suggestion —
+same normalized name and brewery/country — so a retry or double-tap is safe).
+
+**History** — `GET /contributions` returns `{items: [{kind, id, title, status,
+created_at}], page, page_size, total}` for the caller only. `status` is
+`pending` today for every row (`approved`/`rejected` exist in the schema for a
+future moderator; no endpoint or role can set them yet). There is no detail,
+edit or withdraw endpoint — submissions are immutable this phase.
+
+**Duplicate detection** is deterministic (no fuzzy/`unaccent` matching:
+case-insensitive equality on a trimmed, whitespace-collapsed name). The beer
+check returns:
+
+```json
+{
+  "barcode_match": null,
+  "name_matches": [],
+  "brewery_matches": [],
+  "already_submitted": false,
+  "pending_barcode_duplicate_exists": false
+}
+```
+
+- `barcode_match` (a full catalog `Beer`) and `already_submitted` are the two
+  **hard blocks** — the POST would `409`.
+- `name_matches` (catalog beers with the same name at the same brewery, or at a
+  brewery named like the proposed one) and `brewery_matches` (catalog breweries
+  with the proposed name) are **non-blocking warnings**: beer and brewery names
+  are not unique by design, so a match asks "did you mean this?" and the user
+  may proceed.
+- `pending_barcode_duplicate_exists` is a **non-blocking** boolean: *another*
+  user's pending suggestion carries this canonical barcode. The submission is
+  still accepted. It is the only cross-user signal in the whole API: it never
+  carries that suggestion's row, id, owner or any detail (produced by a
+  boolean-only database function — see `docs/DATABASE.md`), and it is `false`
+  when no barcode was given, when the catalog already owns the barcode (that is
+  a hard block instead), or for the caller's own pending rows.
+
+The brewery check returns `{name_matches, already_submitted}`; a proposed
+(unlisted) country cannot collide with a catalog brewery, so it has no catalog
+comparison. The check is advisory: the POST enforces the hard blocks itself
+(the `barcode_in_catalog` pre-check is a UX guard; `beers_barcode_unique_idx`
+remains the real invariant, re-checked by any future approval).

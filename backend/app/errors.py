@@ -11,6 +11,7 @@ _STATUS_CODES = {
     status.HTTP_400_BAD_REQUEST: "invalid_request",
     status.HTTP_401_UNAUTHORIZED: "unauthorized",
     status.HTTP_404_NOT_FOUND: "not_found",
+    status.HTTP_409_CONFLICT: "conflict",
     status.HTTP_422_UNPROCESSABLE_CONTENT: "validation_error",
     status.HTTP_503_SERVICE_UNAVAILABLE: "service_unavailable",
 }
@@ -30,6 +31,22 @@ class InvalidRequestError(Exception):
     on a beer log). First real use of the 400 status -- Phase 3's read-only
     endpoints had no such case.
     """
+
+
+class ConflictError(Exception):
+    """Raised by a service when a request is well-formed but collides with
+    existing state -- first used by Phase 13 contributions (a barcode already
+    in the catalog, or the caller's own identical pending suggestion).
+
+    Unlike the other error classes, `code` is a specific machine-readable
+    reason carried in the standard envelope's `error.code` (e.g.
+    `barcode_in_catalog`), because a client must be able to tell two
+    different 409 causes apart without parsing the human message.
+    """
+
+    def __init__(self, code: str, message: str) -> None:
+        super().__init__(message)
+        self.code = code
 
 
 def _envelope(code: str, message: str) -> dict:
@@ -73,6 +90,13 @@ async def invalid_request_handler(request: Request, exc: InvalidRequestError) ->
     )
 
 
+async def conflict_handler(request: Request, exc: ConflictError) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_409_CONFLICT,
+        content=_envelope(exc.code, str(exc)),
+    )
+
+
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     # Catches asyncpg/httpx and any other infrastructure failure. JWT
     # verification failures never reach this handler -- they're caught and
@@ -91,4 +115,5 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(RequestValidationError, validation_exception_handler)
     app.add_exception_handler(NotFoundError, not_found_handler)
     app.add_exception_handler(InvalidRequestError, invalid_request_handler)
+    app.add_exception_handler(ConflictError, conflict_handler)
     app.add_exception_handler(Exception, unhandled_exception_handler)

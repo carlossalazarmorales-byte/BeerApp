@@ -9,6 +9,7 @@ from app.repositories.beer_styles import BeerStyleRepository
 from app.repositories.beers import BeerRepository
 from app.repositories.breweries import BreweryRepository
 from app.repositories.collection import CollectionRepository
+from app.repositories.contributions import ContributionRepository
 from app.repositories.countries import CountryRepository
 from app.repositories.map import MapRepository
 from app.repositories.statistics import StatisticsRepository
@@ -20,6 +21,7 @@ from app.services.beer_styles import BeerStyleService
 from app.services.beers import BeerService
 from app.services.breweries import BreweryService
 from app.services.collection import CollectionService
+from app.services.contributions import ContributionService
 from app.services.countries import CountryService
 from app.services.map import MapService
 from app.services.statistics import StatisticsService
@@ -52,6 +54,14 @@ def get_beer_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> BeerService:
 
 def get_beer_log_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> BeerLogService:
     return BeerLogService(BeerLogRepository(pool))
+
+
+def get_contribution_service(pool: asyncpg.Pool = Depends(get_db_pool)) -> ContributionService:
+    # The catalog repositories are injected for READS only (duplicate
+    # detection) -- see ContributionService.
+    return ContributionService(
+        ContributionRepository(pool), BeerRepository(pool), BreweryRepository(pool)
+    )
 
 
 def get_achievements_repository() -> AchievementsRepository:

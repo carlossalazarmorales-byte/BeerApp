@@ -16,6 +16,7 @@ from app.routes import (
     beers,
     breweries,
     collection,
+    contributions,
     countries,
     statistics,
 )
@@ -52,6 +53,7 @@ app.include_router(collection.router)
 app.include_router(map_routes.router)
 app.include_router(statistics.router)
 app.include_router(achievements.router)
+app.include_router(contributions.router)
 app.include_router(account.router)
 
 

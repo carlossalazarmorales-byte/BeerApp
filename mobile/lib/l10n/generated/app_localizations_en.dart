@@ -794,4 +794,212 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get deleteAccountGenericError =>
       'Couldn\'t delete your account. Please try again.';
+
+  @override
+  String get profileContributionsCardTitle => 'Contributions';
+
+  @override
+  String get profileContributionsCardSubtitle =>
+      'Suggest missing beers and breweries';
+
+  @override
+  String get contributionsScreenTitle => 'Contributions';
+
+  @override
+  String get contributionsIntro =>
+      'Suggestions are reviewed before they can join the catalog. Nothing you submit here appears in the catalog until then.';
+
+  @override
+  String get contributionsSuggestBeerAction => 'Suggest a beer';
+
+  @override
+  String get contributionsSuggestBreweryAction => 'Suggest a brewery';
+
+  @override
+  String get contributionsHistoryTitle => 'Your suggestions';
+
+  @override
+  String get contributionsEmptyMessage =>
+      'You haven\'t suggested anything yet.';
+
+  @override
+  String get contributionKindBeer => 'Beer';
+
+  @override
+  String get contributionKindBrewery => 'Brewery';
+
+  @override
+  String get contributionStatusPending => 'Pending review';
+
+  @override
+  String get contributionStatusApproved => 'Approved';
+
+  @override
+  String get contributionStatusRejected => 'Not accepted';
+
+  @override
+  String get contributionStatusUnknown => 'Unknown';
+
+  @override
+  String get contributionSubmitAction => 'Submit suggestion';
+
+  @override
+  String get contributionSuggestThisBeerAction => 'Suggest this beer';
+
+  @override
+  String get contributionValidationRequired => 'This field is required.';
+
+  @override
+  String contributionValidationTooLong(int max) {
+    return 'Must be at most $max characters.';
+  }
+
+  @override
+  String get contributionValidationAbv =>
+      'Enter an ABV between 0 and 99.99 with at most 2 decimals.';
+
+  @override
+  String get contributionValidationBarcode =>
+      'Enter digits only (8, 12 or 13 digits).';
+
+  @override
+  String get contributionValidationBreweryRequired =>
+      'Choose a brewery or enter its name.';
+
+  @override
+  String get contributionValidationCountryRequired =>
+      'Choose a country or enter its name.';
+
+  @override
+  String get contributionOptionNotListed => 'Not listed';
+
+  @override
+  String get contributionOptionNoStyle => 'No style';
+
+  @override
+  String get suggestBeerScreenTitle => 'Suggest a beer';
+
+  @override
+  String get suggestBeerNameHint => 'Beer name';
+
+  @override
+  String get suggestBeerBreweryLabel => 'Brewery';
+
+  @override
+  String get suggestBeerProposedBreweryHint => 'Brewery name';
+
+  @override
+  String get suggestBeerStyleLabel => 'Style (optional)';
+
+  @override
+  String get suggestBeerProposedStyleHint => 'Style name';
+
+  @override
+  String get suggestBeerAbvHint => 'ABV % (optional)';
+
+  @override
+  String get suggestBeerBarcodeHint => 'Barcode (optional)';
+
+  @override
+  String get suggestBreweryScreenTitle => 'Suggest a brewery';
+
+  @override
+  String get suggestBreweryNameHint => 'Brewery name';
+
+  @override
+  String get suggestBreweryCountryLabel => 'Country';
+
+  @override
+  String get suggestBreweryProposedCountryHint => 'Country name';
+
+  @override
+  String get suggestBreweryRegionHint => 'Region (optional)';
+
+  @override
+  String get suggestBreweryCityHint => 'City (optional)';
+
+  @override
+  String get contributionDuplicateSheetTitle => 'Similar entries found';
+
+  @override
+  String get contributionDuplicateSheetBody =>
+      'Please check these before submitting. If yours is different, you can still submit it.';
+
+  @override
+  String get contributionDuplicateSimilarBeers =>
+      'Similar beers already in the catalog';
+
+  @override
+  String get contributionDuplicateSimilarBreweries =>
+      'Similar breweries already in the catalog';
+
+  @override
+  String get contributionDuplicatePendingBarcode =>
+      'Another pending suggestion may already include this barcode.';
+
+  @override
+  String get contributionDuplicateReviewAction => 'Review';
+
+  @override
+  String get contributionDuplicateSubmitAnywayAction => 'Submit anyway';
+
+  @override
+  String get contributionDuplicateViewAction => 'View';
+
+  @override
+  String get contributionViewExistingBeerAction => 'View existing beer';
+
+  @override
+  String get contributionSubmittedTitle => 'Suggestion received';
+
+  @override
+  String get contributionSubmittedBody =>
+      'It\'s pending review. It won\'t appear in the catalog until it has been reviewed.';
+
+  @override
+  String get contributionSubmittedDoneAction => 'Done';
+
+  @override
+  String get contributionDiscardTitle => 'Discard this suggestion?';
+
+  @override
+  String get contributionDiscardBody => 'Your changes will be lost.';
+
+  @override
+  String get contributionDiscardConfirmAction => 'Discard';
+
+  @override
+  String get contributionDiscardCancelAction => 'Keep editing';
+
+  @override
+  String get contributionErrorUnauthorized =>
+      'Your session has expired. Please sign in again.';
+
+  @override
+  String get contributionErrorServiceUnavailable =>
+      'The service is temporarily unavailable. Please try again shortly.';
+
+  @override
+  String get contributionErrorNetwork =>
+      'Couldn\'t reach the server. Check your connection and try again.';
+
+  @override
+  String get contributionErrorValidation =>
+      'Some details aren\'t valid. Please check the fields and try again.';
+
+  @override
+  String get contributionErrorNotFound =>
+      'One of the selected catalog entries no longer exists. Please choose again.';
+
+  @override
+  String get contributionErrorBarcodeInCatalog =>
+      'This barcode already belongs to a beer in the catalog.';
+
+  @override
+  String get contributionErrorAlreadySubmitted =>
+      'You already have an identical suggestion pending review.';
+
+  @override
+  String get contributionErrorGeneric =>
+      'Something went wrong. Please try again.';
 }

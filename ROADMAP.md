@@ -826,16 +826,89 @@ Goal: allow catalog growth.
 
 Tasks:
 
-- [ ] Missing beer submission
-- [ ] Brewery submission
-- [ ] Duplicate candidate detection
-- [ ] Unverified state
-- [ ] Submission history
-- [ ] Moderation-ready data model
+- [x] Missing beer submission — `POST /beer-contributions`, Profile → Contributions → "Suggest a beer", plus "Suggest this beer" from a Discover search with no results and from a scan whose barcode isn't found (prefilled). Optional barcode reuses the Phase 11 canonicalizer. A missing brewery/style is entered as free text ("Not listed") — no separate brewery submission required
+- [x] Brewery submission — `POST /brewery-contributions`, an independent form (country from the catalog or "Not listed" free text)
+- [x] Duplicate candidate detection — deterministic, read-only `GET .../duplicate-candidates` before submit. Hard blocks (`409`): a catalog beer already owns the barcode; the user's own identical pending suggestion. Non-blocking warnings: similar catalog beers/breweries, and another user's pending suggestion carrying the same barcode (a boolean only — no row, id or identity)
+- [x] Unverified state — a suggestion is stored `pending` and is described as "Suggestion received / Pending review", never "added"; it never becomes a catalog row
+- [x] Submission history — `GET /contributions` (the caller's own, both kinds, newest first), shown in Profile → Contributions
+- [x] Moderation-ready data model — the `pending/approved/rejected` lifecycle, review columns and `resolved_*` links exist in the schema, tied together by CHECKs; **only `pending` is reachable**. The approve/reject workflow itself is **not built** (see below)
 
 Exit criteria:
 
-- User contributions cannot overwrite verified catalog data directly
+- [x] User contributions cannot overwrite verified catalog data directly — no code path in this phase writes `beers`/`breweries`/`beer_styles`/`countries`; `beerapp_backend` remains `SELECT`-only on them and `authenticated`/`anon` have no access to the new tables at all. Proven at the privilege level and end to end (a submission that mirrors a verified beer leaves that beer's name, brewery, ABV, `verified`, `source` and `updated_at` unchanged)
+
+Explicitly **not** in this phase (ROADMAP does not list them; see `docs/DECISIONS.md`):
+edits/corrections to existing beers; **approval/rejection and any admin tooling —
+a blocker, not an oversight: there is no admin/moderator identity, and no
+"approve" endpoint was invented**; editing, withdrawing or a detail view of a
+submission; images/storage; rate limiting and trust scoring (Phase 14);
+fuzzy/accent-insensitive matching.
+
+**Status (2026-09-18)**: implementation complete and automated-test-verified;
+the four migrations are **applied to `beerapp-dev`** and verified (below);
+**live emulator verification NOT EXERCISED** — see below.
+
+What was verified, and how:
+
+- Backend default suite (`pytest`, excludes `@pytest.mark.integration`): **336
+  passed** (up from 214). `ruff check` clean; `ruff format` clean for every file
+  touched (three pre-existing files — `app/repositories/achievements.py`,
+  `tests/auth/test_verifier.py`, `tests/integration/test_user_achievements_rls.py`
+  — still carry unrelated formatting drift and were left untouched).
+- Flutter (`flutter test`): **476 passed** (up from 335); no existing test's
+  assertions were changed (existing test files only gained the new
+  `contributionRepository` argument and additional cases). `dart format` clean
+  for everything touched. `flutter analyze` (Flutter 3.47.4): no issues in any
+  file this phase touched; 4 `info`-level `curly_braces_in_flow_control_structures`
+  lints are reported in four pre-existing `*_error_text.dart` files this phase
+  did not touch, left as they are.
+- **The four migrations and 81 new integration tests were run against a real
+  Postgres 16** (embedded, installed outside the repo; a minimal
+  `auth.users`/`anon`/`authenticated` scaffold; every repo migration applied in
+  order) — constraints, unique indexes, RLS, forged `user_id`/`status`, the
+  absence of `UPDATE`/`DELETE`, the boolean-only cross-user function and its
+  privileges, an actual `auth.users` delete cascading to both tables, and the
+  real service running as `beerapp_backend`. **All 81 pass.** This is *not* a
+  Supabase project: Supabase's own `auth` schema, PostgREST and role defaults
+  were not exercised.
+- **Pre-existing finding:** the same run showed **79 of the 111 older
+  integration tests fail** (test-side defects; the suite had never been run
+  against a real database before). Not touched here; see `docs/DATABASE.md`
+  ("Status of this integration suite") and `docs/DECISIONS.md`.
+- **Migrations applied to `beerapp-dev`** (created with `supabase migration new`,
+  timestamps `20260918155136`–`20260918155150`, all after the previous latest),
+  with explicit go-ahead. `supabase db push --dry-run` first listed exactly those
+  four and nothing else; `supabase db push` then applied them;
+  `supabase db lint --linked --level error` reported no schema errors (schemas
+  `extensions`, `private`, `public`); `supabase migration list` shows all 18
+  local migrations recorded remotely. A read-only check as the `beerapp_backend`
+  role then confirmed: both tables exist with RLS on and exactly the
+  `backend_select_own`/`backend_insert_own` policies (owner-only, insert pinned
+  to `pending`, targeting only `beerapp_backend`); `beerapp_backend` holds
+  exactly `SELECT`+`INSERT` (no `UPDATE`/`DELETE`); `anon`, `authenticated` and
+  `beerapp_seed` hold nothing; `user_id` FKs are `ON DELETE CASCADE`; the
+  `private.other_user_pending_beer_barcode_exists(text)` function is
+  `SECURITY DEFINER`, returns `boolean`, has `search_path=""`, and `EXECUTE` is
+  held only by `beerapp_backend` and the owner (not `PUBLIC`/`anon`/
+  `authenticated`/`beerapp_seed`); `USAGE` on schema `private` is granted to
+  `beerapp_backend` only. Compared with a snapshot taken just before the push,
+  the four catalog tables' row counts and per-row hashes are unchanged and the
+  privileges on all 8 pre-existing tables (4 roles × 7 privileges) are
+  unchanged. Both new tables are empty — no contribution rows were created to
+  verify anything.
+- **Live Android emulator verification: NOT EXERCISED.** It needs sign-in
+  credentials (BeerApp requires email verification, `PRODUCT.md` §6) — still
+  unavailable — and every live submission would leave pending rows in the shared
+  dev database (the migrations themselves are now applied). Covered instead by the widget/controller tests
+  (`suggest_beer_screen_test.dart`, `suggest_brewery_screen_test.dart`,
+  `contributions_screen_test.dart`, the Discover/Scan/Profile entry-point tests,
+  `router_test.dart`). No log, favorite, wishlist or achievement was created at
+  any point.
+
+Known limitations (documented, not silent): approval does not exist, so every
+suggestion stays pending and the catalog is unchanged; the brewery picker is the
+bounded Phase 5 loader (≤ 500 breweries; `GET /breweries` has no `q`); matching
+is ASCII/case-insensitive only; cross-user name duplicates are not surfaced.
 
 ---
 

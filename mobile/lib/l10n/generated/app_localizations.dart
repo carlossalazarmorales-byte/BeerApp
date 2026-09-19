@@ -1537,6 +1537,378 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t delete your account. Please try again.'**
   String get deleteAccountGenericError;
+
+  /// Title of the Profile card that opens the Contributions screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Contributions'**
+  String get profileContributionsCardTitle;
+
+  /// Subtitle of the Profile card that opens the Contributions screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest missing beers and breweries'**
+  String get profileContributionsCardSubtitle;
+
+  /// App bar title of the Contributions screen (submission history).
+  ///
+  /// In en, this message translates to:
+  /// **'Contributions'**
+  String get contributionsScreenTitle;
+
+  /// Explains on the Contributions screen that a suggestion is not a catalog entry.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestions are reviewed before they can join the catalog. Nothing you submit here appears in the catalog until then.'**
+  String get contributionsIntro;
+
+  /// Button on the Contributions screen that opens the suggest-a-beer form.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a beer'**
+  String get contributionsSuggestBeerAction;
+
+  /// Button on the Contributions screen that opens the suggest-a-brewery form.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a brewery'**
+  String get contributionsSuggestBreweryAction;
+
+  /// Section title above the list of the user's own past suggestions.
+  ///
+  /// In en, this message translates to:
+  /// **'Your suggestions'**
+  String get contributionsHistoryTitle;
+
+  /// Empty state of the submission history.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t suggested anything yet.'**
+  String get contributionsEmptyMessage;
+
+  /// Label for a beer suggestion in the history list.
+  ///
+  /// In en, this message translates to:
+  /// **'Beer'**
+  String get contributionKindBeer;
+
+  /// Label for a brewery suggestion in the history list.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewery'**
+  String get contributionKindBrewery;
+
+  /// Status of a suggestion that has not been reviewed yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending review'**
+  String get contributionStatusPending;
+
+  /// Status of a suggestion a moderator approved (not reachable until moderation exists).
+  ///
+  /// In en, this message translates to:
+  /// **'Approved'**
+  String get contributionStatusApproved;
+
+  /// Status of a suggestion a moderator did not accept (not reachable until moderation exists).
+  ///
+  /// In en, this message translates to:
+  /// **'Not accepted'**
+  String get contributionStatusRejected;
+
+  /// Status label for a status value this app version does not recognize.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get contributionStatusUnknown;
+
+  /// Primary button on the suggest-a-beer and suggest-a-brewery forms.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit suggestion'**
+  String get contributionSubmitAction;
+
+  /// Shown when a search or barcode scan finds nothing; opens the suggest-a-beer form.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest this beer'**
+  String get contributionSuggestThisBeerAction;
+
+  /// Form validation: a required field is blank.
+  ///
+  /// In en, this message translates to:
+  /// **'This field is required.'**
+  String get contributionValidationRequired;
+
+  /// Form validation: text exceeds the maximum length.
+  ///
+  /// In en, this message translates to:
+  /// **'Must be at most {max} characters.'**
+  String contributionValidationTooLong(int max);
+
+  /// Form validation: the ABV is not a number in range.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an ABV between 0 and 99.99 with at most 2 decimals.'**
+  String get contributionValidationAbv;
+
+  /// Form validation: the barcode is not 8, 12 or 13 digits.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter digits only (8, 12 or 13 digits).'**
+  String get contributionValidationBarcode;
+
+  /// Form validation: no brewery chosen for a beer suggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a brewery or enter its name.'**
+  String get contributionValidationBreweryRequired;
+
+  /// Form validation: no country chosen for a brewery suggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a country or enter its name.'**
+  String get contributionValidationCountryRequired;
+
+  /// Picker option meaning the wanted brewery/style/country is not in the catalog; reveals a text field.
+  ///
+  /// In en, this message translates to:
+  /// **'Not listed'**
+  String get contributionOptionNotListed;
+
+  /// Picker option for leaving the optional beer style empty.
+  ///
+  /// In en, this message translates to:
+  /// **'No style'**
+  String get contributionOptionNoStyle;
+
+  /// App bar title of the suggest-a-beer form.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a beer'**
+  String get suggestBeerScreenTitle;
+
+  /// Hint of the beer name field.
+  ///
+  /// In en, this message translates to:
+  /// **'Beer name'**
+  String get suggestBeerNameHint;
+
+  /// Label of the brewery picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewery'**
+  String get suggestBeerBreweryLabel;
+
+  /// Hint of the free-text brewery field shown when the brewery is not listed.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewery name'**
+  String get suggestBeerProposedBreweryHint;
+
+  /// Label of the optional style picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Style (optional)'**
+  String get suggestBeerStyleLabel;
+
+  /// Hint of the free-text style field shown when the style is not listed.
+  ///
+  /// In en, this message translates to:
+  /// **'Style name'**
+  String get suggestBeerProposedStyleHint;
+
+  /// Hint of the optional ABV field.
+  ///
+  /// In en, this message translates to:
+  /// **'ABV % (optional)'**
+  String get suggestBeerAbvHint;
+
+  /// Hint of the optional barcode field.
+  ///
+  /// In en, this message translates to:
+  /// **'Barcode (optional)'**
+  String get suggestBeerBarcodeHint;
+
+  /// App bar title of the suggest-a-brewery form.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a brewery'**
+  String get suggestBreweryScreenTitle;
+
+  /// Hint of the brewery name field.
+  ///
+  /// In en, this message translates to:
+  /// **'Brewery name'**
+  String get suggestBreweryNameHint;
+
+  /// Label of the country picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get suggestBreweryCountryLabel;
+
+  /// Hint of the free-text country field shown when the country is not listed.
+  ///
+  /// In en, this message translates to:
+  /// **'Country name'**
+  String get suggestBreweryProposedCountryHint;
+
+  /// Hint of the optional region field.
+  ///
+  /// In en, this message translates to:
+  /// **'Region (optional)'**
+  String get suggestBreweryRegionHint;
+
+  /// Hint of the optional city field.
+  ///
+  /// In en, this message translates to:
+  /// **'City (optional)'**
+  String get suggestBreweryCityHint;
+
+  /// Title of the non-blocking duplicate warning sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar entries found'**
+  String get contributionDuplicateSheetTitle;
+
+  /// Body of the duplicate warning sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Please check these before submitting. If yours is different, you can still submit it.'**
+  String get contributionDuplicateSheetBody;
+
+  /// Heading above catalog beers that look like the suggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar beers already in the catalog'**
+  String get contributionDuplicateSimilarBeers;
+
+  /// Heading above catalog breweries that look like the suggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Similar breweries already in the catalog'**
+  String get contributionDuplicateSimilarBreweries;
+
+  /// Non-blocking warning that another user's pending suggestion carries the same barcode. Reveals nothing else.
+  ///
+  /// In en, this message translates to:
+  /// **'Another pending suggestion may already include this barcode.'**
+  String get contributionDuplicatePendingBarcode;
+
+  /// Duplicate warning sheet: go back and edit.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get contributionDuplicateReviewAction;
+
+  /// Duplicate warning sheet: submit despite the warning.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit anyway'**
+  String get contributionDuplicateSubmitAnywayAction;
+
+  /// Opens a similar catalog beer's detail.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get contributionDuplicateViewAction;
+
+  /// Shown when the barcode already belongs to a catalog beer.
+  ///
+  /// In en, this message translates to:
+  /// **'View existing beer'**
+  String get contributionViewExistingBeerAction;
+
+  /// Success heading after a suggestion is stored.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggestion received'**
+  String get contributionSubmittedTitle;
+
+  /// Success body: the suggestion is not a catalog entry yet.
+  ///
+  /// In en, this message translates to:
+  /// **'It\'s pending review. It won\'t appear in the catalog until it has been reviewed.'**
+  String get contributionSubmittedBody;
+
+  /// Closes the success state.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get contributionSubmittedDoneAction;
+
+  /// Title of the confirm-discard dialog when leaving an edited form.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard this suggestion?'**
+  String get contributionDiscardTitle;
+
+  /// Body of the confirm-discard dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Your changes will be lost.'**
+  String get contributionDiscardBody;
+
+  /// Confirms discarding the form.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard'**
+  String get contributionDiscardConfirmAction;
+
+  /// Cancels discarding the form.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep editing'**
+  String get contributionDiscardCancelAction;
+
+  /// Contribution request rejected as unauthenticated.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again.'**
+  String get contributionErrorUnauthorized;
+
+  /// Contribution request failed with a 503.
+  ///
+  /// In en, this message translates to:
+  /// **'The service is temporarily unavailable. Please try again shortly.'**
+  String get contributionErrorServiceUnavailable;
+
+  /// Contribution request failed without a response.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t reach the server. Check your connection and try again.'**
+  String get contributionErrorNetwork;
+
+  /// Contribution request rejected with a 422.
+  ///
+  /// In en, this message translates to:
+  /// **'Some details aren\'t valid. Please check the fields and try again.'**
+  String get contributionErrorValidation;
+
+  /// A referenced brewery/style/country was not found.
+  ///
+  /// In en, this message translates to:
+  /// **'One of the selected catalog entries no longer exists. Please choose again.'**
+  String get contributionErrorNotFound;
+
+  /// Hard block: the barcode is already assigned to a catalog beer.
+  ///
+  /// In en, this message translates to:
+  /// **'This barcode already belongs to a beer in the catalog.'**
+  String get contributionErrorBarcodeInCatalog;
+
+  /// Hard block: the user's own identical pending suggestion exists.
+  ///
+  /// In en, this message translates to:
+  /// **'You already have an identical suggestion pending review.'**
+  String get contributionErrorAlreadySubmitted;
+
+  /// Fallback contribution error.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong. Please try again.'**
+  String get contributionErrorGeneric;
 }
 
 class _AppLocalizationsDelegate

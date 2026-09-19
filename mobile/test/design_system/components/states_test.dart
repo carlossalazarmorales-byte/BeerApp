@@ -100,4 +100,45 @@ void main() {
       expect(retried, isFalse);
     },
   );
+
+  testWidgets('ErrorState shows and fires an optional tertiary action', (
+    tester,
+  ) async {
+    var retried = false;
+    var searched = false;
+    var suggested = false;
+    await tester.pumpWidget(
+      _wrap(
+        ErrorState(
+          onRetry: () => retried = true,
+          secondaryLabel: 'Search manually',
+          onSecondaryAction: () => searched = true,
+          tertiaryLabel: 'Suggest this beer',
+          onTertiaryAction: () => suggested = true,
+        ),
+      ),
+    );
+
+    expect(find.text('Retry'), findsOneWidget);
+    expect(find.text('Search manually'), findsOneWidget);
+    expect(find.text('Suggest this beer'), findsOneWidget);
+
+    await tester.tap(find.text('Suggest this beer'));
+    await tester.pump();
+
+    expect(suggested, isTrue);
+    expect(retried, isFalse);
+    expect(searched, isFalse);
+  });
+
+  testWidgets('ErrorState omits the tertiary action without a callback or a '
+      'label', (tester) async {
+    await tester.pumpWidget(
+      _wrap(const ErrorState(tertiaryLabel: 'Suggest this beer')),
+    );
+    expect(find.text('Suggest this beer'), findsNothing);
+
+    await tester.pumpWidget(_wrap(ErrorState(onTertiaryAction: () {})));
+    expect(find.byType(TextButton), findsNothing);
+  });
 }

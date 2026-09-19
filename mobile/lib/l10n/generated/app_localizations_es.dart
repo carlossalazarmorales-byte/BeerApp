@@ -806,4 +806,211 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get deleteAccountGenericError =>
       'No se pudo eliminar tu cuenta. Inténtalo de nuevo.';
+
+  @override
+  String get profileContributionsCardTitle => 'Contribuciones';
+
+  @override
+  String get profileContributionsCardSubtitle =>
+      'Sugiere cervezas y cervecerías que faltan';
+
+  @override
+  String get contributionsScreenTitle => 'Contribuciones';
+
+  @override
+  String get contributionsIntro =>
+      'Las sugerencias se revisan antes de poder entrar en el catálogo. Nada de lo que envíes aquí aparece en el catálogo hasta entonces.';
+
+  @override
+  String get contributionsSuggestBeerAction => 'Sugerir una cerveza';
+
+  @override
+  String get contributionsSuggestBreweryAction => 'Sugerir una cervecería';
+
+  @override
+  String get contributionsHistoryTitle => 'Tus sugerencias';
+
+  @override
+  String get contributionsEmptyMessage => 'Todavía no has sugerido nada.';
+
+  @override
+  String get contributionKindBeer => 'Cerveza';
+
+  @override
+  String get contributionKindBrewery => 'Cervecería';
+
+  @override
+  String get contributionStatusPending => 'Pendiente de revisión';
+
+  @override
+  String get contributionStatusApproved => 'Aprobada';
+
+  @override
+  String get contributionStatusRejected => 'No aceptada';
+
+  @override
+  String get contributionStatusUnknown => 'Desconocido';
+
+  @override
+  String get contributionSubmitAction => 'Enviar sugerencia';
+
+  @override
+  String get contributionSuggestThisBeerAction => 'Sugerir esta cerveza';
+
+  @override
+  String get contributionValidationRequired => 'Este campo es obligatorio.';
+
+  @override
+  String contributionValidationTooLong(int max) {
+    return 'Debe tener como máximo $max caracteres.';
+  }
+
+  @override
+  String get contributionValidationAbv =>
+      'Introduce un ABV entre 0 y 99,99 con como máximo 2 decimales.';
+
+  @override
+  String get contributionValidationBarcode =>
+      'Introduce solo dígitos (8, 12 o 13 dígitos).';
+
+  @override
+  String get contributionValidationBreweryRequired =>
+      'Elige una cervecería o escribe su nombre.';
+
+  @override
+  String get contributionValidationCountryRequired =>
+      'Elige un país o escribe su nombre.';
+
+  @override
+  String get contributionOptionNotListed => 'No aparece';
+
+  @override
+  String get contributionOptionNoStyle => 'Sin estilo';
+
+  @override
+  String get suggestBeerScreenTitle => 'Sugerir una cerveza';
+
+  @override
+  String get suggestBeerNameHint => 'Nombre de la cerveza';
+
+  @override
+  String get suggestBeerBreweryLabel => 'Cervecería';
+
+  @override
+  String get suggestBeerProposedBreweryHint => 'Nombre de la cervecería';
+
+  @override
+  String get suggestBeerStyleLabel => 'Estilo (opcional)';
+
+  @override
+  String get suggestBeerProposedStyleHint => 'Nombre del estilo';
+
+  @override
+  String get suggestBeerAbvHint => 'ABV % (opcional)';
+
+  @override
+  String get suggestBeerBarcodeHint => 'Código de barras (opcional)';
+
+  @override
+  String get suggestBreweryScreenTitle => 'Sugerir una cervecería';
+
+  @override
+  String get suggestBreweryNameHint => 'Nombre de la cervecería';
+
+  @override
+  String get suggestBreweryCountryLabel => 'País';
+
+  @override
+  String get suggestBreweryProposedCountryHint => 'Nombre del país';
+
+  @override
+  String get suggestBreweryRegionHint => 'Región (opcional)';
+
+  @override
+  String get suggestBreweryCityHint => 'Ciudad (opcional)';
+
+  @override
+  String get contributionDuplicateSheetTitle =>
+      'Se han encontrado entradas similares';
+
+  @override
+  String get contributionDuplicateSheetBody =>
+      'Revísalas antes de enviar. Si la tuya es distinta, aún puedes enviarla.';
+
+  @override
+  String get contributionDuplicateSimilarBeers =>
+      'Cervezas similares que ya están en el catálogo';
+
+  @override
+  String get contributionDuplicateSimilarBreweries =>
+      'Cervecerías similares que ya están en el catálogo';
+
+  @override
+  String get contributionDuplicatePendingBarcode =>
+      'Puede que otra sugerencia pendiente ya incluya este código de barras.';
+
+  @override
+  String get contributionDuplicateReviewAction => 'Revisar';
+
+  @override
+  String get contributionDuplicateSubmitAnywayAction => 'Enviar de todos modos';
+
+  @override
+  String get contributionDuplicateViewAction => 'Ver';
+
+  @override
+  String get contributionViewExistingBeerAction => 'Ver cerveza existente';
+
+  @override
+  String get contributionSubmittedTitle => 'Sugerencia recibida';
+
+  @override
+  String get contributionSubmittedBody =>
+      'Está pendiente de revisión. No aparecerá en el catálogo hasta que se haya revisado.';
+
+  @override
+  String get contributionSubmittedDoneAction => 'Hecho';
+
+  @override
+  String get contributionDiscardTitle => '¿Descartar esta sugerencia?';
+
+  @override
+  String get contributionDiscardBody => 'Se perderán tus cambios.';
+
+  @override
+  String get contributionDiscardConfirmAction => 'Descartar';
+
+  @override
+  String get contributionDiscardCancelAction => 'Seguir editando';
+
+  @override
+  String get contributionErrorUnauthorized =>
+      'Tu sesión ha caducado. Inicia sesión de nuevo.';
+
+  @override
+  String get contributionErrorServiceUnavailable =>
+      'El servicio no está disponible temporalmente. Inténtalo de nuevo en breve.';
+
+  @override
+  String get contributionErrorNetwork =>
+      'No se pudo conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.';
+
+  @override
+  String get contributionErrorValidation =>
+      'Algunos datos no son válidos. Revisa los campos e inténtalo de nuevo.';
+
+  @override
+  String get contributionErrorNotFound =>
+      'Una de las entradas del catálogo elegidas ya no existe. Elige de nuevo.';
+
+  @override
+  String get contributionErrorBarcodeInCatalog =>
+      'Este código de barras ya pertenece a una cerveza del catálogo.';
+
+  @override
+  String get contributionErrorAlreadySubmitted =>
+      'Ya tienes una sugerencia idéntica pendiente de revisión.';
+
+  @override
+  String get contributionErrorGeneric => 'Algo salió mal. Inténtalo de nuevo.';
 }

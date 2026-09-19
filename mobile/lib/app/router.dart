@@ -20,6 +20,10 @@ import '../features/catalog/domain/catalog_repository.dart';
 import '../features/catalog/presentation/beer_detail/beer_detail_screen.dart';
 import '../features/collection/domain/collection_repository.dart';
 import '../features/collection/presentation/collection_screen.dart';
+import '../features/contributions/domain/contribution_repository.dart';
+import '../features/contributions/presentation/contributions_screen.dart';
+import '../features/contributions/presentation/suggest_beer_screen.dart';
+import '../features/contributions/presentation/suggest_brewery_screen.dart';
 import '../features/discover/presentation/discover_screen.dart';
 import '../features/logging/domain/log_repository.dart';
 import '../features/map/domain/map_repository.dart';
@@ -107,6 +111,7 @@ GoRouter createRouter({
   required MapRepository mapRepository,
   required StatisticsRepository statisticsRepository,
   required AchievementsRepository achievementsRepository,
+  required ContributionRepository contributionRepository,
   required CollectionRefreshSignal refreshSignal,
 }) {
   return GoRouter(
@@ -203,6 +208,28 @@ GoRouter createRouter({
           profileRepository: profileRepository,
           authRepository: authRepository,
           accountRepository: accountRepository,
+        ),
+      ),
+      // Declared as top-level routes, same reasoning as [statistics] above.
+      GoRoute(
+        path: AppRoutes.contributions,
+        builder: (context, state) =>
+            ContributionsScreen(repository: contributionRepository),
+      ),
+      GoRoute(
+        path: AppRoutes.suggestBeer,
+        builder: (context, state) => SuggestBeerScreen(
+          contributionRepository: contributionRepository,
+          catalogRepository: catalogRepository,
+          initialName: state.uri.queryParameters['name'],
+          initialBarcode: state.uri.queryParameters['barcode'],
+        ),
+      ),
+      GoRoute(
+        path: AppRoutes.suggestBrewery,
+        builder: (context, state) => SuggestBreweryScreen(
+          contributionRepository: contributionRepository,
+          catalogRepository: catalogRepository,
         ),
       ),
       StatefulShellRoute.indexedStack(

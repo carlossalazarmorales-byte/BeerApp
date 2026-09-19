@@ -36,3 +36,25 @@ class BreweryRepository:
         query = f"select {_COLUMNS} from public.breweries where id = $1"
         async with self._pool.acquire() as conn:
             return await conn.fetchrow(query, brewery_id)
+
+    async def find_by_name(
+        self, *, name: str, country_id: str | None, limit: int
+    ) -> list[asyncpg.Record]:
+        """Duplicate-candidate lookup for Phase 13: breweries whose name
+        equals `name` case-insensitively (served by breweries_name_idx),
+        narrowed to `country_id` when one is given. Brewery names are not
+        unique by design, so a match is a warning, never a constraint.
+        """
+        params: list = [name]
+        country_condition = ""
+        if country_id is not None:
+            params.append(country_id)
+            country_condition = f" and country_id = ${len(params)}"
+        params.append(limit)
+        query = (
+            f"select {_COLUMNS} from public.breweries "
+            f"where lower(name) = lower($1){country_condition} "
+            f"order by name, id limit ${len(params)}"
+        )
+        async with self._pool.acquire() as conn:
+            return await conn.fetch(query, *params)

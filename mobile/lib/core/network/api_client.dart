@@ -149,6 +149,12 @@ class ApiClient {
           code: code,
           message: message,
         );
+      case 409:
+        throw ConflictApiException(
+          statusCode: status,
+          code: code,
+          message: message,
+        );
       case 422:
         throw ValidationApiException(
           statusCode: status,

@@ -1,3 +1,4 @@
+import 'package:beerapp/app/app_routes.dart';
 import 'package:beerapp/design_system/components/states/empty_state.dart';
 import 'package:beerapp/design_system/components/states/error_state.dart';
 import 'package:beerapp/design_system/components/states/loading_state.dart';
@@ -483,4 +484,164 @@ void main() {
       expect(find.text('stout'), findsOneWidget);
     },
   );
+
+  group('"Suggest this beer" entry point', () {
+    FakeCatalogRepository seeded() {
+      return FakeCatalogRepository()
+        ..beersByPage[1] = PagedResult(
+          items: [_beers(1)[0]],
+          page: 1,
+          pageSize: 20,
+          total: 1,
+        )
+        ..beersByRequest['1|nomatch|||'] = const PagedResult(
+          items: [],
+          page: 1,
+          pageSize: 20,
+          total: 0,
+        )
+        ..beersByRequest['1|a & b/c|||'] = const PagedResult(
+          items: [],
+          page: 1,
+          pageSize: 20,
+          total: 0,
+        );
+    }
+
+    Future<GoRouter> pumpWithRouter(
+      WidgetTester tester,
+      FakeCatalogRepository repository,
+    ) async {
+      final router = GoRouter(
+        initialLocation: '/discover',
+        routes: [
+          GoRoute(
+            path: '/discover',
+            builder: (context, state) => DiscoverScreen(repository: repository),
+          ),
+          GoRoute(
+            path: AppRoutes.suggestBeer,
+            builder: (context, state) => Scaffold(
+              body: Text(
+                'Suggest form name=${state.uri.queryParameters['name']}',
+              ),
+            ),
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        MaterialApp.router(
+          routerConfig: router,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        ),
+      );
+      await tester.pumpAndSettle();
+      return router;
+    }
+
+    testWidgets(
+      'a search with no results offers it, prefilled with the query',
+      (tester) async {
+        await pumpWithRouter(tester, seeded());
+
+        await tester.enterText(find.byType(TextField), 'nomatch');
+        await _settleDebounce(tester);
+        await tester.pumpAndSettle();
+
+        expect(find.text('Suggest this beer'), findsOneWidget);
+
+        await tester.tap(find.text('Suggest this beer'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Suggest form name=nomatch'), findsOneWidget);
+      },
+    );
+
+    testWidgets('the query is passed intact even with reserved characters', (
+      tester,
+    ) async {
+      await pumpWithRouter(tester, seeded());
+
+      await tester.enterText(find.byType(TextField), '  a & b/c ');
+      await _settleDebounce(tester);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Suggest this beer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Suggest form name=a & b/c'), findsOneWidget);
+    });
+
+    testWidgets('is not offered when there are results', (tester) async {
+      await pumpWithRouter(tester, seeded());
+
+      expect(find.text('Beer 0'), findsOneWidget);
+      expect(find.text('Suggest this beer'), findsNothing);
+    });
+
+    testWidgets('is not offered for an empty catalog with no search', (
+      tester,
+    ) async {
+      final repository = FakeCatalogRepository()
+        ..beersByPage[1] = const PagedResult(
+          items: [],
+          page: 1,
+          pageSize: 20,
+          total: 0,
+        );
+      await pumpWithRouter(tester, repository);
+
+      expect(find.byType(EmptyState), findsOneWidget);
+      expect(find.text('Suggest this beer'), findsNothing);
+    });
+
+    testWidgets(
+      'is not offered when only a filter (no search text) matched nothing',
+      (tester) async {
+        final repository = seeded()
+          ..countries = const [
+            Country(
+              id: 'country-1',
+              isoCode: 'IE',
+              name: 'Ireland',
+              continent: 'Europe',
+            ),
+          ]
+          ..beersByRequest['1||country-1||'] = const PagedResult(
+            items: [],
+            page: 1,
+            pageSize: 20,
+            total: 0,
+          );
+        await pumpWithRouter(tester, repository);
+
+        await tester.tap(find.text('Filters'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Ireland'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Show results'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(EmptyState), findsOneWidget);
+        expect(find.text('Suggest this beer'), findsNothing);
+      },
+    );
+
+    testWidgets('does not create or change anything by merely being shown', (
+      tester,
+    ) async {
+      final repository = seeded();
+      await pumpWithRouter(tester, repository);
+      await tester.enterText(find.byType(TextField), 'nomatch');
+      await _settleDebounce(tester);
+      await tester.pumpAndSettle();
+
+      // Only catalog reads happened; the CTA itself sends nothing.
+      expect(
+        repository.callLog.every((c) => c.startsWith('get')),
+        isTrue,
+        reason: repository.callLog.toString(),
+      );
+    });
+  });
 }

@@ -7,6 +7,9 @@ user-owned `public.user_beer_logs`, and the Phase 7 user-owned
 `public.user_beer_collection`, plus two roles (`beerapp_backend`,
 `beerapp_seed`) that gate access to the catalog tables (and, since Phase 6,
 the user-owned tables too). Migrations live under `supabase/migrations/`.
+Phase 13 adds two more user-owned tables, `public.beer_contributions` and
+`public.brewery_contributions` (private *proposals* for catalog growth — never
+catalog rows; see their section below).
 
 ## Planned approach
 
@@ -335,18 +338,127 @@ persisted the satisfied condition. For anything only ever caught by the
 the system" — never a reconstructed or fabricated historical moment.
 `ON CONFLICT DO NOTHING` guarantees it is never rewritten once set.
 
+## `public.beer_contributions` / `public.brewery_contributions` (Phase 13)
+
+User-owned **proposals** for catalog growth — a beer or brewery a user says is
+missing. **A contribution is not a catalog row**: nothing in this phase writes
+`public.beers`, `public.breweries`, `public.beer_styles` or `public.countries`,
+and nothing about a contribution is visible through Discover, Map, Statistics
+or Achievements (they read only the catalog and the personal-activity tables).
+It is deliberately *not* modeled as an unverified `beers`/`breweries` row:
+catalog reads do not filter on `verified`, so such a row would appear in
+Discover the moment it was inserted. Two typed tables rather than one generic
+table with a JSON payload: the two entities have different required columns
+and constraints.
+
+Both tables share the lifecycle/ownership columns:
+
+| column | type | notes |
+|---|---|---|
+| `id` | `uuid primary key default gen_random_uuid()` | |
+| `user_id` | `uuid not null references auth.users(id) on delete cascade` | owner; cascades like every user-owned table, so `DELETE /account` (Phase 12) stays complete. Never exposed to other users or in any API response |
+| `status` | `text not null default 'pending'` | `CHECK` in `('pending','approved','rejected')`. **Only `pending` is reachable today**: no moderator workflow exists, and the INSERT policy pins `status = 'pending'` |
+| `reviewed_at` / `review_note` | `timestamptz` / `text`, nullable | moderation columns, reserved for a future moderator. `CHECK`: `(status = 'pending') = (reviewed_at is null)`, no `review_note` while pending, note ≤ 500 |
+| `resolved_beer_id` / `resolved_brewery_id` | `uuid`, nullable, `references beers/breweries on delete restrict` | set by a future moderator on approval. `CHECK`: `(status = 'approved') = (resolved_* is not null)` |
+| `created_at` | `timestamptz not null default now()` | write-once — no `updated_at`, no trigger (same rationale as `user_achievements`) |
+
+`beer_contributions` adds: `official_name` (required, 1–200 after trim);
+`brewery_id` **XOR** `proposed_brewery_name` (`CHECK num_nonnulls = 1`);
+`style_id` / `proposed_style_name` (at most one — a style stays optional);
+`abv numeric(4,2)` (0–99.99, same as `beers.abv`); `barcode` (nullable,
+canonical GTIN only — `CHECK ^([0-9]{8}|[0-9]{13})$`; the GS1 check digit is
+validated once, in `backend/app/services/barcode.py`, not duplicated in SQL).
+There is deliberately **no reference to `brewery_contributions`**: a beer
+suggestion whose brewery is not in the catalog carries the free-text
+`proposed_brewery_name` and never depends on a separate brewery suggestion.
+
+`brewery_contributions` adds: `name` (required, 1–200); `country_id` **XOR**
+`proposed_country_name`; `region` / `city` (optional, 1–100). No coordinates,
+website or description — a moderator verifies and geocodes.
+
+The `proposed_*` columns are how "not in the list" is modeled: an explicit
+free-text proposal, never a write to `countries`/`beer_styles`/`breweries`.
+All FKs onto the catalog are `ON DELETE RESTRICT`, matching every other FK
+onto it.
+
+**Indexes.** Both: `(user_id, created_at desc, id desc)` for the history list.
+Own-duplicate guards — partial **unique** indexes `where status = 'pending'`
+on `(user_id, lower(btrim(name)), <canonical id>)` and on
+`(user_id, lower(btrim(name)), lower(btrim(<proposed name>)))` (two indexes
+each, one per form, so no `uuid::text` cast sits in an index expression): one
+user cannot hold two equivalent pending suggestions, so a retry or double-tap
+cannot create two rows. Deliberately per-user: other users' rows are private,
+so cross-user name duplicates are a future moderator's concern. On
+`beer_contributions` there is also a **non-unique** partial index on
+`(barcode) where barcode is not null and status = 'pending'` — two users may
+each have the same barcode pending (the second is *flagged*, not blocked; see
+`docs/DECISIONS.md`), and the index serves both the flag lookup and a future
+moderator's duplicate search.
+
+**RLS and grants — the `user_achievements` shape.** RLS is enabled;
+`anon`/`authenticated` are `REVOKE`d everything; `beerapp_backend` gets
+`SELECT` and `INSERT` only — **no `UPDATE`, no `DELETE`**, so a user can
+neither edit, withdraw nor approve a submission at the database level (a
+future moderator will use a separate privileged role, never this one). Two
+command-specific policies keyed on the transaction-scoped `app.user_id`, the
+same fail-closed `nullif(...)` pattern as `user_beer_logs`:
+
+```sql
+create policy backend_select_own on public.beer_contributions
+  for select to beerapp_backend
+  using (user_id = nullif(current_setting('app.user_id', true), '')::uuid);
+
+create policy backend_insert_own on public.beer_contributions
+  for insert to beerapp_backend
+  with check (
+    user_id = nullif(current_setting('app.user_id', true), '')::uuid
+    and status = 'pending'
+  );
+```
+
+(identical on `brewery_contributions`). The `status = 'pending'` in the INSERT
+policy means even a row that satisfies every table `CHECK` cannot be inserted
+already approved. `beerapp_backend` remains `SELECT`-only on the four catalog
+tables.
+
+**`private.other_user_pending_beer_barcode_exists(p_barcode text) returns
+boolean`.** The one cross-user question the duplicate check needs — "does
+*another* user have a pending suggestion with this barcode?" — cannot be
+answered under owner-only RLS, and the policy is deliberately **not** widened.
+Instead a narrowly scoped `SECURITY DEFINER` function answers it with a bare
+boolean and never returns a row, id, `user_id` or any identity. It follows the
+existing `SECURITY DEFINER` precedent (`private.handle_new_user()`): lives in
+the non-API-exposed `private` schema, `set search_path = ''` with every object
+schema-qualified, no dynamic SQL, `EXECUTE` revoked from
+`PUBLIC`/`anon`/`authenticated` and granted only to `beerapp_backend` (which
+gains `USAGE` on schema `private` — the one new privilege on it, granting no
+table access). The caller's identity is read from `app.user_id` *inside* the
+function rather than passed as an argument, so "exclude my own rows" cannot be
+bypassed; with no identity set it returns `false` (fails closed). A caller's
+own pending rows are excluded on purpose — an identical own suggestion is a
+separate hard block (the unique indexes above).
+
+Verified against a real Postgres by
+`backend/tests/integration/test_contributions_constraints.py` (CHECKs, unique
+indexes, FK delete rules, the cascade — including an actual `auth.users`
+delete), `test_contributions_rls.py` (owner-only visibility, forged
+`user_id`/`status`, no `UPDATE`/`DELETE`, no client-role access, the function's
+behavior and privileges), and `test_contributions_service_end_to_end.py` (the
+real service running as `beerapp_backend`, including "the catalog is exactly as
+it was afterward").
+
 ## Access model (RLS + roles)
 
 Catalog access is **API-only**: the mobile app never queries these four
 tables through Supabase PostgREST directly, not even as an authenticated
 user. This is enforced at the database level, not just by convention:
 
-| role | catalog privileges | `user_beer_logs` / `user_beer_collection` privileges | `user_achievements` privileges |
-|---|---|---|---|
-| `anon` | none | none | none |
-| `authenticated` | none | none | none |
-| `beerapp_backend` | `SELECT` only, all four catalog tables — the running FastAPI app's connection (`DATABASE_URL`) | `SELECT`/`INSERT`/`UPDATE`/`DELETE` on both, own rows only per the request-scoped RLS policy above (Phase 6/7) | `SELECT`/`INSERT` only, own rows only (Phase 10) — no `UPDATE`/`DELETE` |
-| `beerapp_seed` | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, all four catalog tables — `backend/scripts/seed_catalog.py` only (`SEED_DATABASE_URL`), never the running API | none | none |
+| role | catalog privileges | `user_beer_logs` / `user_beer_collection` privileges | `user_achievements` privileges | `beer_contributions` / `brewery_contributions` privileges |
+|---|---|---|---|---|
+| `anon` | none | none | none | none |
+| `authenticated` | none | none | none | none |
+| `beerapp_backend` | `SELECT` only, all four catalog tables — the running FastAPI app's connection (`DATABASE_URL`) | `SELECT`/`INSERT`/`UPDATE`/`DELETE` on both, own rows only per the request-scoped RLS policy above (Phase 6/7) | `SELECT`/`INSERT` only, own rows only (Phase 10) — no `UPDATE`/`DELETE` | `SELECT`/`INSERT` only, own rows only, `INSERT` pinned to `status = 'pending'` (Phase 13) — no `UPDATE`/`DELETE`; plus `EXECUTE` on the boolean-only `private.other_user_pending_beer_barcode_exists` |
+| `beerapp_seed` | `SELECT`/`INSERT`/`UPDATE`/`DELETE`, all four catalog tables — `backend/scripts/seed_catalog.py` only (`SEED_DATABASE_URL`), never the running API | none | none | none |
 
 Per-user ownership on `user_beer_logs`/`user_beer_collection` is enforced by
 the repository's explicit `WHERE user_id = $1` filtering plus the
@@ -432,6 +544,29 @@ rule, not a preference, since the whole point of those tests is exercising
 SQL shapes that would be unsafe against real data. Both expect that
 database's connecting role to be able to `SET ROLE beerapp_backend` (a
 superuser, or a role explicitly `GRANT`ed membership).
+
+**Status of this integration suite.** It was written phase by phase but not
+executed against a real database until Phase 13, when it was run for the first
+time against a disposable local Postgres 16 (a minimal `auth.users`/`anon`/
+`authenticated` scaffold, every repo migration applied in order). Result: the
+Phase 13 tests (`test_contributions_*`, 81 tests) all pass, but **79 of the 111
+pre-existing integration tests fail** for reasons unrelated to Phase 13. Of the
+79, 67 were categorized by their first error (the other 12 were not sorted
+individually): 37 insert made-up `user_id` UUIDs that have no `auth.users` row
+and so violate the `user_id` foreign key (`user_beer_logs` 24,
+`user_beer_collection` 8, `user_achievements` 5); 13 (the Map query tests) fail
+with `permission denied for table countries`; 11 insert `user_beer_collection`
+rows that violate its `..._favorited_at_paired` CHECK; 3 insert a brewery
+without its required `country_id`; 2 (the older `user_id`-cascade tests)
+compare `pg_constraint.confdeltype` — a `"char"` that asyncpg returns as
+`bytes` — to a `str`; and 1 inserts `abv = 150` into a `numeric(4,2)` column,
+which overflows before the `0..100` CHECK can fire. These look like defects in
+the older *tests*, not in the schema or the application (the Phase 13 tests
+exercise the same migrations and pass), but each cause was read from the error
+output, not individually fixed or root-caused; they were left untouched (out of
+Phase 13's scope) and are recorded here so nobody trusts that suite as a green
+regression guard yet. The Phase 13 tests avoid these pitfalls (real
+`auth.users` rows, explicit `::text` casts, `numeric(4,2)`-aware bounds).
 
 `test_collection_concurrency.py` additionally proves
 `CollectionRepository.set_state`'s atomic merge is race-safe under real

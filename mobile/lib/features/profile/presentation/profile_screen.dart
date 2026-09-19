@@ -11,7 +11,7 @@ import '../../../design_system/tokens/app_typography.dart';
 import '../../../l10n/generated/app_localizations.dart';
 
 /// Profile destination: signed-in identity plus entry points to Edit
-/// Profile, Settings, Statistics, and Achievements. Avatar editing and
+/// Profile, Settings, Statistics, Achievements, and Contributions. Avatar editing and
 /// preferred units remain deferred (see docs/DECISIONS.md). Owns its
 /// `Scaffold` directly rather than the shared `PlaceholderScreen` widget --
 /// that widget's layout is fixed (icon/title/description/badge only) and
@@ -172,6 +172,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 subtitle: Text(l10n.profileAchievementsCardSubtitle),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push(AppRoutes.achievements),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppCard(
+            padding: EdgeInsets.zero,
+            child: Material(
+              type: MaterialType.transparency,
+              child: ListTile(
+                shape: RoundedRectangleBorder(borderRadius: AppRadii.lgRadius),
+                leading: const Icon(
+                  Icons.add_business_outlined,
+                  color: AppColors.primary,
+                ),
+                title: Text(l10n.profileContributionsCardTitle),
+                subtitle: Text(l10n.profileContributionsCardSubtitle),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push(AppRoutes.contributions),
               ),
             ),
           ),

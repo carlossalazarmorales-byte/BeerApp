@@ -96,3 +96,35 @@ class BeerRepository:
         query = f"select {_COLUMNS} from public.beers b where b.barcode = $1"
         async with self._pool.acquire() as conn:
             return await conn.fetchrow(query, barcode)
+
+    async def find_by_name_and_brewery(
+        self,
+        *,
+        name: str,
+        brewery_id: str | None,
+        brewery_name: str | None,
+        limit: int,
+    ) -> list[asyncpg.Record]:
+        """Duplicate-candidate lookup for Phase 13: catalog beers whose name
+        equals `name` case-insensitively (an equality on `lower(official_name)`,
+        served by beers_official_name_idx) AND whose brewery is either the
+        given canonical brewery or any brewery named `brewery_name`.
+        A name alone is never enough -- "Pilsner" alone would match half the
+        catalog. Exactly one of `brewery_id`/`brewery_name` is expected; the
+        caller (ContributionService) guarantees it.
+        """
+        if brewery_id is not None:
+            brewery_condition = "b.brewery_id = $2"
+            brewery_param: str = brewery_id
+        else:
+            brewery_condition = (
+                "b.brewery_id in (select id from public.breweries where lower(name) = lower($2))"
+            )
+            brewery_param = brewery_name or ""
+        query = (
+            f"select {_COLUMNS} from public.beers b "
+            f"where lower(b.official_name) = lower($1) and {brewery_condition} "
+            "order by b.official_name, b.id limit $3"
+        )
+        async with self._pool.acquire() as conn:
+            return await conn.fetch(query, name, brewery_param, limit)

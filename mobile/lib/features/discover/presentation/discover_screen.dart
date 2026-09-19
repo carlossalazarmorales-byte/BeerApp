@@ -167,6 +167,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   ? l10n.discoverNoResultsMessage
                   : null,
             ),
+            // PRODUCT.md §21: search -> not found -> "add missing beer". Only
+            // offered for an actual text search (a filter-only empty result
+            // has no beer name to suggest), and it only opens a form -- it
+            // adds nothing to the catalog by itself.
+            if (_controller.query.trim().isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                child: PrimaryButton(
+                  label: l10n.contributionSuggestThisBeerAction,
+                  onPressed: () => context.push(
+                    AppRoutes.suggestBeerPath(name: _controller.query.trim()),
+                  ),
+                ),
+              ),
           ],
         ),
       );

@@ -67,6 +67,14 @@ class _Harness {
             body: Text('Beer detail: ${state.pathParameters['beerId']}'),
           ),
         ),
+        GoRoute(
+          path: AppRoutes.suggestBeer,
+          builder: (context, state) => Scaffold(
+            body: Text(
+              'Suggest form barcode=${state.uri.queryParameters['barcode']}',
+            ),
+          ),
+        ),
       ],
     );
     return _Harness._(
@@ -192,6 +200,63 @@ void main() {
       expect(find.text('Discover screen'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'the not-found state offers "Suggest this beer" prefilled with the '
+    'scanned code, alongside the existing actions',
+    (tester) async {
+      final repository = FakeCatalogRepository()
+        ..getBeerByBarcodeError = const NotFoundApiException(
+          message: 'not found',
+          statusCode: 404,
+        );
+      final barcodes = StreamController<BarcodeCapture>();
+      final harness = _Harness(
+        repository: repository,
+        barcodeStream: barcodes.stream,
+      );
+      addTearDown(barcodes.close);
+
+      await tester.pumpWidget(harness.app);
+      await tester.pump();
+      barcodes.add(
+        const BarcodeCapture(barcodes: [Barcode(rawValue: '036000291452')]),
+      );
+      await tester.pumpAndSettle();
+
+      // Manual search stays the primary path; the new action is additional.
+      expect(find.text('Scan again'), findsOneWidget);
+      expect(find.text('Search manually'), findsOneWidget);
+      expect(find.text('Suggest this beer'), findsOneWidget);
+
+      await tester.tap(find.text('Suggest this beer'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Suggest form barcode=036000291452'), findsOneWidget);
+    },
+  );
+
+  testWidgets('"Suggest this beer" is not offered for a network error or a '
+      'permission problem', (tester) async {
+    final repository = FakeCatalogRepository()
+      ..getBeerByBarcodeError = const NetworkApiException(message: 'offline');
+    final barcodes = StreamController<BarcodeCapture>();
+    final harness = _Harness(
+      repository: repository,
+      barcodeStream: barcodes.stream,
+    );
+    addTearDown(barcodes.close);
+
+    await tester.pumpWidget(harness.app);
+    await tester.pump();
+    barcodes.add(
+      const BarcodeCapture(barcodes: [Barcode(rawValue: '5000213007075')]),
+    );
+    await tester.pumpAndSettle();
+
+    // "Not found" is the only outcome that means the beer may be missing.
+    expect(find.text('Suggest this beer'), findsNothing);
+  });
 
   testWidgets(
     'a found beer triggers exactly one navigation push, even if detected twice',

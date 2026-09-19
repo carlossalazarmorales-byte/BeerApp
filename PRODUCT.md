@@ -594,6 +594,12 @@ Potential workflow:
 
 Duplicate prevention is important.
 
+Clarification (Phase 13): "submitted as unverified" (step 5) means the
+*submission* is pending review — it is kept separate from the catalog and is
+not visible in it as an unverified beer. A beer or brewery enters the catalog
+only when a moderator approves it (steps 6–7); no moderation workflow exists
+yet, so submissions currently stay pending. See `docs/DECISIONS.md`.
+
 ---
 
 ## 22. Administration — Future
