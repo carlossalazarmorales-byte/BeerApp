@@ -46,37 +46,45 @@ class BottomNavBar extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _NavBarItem(
-                icon: Icons.map_outlined,
-                activeIcon: Icons.map,
-                label: l10n.navMap,
-                selected: selectedIndex == 0,
-                onTap: () => onSelect(0),
+              Flexible(
+                child: _NavBarItem(
+                  icon: Icons.map_outlined,
+                  activeIcon: Icons.map,
+                  label: l10n.navMap,
+                  selected: selectedIndex == 0,
+                  onTap: () => onSelect(0),
+                ),
               ),
-              _NavBarItem(
-                icon: Icons.explore_outlined,
-                activeIcon: Icons.explore,
-                label: l10n.navDiscover,
-                selected: selectedIndex == 1,
-                onTap: () => onSelect(1),
+              Flexible(
+                child: _NavBarItem(
+                  icon: Icons.explore_outlined,
+                  activeIcon: Icons.explore,
+                  label: l10n.navDiscover,
+                  selected: selectedIndex == 1,
+                  onTap: () => onSelect(1),
+                ),
               ),
               ScanNavButton(
                 semanticLabel: l10n.navScan,
                 onTap: () => onSelect(scanIndex),
               ),
-              _NavBarItem(
-                icon: Icons.collections_bookmark_outlined,
-                activeIcon: Icons.collections_bookmark,
-                label: l10n.navCollection,
-                selected: selectedIndex == 3,
-                onTap: () => onSelect(3),
+              Flexible(
+                child: _NavBarItem(
+                  icon: Icons.collections_bookmark_outlined,
+                  activeIcon: Icons.collections_bookmark,
+                  label: l10n.navCollection,
+                  selected: selectedIndex == 3,
+                  onTap: () => onSelect(3),
+                ),
               ),
-              _NavBarItem(
-                icon: Icons.person_outline,
-                activeIcon: Icons.person,
-                label: l10n.navProfile,
-                selected: selectedIndex == 4,
-                onTap: () => onSelect(4),
+              Flexible(
+                child: _NavBarItem(
+                  icon: Icons.person_outline,
+                  activeIcon: Icons.person,
+                  label: l10n.navProfile,
+                  selected: selectedIndex == 4,
+                  onTap: () => onSelect(4),
+                ),
               ),
             ],
           ),
@@ -107,10 +115,11 @@ class _NavBarItem extends StatelessWidget {
         ? AppColors.primary
         : AppColors.onSurfaceVariant;
 
+    // No explicit `label`: the visible Text below already names the item, and
+    // an explicit label would be merged with it and announced twice.
     return Semantics(
       button: true,
       selected: selected,
-      label: label,
       child: InkWell(
         onTap: onTap,
         borderRadius: AppRadii.mdRadius,
@@ -126,9 +135,21 @@ class _NavBarItem extends StatelessWidget {
               children: [
                 Icon(selected ? activeIcon : icon, color: color, size: 24),
                 const SizedBox(height: AppSpacing.xs),
-                Text(
-                  label,
-                  style: AppTypography.labelLarge.copyWith(color: color),
+                // Like Material's own NavigationBar, labels follow the system
+                // text size only up to 1.3x (the bar's height and five
+                // destinations do not scale); FittedBox shrinks a long
+                // translation to its slot rather than overflowing. The full
+                // name stays available to screen readers.
+                MediaQuery.withClampedTextScaling(
+                  maxScaleFactor: 1.3,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      style: AppTypography.labelLarge.copyWith(color: color),
+                    ),
+                  ),
                 ),
               ],
             ),

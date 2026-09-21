@@ -10,8 +10,9 @@ import '../../../l10n/generated/app_localizations.dart';
 /// case beer logs are the first endpoint to actually raise.
 String beerLogErrorText(BuildContext context, Object error) {
   final l10n = AppLocalizations.of(context);
-  if (error is InvalidRequestApiException)
+  if (error is InvalidRequestApiException) {
     return l10n.beerLogErrorInvalidRequest;
+  }
   if (error is UnauthorizedApiException) return l10n.beerLogErrorUnauthorized;
   if (error is ServiceUnavailableApiException) {
     return l10n.beerLogErrorServiceUnavailable;

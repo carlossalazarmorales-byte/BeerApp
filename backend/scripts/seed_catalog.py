@@ -7,7 +7,14 @@ docs/DATABASE.md for the role split.
 
 Run manually from the repo root or backend/:
 
-    python backend/scripts/seed_catalog.py
+    python backend/scripts/seed_catalog.py --yes
+
+The script writes fabricated catalog rows marked `verified = true` /
+`source = 'dev-seed'`, so it refuses to run unless `ENVIRONMENT` is `local`
+or `dev` (unset counts as `local`), `SEED_DATABASE_URL` is set and is not the
+runtime `DATABASE_URL`, and `--yes` is passed. Without `--yes` it only prints
+the target host (never credentials) and exits. It is never run against a
+production database.
 
 Safe to re-run. `countries` has a genuine natural key (iso_code) and is
 upserted on it. `beer_styles`/`breweries`/`beers` have no genuine natural
@@ -16,11 +23,13 @@ row uses a deterministic fixed UUID constant instead, and is upserted on
 `id`. No UNIQUE constraint exists purely to make this script easier.
 """
 
+import argparse
 import asyncio
 import os
 import sys
 from decimal import Decimal
 from pathlib import Path
+from urllib.parse import urlsplit
 from uuid import UUID
 
 import asyncpg
@@ -33,11 +42,47 @@ if str(_BACKEND_DIR) not in sys.path:
 
 from app.db import parse_dsn_kwargs  # noqa: E402
 
-load_dotenv(_REPO_ROOT / ".env")
-
-_SEED_DATABASE_URL = os.environ.get("SEED_DATABASE_URL")
-
 _SOURCE = "dev-seed"
+
+# `.env` is deliberately loaded inside main(), not at import time: this module
+# is imported by tests (for `_BEERS`), and importing it must never inject real
+# database credentials into the test process.
+_ALLOWED_ENVIRONMENTS = frozenset({"local", "dev"})
+
+
+class SeedRefusedError(Exception):
+    """The seed run was refused before any database connection was opened."""
+
+
+def check_seed_target(*, seed_url: str | None, runtime_url: str | None, environment: str) -> str:
+    """Validate a seed run's target and return its host (never credentials).
+
+    Raises SeedRefusedError when the environment is not `local`/`dev`, when
+    SEED_DATABASE_URL is missing or unparseable, or when it is the same value
+    as the runtime DATABASE_URL (i.e. the wrong credential).
+    """
+    if environment not in _ALLOWED_ENVIRONMENTS:
+        raise SeedRefusedError(
+            f"Refusing to seed: ENVIRONMENT is {environment!r}; this script writes "
+            f"fabricated dev catalog data and only runs for {sorted(_ALLOWED_ENVIRONMENTS)}."
+        )
+    if not seed_url:
+        raise SeedRefusedError(
+            "SEED_DATABASE_URL is not set. This script requires the beerapp_seed "
+            "role's connection string, in .env -- never DATABASE_URL (that's the "
+            "read-only beerapp_backend connection, which has no write privilege). "
+            "See docs/DATABASE.md."
+        )
+    if runtime_url and seed_url == runtime_url:
+        raise SeedRefusedError(
+            "Refusing to seed: SEED_DATABASE_URL is identical to DATABASE_URL. "
+            "The seed script must use the dedicated beerapp_seed connection."
+        )
+    host = urlsplit(seed_url).hostname
+    if not host:
+        raise SeedRefusedError("SEED_DATABASE_URL has no host; check its format.")
+    return host
+
 
 # (iso_code, name, continent)
 _COUNTRIES: list[tuple[str, str, str]] = [
@@ -432,18 +477,8 @@ async def _seed_beers(conn: asyncpg.Connection, country_ids: dict[str, UUID]) ->
         )
 
 
-async def seed() -> None:
-    if not _SEED_DATABASE_URL:
-        print(
-            "SEED_DATABASE_URL is not set. This script requires the "
-            "beerapp_seed role's connection string, in .env -- never "
-            "DATABASE_URL (that's the read-only beerapp_backend "
-            "connection, which has no write privilege). See docs/DATABASE.md.",
-            file=sys.stderr,
-        )
-        raise SystemExit(1)
-
-    conn = await asyncpg.connect(**parse_dsn_kwargs(_SEED_DATABASE_URL), ssl="require")
+async def seed(seed_url: str) -> None:
+    conn = await asyncpg.connect(**parse_dsn_kwargs(seed_url), ssl="require")
     try:
         country_ids = await _seed_countries(conn)
         await _seed_beer_styles(conn, country_ids)
@@ -458,5 +493,39 @@ async def seed() -> None:
     )
 
 
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Seed the dev catalog (fabricated data).")
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Actually write. Without it, only the target host is printed.",
+    )
+    args = parser.parse_args(argv)
+
+    load_dotenv(_REPO_ROOT / ".env")
+    seed_url = os.environ.get("SEED_DATABASE_URL")
+    try:
+        host = check_seed_target(
+            seed_url=seed_url,
+            runtime_url=os.environ.get("DATABASE_URL"),
+            environment=os.environ.get("ENVIRONMENT", "local"),
+        )
+    except SeedRefusedError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(1) from exc
+
+    if not args.yes:
+        print(
+            f"Target host: {host}\n"
+            f"This writes fabricated catalog rows (verified=true, source={_SOURCE!r}). "
+            "Re-run with --yes to proceed.",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+
+    print(f"Seeding {host} ...")
+    asyncio.run(seed(seed_url))
+
+
 if __name__ == "__main__":
-    asyncio.run(seed())
+    main()

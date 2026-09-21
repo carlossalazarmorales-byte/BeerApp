@@ -5,6 +5,7 @@ import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_radii.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../design_system/tokens/app_typography.dart';
+import '../../../../shared/widgets/beer_image.dart';
 import '../../domain/models/beer.dart';
 
 /// A single row in the Discover beer list: image (with a fallback icon when
@@ -30,83 +31,58 @@ class BeerListTile extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: GestureDetector(
-        onTap: onTap,
-        child: AppCard(
-          child: Row(
-            children: [
-              ClipRRect(
-                borderRadius: AppRadii.mdRadius,
-                child: SizedBox(
-                  width: 56,
-                  height: 56,
-                  child: _BeerImage(imageUrl: beer.imageUrl),
+      // One button for the whole row: a screen reader announces the name,
+      // style/country and ABV together instead of three separate fragments.
+      child: Semantics(
+        button: true,
+        child: GestureDetector(
+          onTap: onTap,
+          child: AppCard(
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: AppRadii.mdRadius,
+                  child: SizedBox(
+                    width: 56,
+                    height: 56,
+                    child: BeerImage(imageUrl: beer.imageUrl),
+                  ),
                 ),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      beer.officialName,
-                      style: AppTypography.titleLarge,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (subtitleParts.isNotEmpty) ...[
-                      const SizedBox(height: AppSpacing.xs),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
                       Text(
-                        subtitleParts.join(' • '),
-                        style: AppTypography.bodySmall.copyWith(
-                          color: AppColors.onSurfaceVariant,
-                        ),
+                        beer.officialName,
+                        style: AppTypography.titleLarge,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (subtitleParts.isNotEmpty) ...[
+                        const SizedBox(height: AppSpacing.xs),
+                        Text(
+                          subtitleParts.join(' • '),
+                          style: AppTypography.bodySmall.copyWith(
+                            color: AppColors.onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              if (beer.abv != null) ...[
-                const SizedBox(width: AppSpacing.sm),
-                _AbvBadge(abv: beer.abv!),
+                if (beer.abv != null) ...[
+                  const SizedBox(width: AppSpacing.sm),
+                  _AbvBadge(abv: beer.abv!),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
-    );
-  }
-}
-
-class _BeerImage extends StatelessWidget {
-  const _BeerImage({required this.imageUrl});
-
-  final String? imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final url = imageUrl;
-    if (url == null) return const _BeerImageFallback();
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      errorBuilder: (context, error, stackTrace) => const _BeerImageFallback(),
-    );
-  }
-}
-
-class _BeerImageFallback extends StatelessWidget {
-  const _BeerImageFallback();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.secondaryContainer,
-      alignment: Alignment.center,
-      child: const Icon(Icons.local_bar_outlined, color: AppColors.secondary),
     );
   }
 }

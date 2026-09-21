@@ -17,7 +17,7 @@ import asyncio
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
+from .disposable_db import connection_kwargs, ensure_users
 
 pytestmark = pytest.mark.integration
 
@@ -27,10 +27,11 @@ _KEY = "collection_first_favorite"
 
 
 async def _in_rolled_back_transaction(dsn: str, body) -> None:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     transaction = conn.transaction()
     await transaction.start()
     try:
+        await ensure_users(conn, _USER_A, _USER_B)
         await body(conn)
     finally:
         await transaction.rollback()
@@ -60,9 +61,7 @@ def test_backend_role_can_insert_and_select_its_own_rows(integration_dsn):
             _USER_A,
             _KEY,
         )
-        row = await conn.fetchrow(
-            "select id from public.user_achievements where id = $1", row_id
-        )
+        row = await conn.fetchrow("select id from public.user_achievements where id = $1", row_id)
         assert row is not None
 
     _run(integration_dsn, body)

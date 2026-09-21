@@ -73,9 +73,7 @@ def test_valid_token_is_accepted(keypair):
     cache, _ = _cache_returning({"keys": [_jwk_dict(public_key, _KID)]})
     token = _make_token(private_key)
 
-    claims = asyncio.run(
-        verify_access_token(token, cache, issuer=_ISSUER, audience=_AUDIENCE)
-    )
+    claims = asyncio.run(verify_access_token(token, cache, issuer=_ISSUER, audience=_AUDIENCE))
 
     assert claims["sub"] == _SUB
 
@@ -139,9 +137,7 @@ def test_missing_sub_claim_is_rejected(keypair):
         "iss": _ISSUER,
         "exp": now + timedelta(hours=1),
     }
-    token = jwt.encode(
-        claims_without_sub, private_key, algorithm="ES256", headers={"kid": _KID}
-    )
+    token = jwt.encode(claims_without_sub, private_key, algorithm="ES256", headers={"kid": _KID})
 
     with pytest.raises(TokenInvalidError):
         asyncio.run(verify_access_token(token, cache, issuer=_ISSUER, audience=_AUDIENCE))
@@ -169,9 +165,7 @@ def test_signing_key_rotation_triggers_refresh_for_new_kid_only(keypair):
     cache, calls = _cache_returning({"keys": [old_kid_jwk]}, {"keys": [new_kid_jwk]})
 
     old_token = _make_token(private_key, kid="old-kid")
-    claims = asyncio.run(
-        verify_access_token(old_token, cache, issuer=_ISSUER, audience=_AUDIENCE)
-    )
+    claims = asyncio.run(verify_access_token(old_token, cache, issuer=_ISSUER, audience=_AUDIENCE))
     assert claims["sub"] == _SUB
     assert calls["count"] == 1
 
@@ -182,9 +176,7 @@ def test_signing_key_rotation_triggers_refresh_for_new_kid_only(keypair):
     # A token signed with the rotated key is unknown to the cache -> exactly
     # one refresh, after which it resolves.
     new_token = _make_token(rotated_private_key, kid="new-kid")
-    claims = asyncio.run(
-        verify_access_token(new_token, cache, issuer=_ISSUER, audience=_AUDIENCE)
-    )
+    claims = asyncio.run(verify_access_token(new_token, cache, issuer=_ISSUER, audience=_AUDIENCE))
     assert claims["sub"] == _SUB
     assert calls["count"] == 2
 

@@ -5,7 +5,7 @@ from uuid import UUID
 import asyncpg
 import pytest
 
-from app.errors import NotFoundError
+from app.errors import NotFoundError, SessionInvalidError
 from app.schemas.collection import CollectionStateUpdate
 from app.services.collection import CollectionService
 
@@ -221,9 +221,15 @@ def test_get_state_returns_false_false_for_a_real_beer_with_no_row():
 # -- set_state: FK violation -> NotFoundError, evaluator not invoked --------
 
 
+def _fk_error(constraint_name: str | None) -> asyncpg.ForeignKeyViolationError:
+    error = asyncpg.ForeignKeyViolationError("simulated")
+    error.constraint_name = constraint_name
+    return error
+
+
 def test_set_state_foreign_key_violation_becomes_not_found_and_skips_evaluator():
     service, repository, evaluator = _make_service()
-    repository.set_state_error = asyncpg.ForeignKeyViolationError("no such beer")
+    repository.set_state_error = _fk_error("user_beer_collection_beer_id_fkey")
 
     with pytest.raises(NotFoundError):
         _run(
@@ -317,6 +323,33 @@ def test_set_state_propagates_evaluator_failure_instead_of_reporting_success():
     evaluator.error = RuntimeError("boom")
 
     with pytest.raises(RuntimeError):
+        _run(
+            service.set_state(
+                user_id=_USER_ID, beer_id=_BEER_ID, payload=CollectionStateUpdate(is_favorite=True)
+            )
+        )
+
+
+def test_set_state_for_a_deleted_account_is_session_invalid_and_skips_evaluator():
+    service, repository, evaluator = _make_service()
+    repository.set_state_error = _fk_error("user_beer_collection_user_id_fkey")
+
+    with pytest.raises(SessionInvalidError):
+        _run(
+            service.set_state(
+                user_id=_USER_ID, beer_id=_BEER_ID, payload=CollectionStateUpdate(is_favorite=True)
+            )
+        )
+
+    assert evaluator.calls == []
+
+
+@pytest.mark.parametrize("constraint", [None, "", "something_else_fkey"])
+def test_set_state_unrecognized_foreign_key_violation_is_not_guessed_at(constraint):
+    service, repository, _ = _make_service()
+    repository.set_state_error = _fk_error(constraint)
+
+    with pytest.raises(asyncpg.ForeignKeyViolationError):
         _run(
             service.set_state(
                 user_id=_USER_ID, beer_id=_BEER_ID, payload=CollectionStateUpdate(is_favorite=True)

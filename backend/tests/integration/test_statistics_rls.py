@@ -16,8 +16,9 @@ from contextlib import asynccontextmanager
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
 from app.repositories.statistics import StatisticsRepository
+
+from .disposable_db import connection_kwargs, ensure_users, remove_users
 
 pytestmark = pytest.mark.integration
 
@@ -26,12 +27,27 @@ _USER_B = "22222222-2222-2222-2222-222222222222"
 
 
 class _SingleConnectionPool:
+    """Stands in for the app's pool: the repository acquires the connection AS
+    `beerapp_backend` (so RLS applies together with the repository's own
+    filtering, exactly as in production) and returns it as the connecting admin
+    role on exit, which is what test setup and cleanup need.
+    """
+
     def __init__(self, conn: asyncpg.Connection) -> None:
         self._conn = conn
+        self._depth = 0
 
     @asynccontextmanager
     async def acquire(self):
-        yield self._conn
+        if self._depth == 0:
+            await self._conn.execute("set role beerapp_backend")
+        self._depth += 1
+        try:
+            yield self._conn
+        finally:
+            self._depth -= 1
+            if self._depth == 0:
+                await self._conn.execute("reset role")
 
 
 async def _as_backend_role(conn: asyncpg.Connection) -> None:
@@ -60,10 +76,11 @@ async def _seed_beer(conn: asyncpg.Connection, *, name: str = "Test Beer") -> st
 
 
 async def _in_rolled_back_transaction(dsn: str, body) -> None:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     transaction = conn.transaction()
     await transaction.start()
     try:
+        await ensure_users(conn, _USER_A, _USER_B)
         await body(conn)
     finally:
         await transaction.rollback()
@@ -114,16 +131,18 @@ def test_unfiltered_favorites_aggregate_as_user_a_excludes_user_b(integration_ds
 
         await _set_identity(conn, _USER_A)
         await conn.execute(
-            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-            "values ($1, $2, true)",
+            "insert into public.user_beer_collection "
+            "(user_id, beer_id, is_favorite, favorited_at) "
+            "values ($1, $2, true, now())",
             _USER_A,
             beer_id,
         )
 
         await _set_identity(conn, _USER_B)
         await conn.execute(
-            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-            "values ($1, $2, true)",
+            "insert into public.user_beer_collection "
+            "(user_id, beer_id, is_favorite, favorited_at) "
+            "values ($1, $2, true, now())",
             _USER_B,
             beer_id,
         )
@@ -162,9 +181,10 @@ def test_no_session_level_leakage_across_committed_transactions_for_aggregate(in
     """
 
     async def body() -> None:
-        conn = await asyncpg.connect(**parse_dsn_kwargs(integration_dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(integration_dsn))
         row_id = beer_id = brewery_id = country_id = None
         try:
+            await ensure_users(conn, _USER_A)
             async with conn.transaction():
                 country_id = await conn.fetchval(
                     "insert into public.countries (iso_code, name, continent) "
@@ -194,6 +214,9 @@ def test_no_session_level_leakage_across_committed_transactions_for_aggregate(in
                     "select nullif(current_setting('app.user_id', true), '')"
                 )
                 assert normalized is None
+                # The connecting admin role bypasses RLS: re-adopt the backend role
+                # WITHOUT an identity, so a leaked identity would show its row.
+                await _as_backend_role(conn)
                 total = await conn.fetchval("select count(*) from public.user_beer_logs")
                 assert total == 0
         finally:
@@ -208,6 +231,7 @@ def test_no_session_level_leakage_across_committed_transactions_for_aggregate(in
                 await conn.execute("delete from public.breweries where id = $1", brewery_id)
             if country_id is not None:
                 await conn.execute("delete from public.countries where id = $1", country_id)
+            await remove_users(conn, _USER_A)
             await conn.close()
 
     asyncio.run(body())
@@ -226,9 +250,10 @@ def test_get_statistics_never_mixes_two_users_data(integration_dsn):
     """
 
     async def run():
-        conn = await asyncpg.connect(**parse_dsn_kwargs(integration_dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(integration_dsn))
         beer_a = beer_b = brewery_a = brewery_b = country_id = None
         try:
+            await ensure_users(conn, _USER_A, _USER_B)
             async with conn.transaction():
                 country_id = await conn.fetchval(
                     "insert into public.countries (iso_code, name, continent) "
@@ -264,8 +289,9 @@ def test_get_statistics_never_mixes_two_users_data(integration_dsn):
                         beer_a,
                     )
                 await conn.execute(
-                    "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-                    "values ($1, $2, true)",
+                    "insert into public.user_beer_collection "
+                    "(user_id, beer_id, is_favorite, favorited_at) "
+                    "values ($1, $2, true, now())",
                     _USER_A,
                     beer_a,
                 )
@@ -277,8 +303,9 @@ def test_get_statistics_never_mixes_two_users_data(integration_dsn):
                     beer_b,
                 )
                 await conn.execute(
-                    "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-                    "values ($1, $2, true)",
+                    "insert into public.user_beer_collection "
+                    "(user_id, beer_id, is_favorite, favorited_at) "
+                    "values ($1, $2, true, now())",
                     _USER_B,
                     beer_b,
                 )
@@ -313,6 +340,7 @@ def test_get_statistics_never_mixes_two_users_data(integration_dsn):
                     await conn.execute("delete from public.breweries where id = $1", brewery_id)
             if country_id is not None:
                 await conn.execute("delete from public.countries where id = $1", country_id)
+            await remove_users(conn, _USER_A, _USER_B)
             await conn.close()
 
     stats_a, stats_b = asyncio.run(run())

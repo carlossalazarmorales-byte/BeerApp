@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query
 from app.auth.dependencies import get_current_user
 from app.dependencies import get_brewery_service
 from app.schemas.breweries import BreweryOut
-from app.schemas.common import Page
+from app.schemas.common import MAX_PAGE, Page
 from app.services.breweries import BreweryService
 
 router = APIRouter(
@@ -18,7 +18,7 @@ router = APIRouter(
 @router.get("", response_model=Page[BreweryOut])
 async def list_breweries(
     country_id: UUID | None = None,
-    page: int = Query(default=1, ge=1),
+    page: int = Query(default=1, ge=1, le=MAX_PAGE),
     page_size: int = Query(default=20, ge=1, le=100),
     service: BreweryService = Depends(get_brewery_service),
 ) -> Page[BreweryOut]:

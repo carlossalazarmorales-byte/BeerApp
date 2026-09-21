@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Query, status
 from app.auth.dependencies import get_current_user
 from app.dependencies import get_beer_log_service
 from app.schemas.beer_logs import BeerLogCreate, BeerLogOut, BeerLogUpdate
-from app.schemas.common import Page
+from app.schemas.common import MAX_PAGE, Page
 from app.services.beer_logs import BeerLogService
 
 # No router-level `dependencies=[Depends(get_current_user)]` (unlike the
@@ -27,7 +27,7 @@ async def create_beer_log(
 @router.get("", response_model=Page[BeerLogOut])
 async def list_beer_logs(
     beer_id: UUID | None = None,
-    page: int = Query(default=1, ge=1),
+    page: int = Query(default=1, ge=1, le=MAX_PAGE),
     page_size: int = Query(default=20, ge=1, le=100),
     user_id: str = Depends(get_current_user),
     service: BeerLogService = Depends(get_beer_log_service),

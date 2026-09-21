@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query
 
 from app.auth.dependencies import get_current_user
 from app.dependencies import get_map_service
+from app.schemas.common import NO_NUL_PATTERN
 from app.schemas.map import CappedList, MapBeerOut, MapBreweryOut
 from app.services.map import MapService
 
@@ -20,7 +21,7 @@ router = APIRouter(prefix="/map", tags=["map"])
 async def list_map_beers(
     state: _MapState = "all",
     country_id: UUID | None = None,
-    q: str | None = Query(default=None, max_length=100),
+    q: str | None = Query(default=None, max_length=100, pattern=NO_NUL_PATTERN),
     user_id: str = Depends(get_current_user),
     service: MapService = Depends(get_map_service),
 ) -> CappedList[MapBeerOut]:
@@ -35,7 +36,7 @@ async def list_map_beers(
 @router.get("/breweries", response_model=CappedList[MapBreweryOut])
 async def list_map_breweries(
     country_id: UUID | None = None,
-    q: str | None = Query(default=None, max_length=100),
+    q: str | None = Query(default=None, max_length=100, pattern=NO_NUL_PATTERN),
     user_id: str = Depends(get_current_user),
     service: MapService = Depends(get_map_service),
 ) -> CappedList[MapBreweryOut]:

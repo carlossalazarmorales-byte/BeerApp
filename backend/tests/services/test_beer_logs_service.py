@@ -6,7 +6,7 @@ from uuid import UUID
 import asyncpg
 import pytest
 
-from app.errors import InvalidRequestError, NotFoundError
+from app.errors import InvalidRequestError, NotFoundError, SessionInvalidError
 from app.schemas.beer_logs import BeerLogCreate, BeerLogUpdate
 from app.services.beer_logs import BeerLogService
 
@@ -120,9 +120,15 @@ def test_create_log_future_consumed_at_raises_invalid_request_error():
         )
 
 
+def _fk_error(constraint_name: str | None) -> asyncpg.ForeignKeyViolationError:
+    error = asyncpg.ForeignKeyViolationError("simulated")
+    error.constraint_name = constraint_name
+    return error
+
+
 def test_create_log_foreign_key_violation_becomes_not_found():
     repository = _FakeBeerLogRepository()
-    repository.create_error = asyncpg.ForeignKeyViolationError("no such beer")
+    repository.create_error = _fk_error("user_beer_logs_beer_id_fkey")
     service = BeerLogService(repository)
 
     with pytest.raises(NotFoundError):
@@ -289,3 +295,39 @@ def test_delete_log_raises_not_found_when_repository_reports_no_row_deleted():
 
     with pytest.raises(NotFoundError):
         _run(service.delete_log(user_id=_USER_ID, log_id=_LOG_ID))
+
+
+# -- FK violations are mapped by constraint name, never assumed to be "beer" ---
+
+
+def test_create_log_for_a_deleted_account_is_session_invalid_not_beer_not_found():
+    # A still-valid access token for an account that has since been deleted:
+    # user_id no longer exists in auth.users. Misreporting that as "Beer ... not
+    # found" sent clients hunting for a missing beer.
+    repository = _FakeBeerLogRepository()
+    repository.create_error = _fk_error("user_beer_logs_user_id_fkey")
+    service = BeerLogService(repository)
+
+    with pytest.raises(SessionInvalidError):
+        _run(service.create_log(user_id=_USER_ID, payload=BeerLogCreate(beer_id=_BEER_ID)))
+
+
+def test_create_log_not_found_message_names_only_the_requested_beer():
+    repository = _FakeBeerLogRepository()
+    repository.create_error = _fk_error("user_beer_logs_beer_id_fkey")
+    service = BeerLogService(repository)
+
+    with pytest.raises(NotFoundError) as excinfo:
+        _run(service.create_log(user_id=_USER_ID, payload=BeerLogCreate(beer_id=_BEER_ID)))
+
+    assert str(excinfo.value) == f"Beer {_BEER_ID} not found"
+
+
+@pytest.mark.parametrize("constraint", [None, "", "something_else_fkey"])
+def test_create_log_unrecognized_foreign_key_violation_is_not_guessed_at(constraint):
+    repository = _FakeBeerLogRepository()
+    repository.create_error = _fk_error(constraint)
+    service = BeerLogService(repository)
+
+    with pytest.raises(asyncpg.ForeignKeyViolationError):
+        _run(service.create_log(user_id=_USER_ID, payload=BeerLogCreate(beer_id=_BEER_ID)))

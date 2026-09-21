@@ -56,8 +56,11 @@ class AppFilterChip extends StatelessWidget {
         horizontal: AppSpacing.md,
         vertical: AppSpacing.xs,
       ),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.compact,
+      // The tappable box is padded out to the 48dp minimum touch target (the
+      // drawn pill stays centred in it). Density stays compact horizontally
+      // only: vertical compaction would subtract 8dp from that minimum.
+      materialTapTargetSize: MaterialTapTargetSize.padded,
+      visualDensity: const VisualDensity(horizontal: -2),
       shadowColor: Colors.transparent,
       elevation: 0,
       pressElevation: 0,

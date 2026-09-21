@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/app_routes.dart';
 import '../../../core/auth/auth_scope.dart';
 import '../../../design_system/components/cards/app_card.dart';
+import '../../../design_system/components/states/inline_progress.dart';
 import '../../../design_system/tokens/app_colors.dart';
 import '../../../design_system/tokens/app_radii.dart';
 import '../../../design_system/tokens/app_spacing.dart';
@@ -57,11 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         actions: [
           IconButton(
             icon: _isSigningOut
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const InlineSpinner(size: 20)
                 : const Icon(Icons.logout),
             tooltip: l10n.logoutAction,
             onPressed: _isSigningOut ? null : _signOut,

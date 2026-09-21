@@ -8,6 +8,25 @@ import '../../../../design_system/tokens/app_typography.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../domain/models/yearly_activity_point.dart';
 
+/// The text a screen reader gets in place of the bars: every year and its
+/// count, oldest first (the chart only ever holds years with activity).
+@visibleForTesting
+String yearlyChartSummary(
+  AppLocalizations l10n,
+  List<YearlyActivityPoint> points,
+) {
+  return l10n.statisticsYearlyChartSemanticSummary(
+    points
+        .map(
+          (point) => l10n.statisticsYearlyChartSemanticEntry(
+            point.year,
+            point.logCount,
+          ),
+        )
+        .join(', '),
+  );
+}
+
 /// Bar chart of log counts per UTC calendar year, all-time. Unlike
 /// [MonthlyActivityChart], [points] is NOT zero-filled -- a brand-new user
 /// (or one whose only activity is favorites, no logs) can have an empty
@@ -37,7 +56,14 @@ class YearlyActivityChart extends StatelessWidget {
               ),
             )
           else
-            SizedBox(height: 160, child: _chart()),
+            // The bars are drawn, not widgets: describe them in one label.
+            Semantics(
+              image: true,
+              label: yearlyChartSummary(l10n, points),
+              child: ExcludeSemantics(
+                child: SizedBox(height: 160, child: _chart()),
+              ),
+            ),
         ],
       ),
     );

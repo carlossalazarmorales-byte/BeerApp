@@ -9,6 +9,7 @@ import '../../../design_system/components/buttons/secondary_button.dart';
 import '../../../design_system/components/cards/app_card.dart';
 import '../../../design_system/components/states/empty_state.dart';
 import '../../../design_system/components/states/error_state.dart';
+import '../../../design_system/components/states/inline_progress.dart';
 import '../../../design_system/components/states/loading_state.dart';
 import '../../../design_system/tokens/app_colors.dart';
 import '../../../design_system/tokens/app_radii.dart';
@@ -282,13 +283,7 @@ class _Footer extends StatelessWidget {
     if (controller.isLoadingMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-        child: Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
+        child: Center(child: InlineSpinner(size: 24)),
       );
     }
     final loadMoreError = controller.loadMoreError;

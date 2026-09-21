@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 import asyncpg
 import pytest
 
-from app.errors import ConflictError, NotFoundError
+from app.errors import ConflictError, NotFoundError, SessionInvalidError
 from app.repositories.beers import BeerRepository
 from app.repositories.breweries import BreweryRepository
 from app.repositories.contributions import ContributionRepository
@@ -326,12 +326,12 @@ def test_submit_beer_unknown_catalog_reference_is_not_found(constraint, fields, 
         )
 
 
-def test_submit_beer_does_not_report_a_user_fk_failure_as_not_found():
+def test_submit_beer_reports_a_deleted_account_as_session_invalid_not_not_found():
     service, repository, _, _ = _service()
     repository.create_error = _pg_error(
         asyncpg.ForeignKeyViolationError, "beer_contributions_user_id_fkey"
     )
-    with pytest.raises(asyncpg.ForeignKeyViolationError):
+    with pytest.raises(SessionInvalidError):
         _run(
             service.submit_beer(
                 user_id=_USER,
@@ -589,3 +589,35 @@ def test_brewery_candidates_for_a_proposed_country_have_no_catalog_comparison():
             "proposed_country_name": "Atlantis",
         }
     ]
+
+
+def test_submit_brewery_reports_a_deleted_account_as_session_invalid():
+    service, repository, _, _ = _service()
+    repository.create_error = _pg_error(
+        asyncpg.ForeignKeyViolationError, "brewery_contributions_user_id_fkey"
+    )
+
+    with pytest.raises(SessionInvalidError):
+        _run(
+            service.submit_brewery(
+                user_id=_USER,
+                payload=BreweryContributionCreate(name="X", country_id=_COUNTRY_ID),
+            )
+        )
+
+
+def test_a_resolved_link_fk_failure_is_still_an_unexpected_error():
+    # resolved_*_fkey is not client-referenceable and not about the caller's
+    # session, so it must neither become a 404 nor a 401.
+    service, repository, _, _ = _service()
+    repository.create_error = _pg_error(
+        asyncpg.ForeignKeyViolationError, "beer_contributions_resolved_beer_id_fkey"
+    )
+
+    with pytest.raises(asyncpg.ForeignKeyViolationError):
+        _run(
+            service.submit_beer(
+                user_id=_USER,
+                payload=BeerContributionCreate(official_name="X", brewery_id=_BREWERY_ID),
+            )
+        )

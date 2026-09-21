@@ -16,8 +16,9 @@ from datetime import UTC, datetime, timedelta
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
 from app.repositories.collection import CollectionRepository
+
+from .disposable_db import connection_kwargs, ensure_users
 
 pytestmark = pytest.mark.integration
 
@@ -86,10 +87,11 @@ async def _seed_catalog(conn: asyncpg.Connection) -> dict[str, str]:
 
 def _run(dsn: str, body) -> None:
     async def wrapper() -> None:
-        conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(dsn))
         transaction = conn.transaction()
         await transaction.start()
         try:
+            await ensure_users(conn, _USER_ID)
             ids = await _seed_catalog(conn)
             await _as_backend_role(conn)
             repository = CollectionRepository(_SingleConnectionPool(conn))
@@ -302,6 +304,18 @@ def test_favorites_sort_by_recent_uses_favorited_at_not_log_date(integration_dsn
         await repository.set_state(
             user_id=_USER_ID, beer_id=ids["beer_beta"], is_favorite=True, is_wishlist=None
         )
+        # The repository stamps favorited_at with now(), which is the START of the
+        # transaction -- and this whole test runs inside one, so both favorites
+        # would get the identical timestamp. In production each request is its own
+        # transaction. Backdate beta so it genuinely was favorited earlier.
+        async with repository._scoped(_USER_ID) as conn:
+            await conn.execute(
+                "update public.user_beer_collection "
+                "set favorited_at = favorited_at - interval '1 day' "
+                "where user_id = $1 and beer_id = $2",
+                _USER_ID,
+                ids["beer_beta"],
+            )
         await repository.set_state(
             user_id=_USER_ID, beer_id=ids["beer_alpha"], is_favorite=True, is_wishlist=None
         )

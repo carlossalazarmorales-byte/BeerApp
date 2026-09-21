@@ -16,8 +16,9 @@ from contextlib import asynccontextmanager
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
 from app.repositories.collection import CollectionRepository
+
+from .disposable_db import connection_kwargs, ensure_users, remove_users
 
 pytestmark = pytest.mark.integration
 
@@ -38,7 +39,7 @@ class _SingleConnectionPool:
 
 
 async def _set_state(dsn: str, *, beer_id: str, is_favorite, is_wishlist) -> None:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     try:
         async with conn.transaction():
             await conn.execute("set local role beerapp_backend")
@@ -51,8 +52,10 @@ async def _set_state(dsn: str, *, beer_id: str, is_favorite, is_wishlist) -> Non
 
 
 async def _seed_beer(dsn: str) -> str:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     try:
+        # Real, committed user: user_beer_collection.user_id references auth.users.
+        await ensure_users(conn, _USER_ID)
         country_id = await conn.fetchval(
             "insert into public.countries (iso_code, name, continent) "
             "values ('ZZ', 'Test Land', 'Europe') returning id"
@@ -72,13 +75,14 @@ async def _seed_beer(dsn: str) -> str:
 
 
 async def _cleanup(dsn: str, beer_id: str) -> None:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     try:
         await conn.execute(
             "delete from public.user_beer_collection where user_id = $1 and beer_id = $2",
             _USER_ID,
             beer_id,
         )
+        await remove_users(conn, _USER_ID)
         row = await conn.fetchrow("select brewery_id from public.beers where id = $1", beer_id)
         await conn.execute("delete from public.beers where id = $1", beer_id)
         if row is not None:
@@ -99,7 +103,7 @@ async def _reset_row(dsn: str, beer_id: str, *, is_favorite: bool, is_wishlist: 
     state each scenario needs, via one uncontended call (no concurrency here
     -- this is setup, not the thing under test).
     """
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     try:
         await conn.execute(
             "delete from public.user_beer_collection where user_id = $1 and beer_id = $2",
@@ -113,7 +117,7 @@ async def _reset_row(dsn: str, beer_id: str, *, is_favorite: bool, is_wishlist: 
 
 
 async def _read_state(dsn: str, beer_id: str) -> tuple[bool, bool] | None:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     try:
         row = await conn.fetchrow(
             "select is_favorite, is_wishlist from public.user_beer_collection "
@@ -127,7 +131,7 @@ async def _read_state(dsn: str, beer_id: str) -> tuple[bool, bool] | None:
 
 
 async def _row_count(dsn: str, beer_id: str) -> int:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     try:
         return await conn.fetchval(
             "select count(*) from public.user_beer_collection where user_id = $1 and beer_id = $2",
@@ -143,7 +147,7 @@ def test_repeated_identical_patch_is_idempotent_and_does_not_bump_timestamp(inte
         beer_id = await _seed_beer(integration_dsn)
         try:
             await _set_state(integration_dsn, beer_id=beer_id, is_favorite=True, is_wishlist=None)
-            conn = await asyncpg.connect(**parse_dsn_kwargs(integration_dsn), ssl="require")
+            conn = await asyncpg.connect(**connection_kwargs(integration_dsn))
             try:
                 first = await conn.fetchrow(
                     "select favorited_at from public.user_beer_collection "
@@ -155,7 +159,7 @@ def test_repeated_identical_patch_is_idempotent_and_does_not_bump_timestamp(inte
                 await conn.close()
 
             await _set_state(integration_dsn, beer_id=beer_id, is_favorite=True, is_wishlist=None)
-            conn = await asyncpg.connect(**parse_dsn_kwargs(integration_dsn), ssl="require")
+            conn = await asyncpg.connect(**connection_kwargs(integration_dsn))
             try:
                 second = await conn.fetchrow(
                     "select favorited_at, is_favorite from public.user_beer_collection "

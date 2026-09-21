@@ -19,12 +19,9 @@ _METRICS_QUERY = (
 
 
 class AchievementsRepository:
-    async def list_unlocked(
-        self, conn: asyncpg.Connection, *, user_id: str
-    ) -> dict[str, datetime]:
+    async def list_unlocked(self, conn: asyncpg.Connection, *, user_id: str) -> dict[str, datetime]:
         rows = await conn.fetch(
-            "select achievement_key, unlocked_at from public.user_achievements "
-            "where user_id = $1",
+            "select achievement_key, unlocked_at from public.user_achievements where user_id = $1",
             user_id,
         )
         return {row["achievement_key"]: row["unlocked_at"] for row in rows}
@@ -38,9 +35,7 @@ class AchievementsRepository:
         row = await conn.fetchrow(_METRICS_QUERY, user_id)
         return {"favorites_count": row["favorites_count"], "wishlist_count": row["wishlist_count"]}
 
-    async def unlock_many(
-        self, conn: asyncpg.Connection, *, user_id: str, keys: list[str]
-    ) -> None:
+    async def unlock_many(self, conn: asyncpg.Connection, *, user_id: str, keys: list[str]) -> None:
         if not keys:
             return
         # ON CONFLICT DO NOTHING keeps this idempotent under repeated or

@@ -65,3 +65,40 @@ class TestSeedCatalogBarcodesAreValid:
         # scanner-happy path.
         with_barcode = sum(1 for beer in _BEERS if beer[-1] is not None)
         assert with_barcode < len(_BEERS)
+
+
+class TestCanonicalizeBarcodeAsciiOnly:
+    """`str.isdigit()` is True for many non-ASCII digits (and `int()` parses
+    them), so a checksum-valid code written in another script used to
+    canonicalize to a non-ASCII string -- later rejected by the database's
+    ASCII-only barcode CHECK as a 500. Only ASCII 0-9 is a barcode.
+    """
+
+    _ASCII_EAN13 = "5000213007075"
+
+    @pytest.mark.parametrize(
+        "digits",
+        [
+            "٠١٢٣٤٥٦٧٨٩",  # Arabic-Indic
+            "०१२३४५६७८९",  # Devanagari
+            "０１２３４５６７８９",  # fullwidth
+        ],
+    )
+    def test_a_valid_code_written_in_non_ascii_digits_is_rejected(self, digits: str) -> None:
+        table = str.maketrans("0123456789", digits)
+        assert canonicalize_barcode(self._ASCII_EAN13) == self._ASCII_EAN13  # control
+
+        with pytest.raises(ValueError):
+            canonicalize_barcode(self._ASCII_EAN13.translate(table))
+
+    def test_superscript_digits_are_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            canonicalize_barcode("²" * 13)
+
+    def test_a_mix_of_ascii_and_non_ascii_digits_is_rejected(self) -> None:
+        with pytest.raises(ValueError):
+            canonicalize_barcode("500021300707٥")
+
+    def test_the_canonical_form_of_any_accepted_input_is_ascii(self) -> None:
+        for raw in ("5000213007075", "11111115", "111111111117", " 5000213007075 "):
+            assert canonicalize_barcode(raw).isascii()

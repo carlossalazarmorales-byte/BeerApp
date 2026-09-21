@@ -5,6 +5,7 @@ import '../../../app/app_routes.dart';
 import '../../../design_system/components/chips/app_filter_chip.dart';
 import '../../../design_system/components/states/empty_state.dart';
 import '../../../design_system/components/states/error_state.dart';
+import '../../../design_system/components/states/inline_progress.dart';
 import '../../../design_system/components/states/loading_state.dart';
 import '../../../design_system/tokens/app_colors.dart';
 import '../../../design_system/tokens/app_radii.dart';
@@ -159,8 +160,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
 
     return Column(
       children: [
-        if (_controller.isLoadingInitial)
-          const LinearProgressIndicator(minHeight: 2),
+        if (_controller.isLoadingInitial) const InlineProgressBar(),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _controller.refresh,
@@ -309,13 +309,7 @@ class _ListFooter extends StatelessWidget {
     if (controller.isLoadingMore) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: AppSpacing.lg),
-        child: Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
+        child: Center(child: InlineSpinner(size: 24)),
       );
     }
 

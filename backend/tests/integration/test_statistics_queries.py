@@ -30,8 +30,9 @@ from datetime import UTC, datetime
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
 from app.repositories.statistics import StatisticsRepository
+
+from .disposable_db import connection_kwargs, ensure_users, remove_users
 
 pytestmark = pytest.mark.integration
 
@@ -39,12 +40,26 @@ _USER_ID = "11111111-1111-1111-1111-111111111111"
 
 
 class _SingleConnectionPool:
+    """Stands in for the app's pool: the repository acquires the connection AS
+    `beerapp_backend` (so RLS applies, as in production) and returns it as the
+    connecting admin role on exit, which is what test setup/cleanup needs.
+    """
+
     def __init__(self, conn: asyncpg.Connection) -> None:
         self._conn = conn
+        self._depth = 0
 
     @asynccontextmanager
     async def acquire(self):
-        yield self._conn
+        if self._depth == 0:
+            await self._conn.execute("set role beerapp_backend")
+        self._depth += 1
+        try:
+            yield self._conn
+        finally:
+            self._depth -= 1
+            if self._depth == 0:
+                await self._conn.execute("reset role")
 
 
 async def _as_backend_role(conn: asyncpg.Connection) -> None:
@@ -127,8 +142,9 @@ async def _insert_favorite(conn: asyncpg.Connection, *, user_id: str, beer_id: s
     await _as_backend_role(conn)
     await _set_identity(conn, user_id)
     await conn.execute(
-        "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-        "values ($1, $2, true)",
+        "insert into public.user_beer_collection "
+        "(user_id, beer_id, is_favorite, favorited_at) "
+        "values ($1, $2, true, now())",
         user_id,
         beer_id,
     )
@@ -144,9 +160,10 @@ async def _seed_and_get_statistics(dsn: str, *, seed, user_ids: list[str]):
     `user_ids` as its own top-level transaction, then deletes everything
     `seed` reported creating. Returns {user_id: get_statistics()-result}.
     """
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     ids = _empty_ids()
     try:
+        await ensure_users(conn, *user_ids)
         async with conn.transaction():
             ids = await seed(conn)
 
@@ -172,6 +189,7 @@ async def _seed_and_get_statistics(dsn: str, *, seed, user_ids: list[str]):
                         user_id,
                         beer_id,
                     )
+        await remove_users(conn, *user_ids)
         for beer_id in ids["beer_ids"]:
             await conn.execute("delete from public.beers where id = $1", beer_id)
         for style_id in ids["style_ids"]:
@@ -372,7 +390,7 @@ def test_tie_break_order_prefers_lower_id_when_count_and_name_both_tie(integrati
     """
 
     async def check():
-        conn = await asyncpg.connect(**parse_dsn_kwargs(integration_dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(integration_dsn))
         try:
             row = await conn.fetchrow(
                 "with candidates(id, name, cnt) as ("
@@ -441,9 +459,10 @@ def test_monthly_activity_trailing_12_months_boundary(integration_dsn):
         return ids
 
     async def run():
-        conn = await asyncpg.connect(**parse_dsn_kwargs(integration_dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(integration_dsn))
         ids = _empty_ids()
         try:
+            await ensure_users(conn, _USER_ID)
             async with conn.transaction():
                 ids = await seed(conn)
             repository = StatisticsRepository(_SingleConnectionPool(conn))
@@ -458,6 +477,7 @@ def test_monthly_activity_trailing_12_months_boundary(integration_dsn):
                         _USER_ID,
                         beer_id,
                     )
+            await remove_users(conn, _USER_ID)
             for beer_id in ids["beer_ids"]:
                 await conn.execute("delete from public.beers where id = $1", beer_id)
             for brewery_id in ids["brewery_ids"]:
@@ -485,9 +505,10 @@ def test_monthly_activity_trailing_12_months_boundary(integration_dsn):
 
 def test_monthly_bucket_is_utc_independent_of_session_timezone(integration_dsn):
     async def run():
-        conn = await asyncpg.connect(**parse_dsn_kwargs(integration_dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(integration_dsn))
         ids = _empty_ids()
         try:
+            await ensure_users(conn, _USER_ID)
             async with conn.transaction():
                 country_id = await _seed_country(conn, "ZZ", "Test Land")
                 brewery_id = await _seed_brewery(conn, country_id=country_id)
@@ -526,6 +547,7 @@ def test_monthly_bucket_is_utc_independent_of_session_timezone(integration_dsn):
                         _USER_ID,
                         beer_id,
                     )
+            await remove_users(conn, _USER_ID)
             for beer_id in ids["beer_ids"]:
                 await conn.execute("delete from public.beers where id = $1", beer_id)
             for brewery_id in ids["brewery_ids"]:
@@ -574,7 +596,7 @@ def test_yearly_activity_has_no_row_for_a_year_with_no_logs(integration_dsn):
 
 def test_get_statistics_transaction_uses_repeatable_read(integration_dsn):
     async def check():
-        conn = await asyncpg.connect(**parse_dsn_kwargs(integration_dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(integration_dsn))
         try:
             repository = StatisticsRepository(_SingleConnectionPool(conn))
             async with repository._scoped(_USER_ID) as scoped_conn:

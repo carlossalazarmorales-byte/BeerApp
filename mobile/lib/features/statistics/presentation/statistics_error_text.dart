@@ -11,8 +11,9 @@ import '../../../l10n/generated/app_localizations.dart';
 /// 404 on.
 String statisticsErrorText(BuildContext context, Object error) {
   final l10n = AppLocalizations.of(context);
-  if (error is UnauthorizedApiException)
+  if (error is UnauthorizedApiException) {
     return l10n.statisticsErrorUnauthorized;
+  }
   if (error is ServiceUnavailableApiException) {
     return l10n.statisticsErrorServiceUnavailable;
   }

@@ -4,16 +4,21 @@ from decimal import Decimal
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
+from .disposable_db import connection_kwargs, ensure_users
 
 pytestmark = pytest.mark.integration
 
+# Every user_id column references auth.users(id), so the rows below use a real
+# (rolled-back) user rather than a made-up UUID with no auth.users row.
+_USER_ID = "00000000-0000-0000-0000-000000000001"
+
 
 async def _in_rolled_back_transaction(dsn: str, body) -> None:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     transaction = conn.transaction()
     await transaction.start()
     try:
+        await ensure_users(conn, _USER_ID)
         await body(conn)
     finally:
         await transaction.rollback()
@@ -51,6 +56,12 @@ def test_country_iso_code_must_be_unique(integration_dsn):
 
 
 def test_beer_abv_out_of_range_is_rejected(integration_dsn):
+    """`beers_abv_range` (0..100) is exercised with a representable value below
+    the range. Above it, `numeric(4,2)` itself refuses anything >= 100 before
+    the CHECK is ever evaluated -- so the column type is the effective upper
+    bound (a documented quirk: the CHECK's upper limit can never fire).
+    """
+
     async def body(conn: asyncpg.Connection) -> None:
         country_id = await conn.fetchval(
             "insert into public.countries (iso_code, name, continent) "
@@ -61,13 +72,23 @@ def test_beer_abv_out_of_range_is_rejected(integration_dsn):
             "returning id",
             country_id,
         )
-        with pytest.raises(asyncpg.CheckViolationError):
-            await conn.execute(
-                "insert into public.beers (official_name, brewery_id, abv) "
-                "values ('Bad Beer', $1, $2)",
-                brewery_id,
-                Decimal("150.0"),
-            )
+        insert = (
+            "insert into public.beers (official_name, brewery_id, abv) values ('Bad Beer', $1, $2)"
+        )
+
+        with pytest.raises(asyncpg.CheckViolationError) as below:
+            async with conn.transaction():
+                await conn.execute(insert, brewery_id, Decimal("-0.01"))
+        assert below.value.constraint_name == "beers_abv_range"
+
+        # Boundaries the column CAN store are accepted...
+        await conn.execute(insert, brewery_id, Decimal("0.00"))
+        await conn.execute(insert, brewery_id, Decimal("99.99"))
+        # ...and 100 or more is refused by the numeric(4,2) type itself.
+        for too_big in (Decimal("100.00"), Decimal("150.0")):
+            with pytest.raises(asyncpg.NumericValueOutOfRangeError):
+                async with conn.transaction():
+                    await conn.execute(insert, brewery_id, too_big)
 
     _run(integration_dsn, body)
 
@@ -190,12 +211,13 @@ def test_user_beer_log_serving_volume_ml_null_is_allowed(integration_dsn):
 
 def test_user_beer_log_beer_id_foreign_key_is_enforced(integration_dsn):
     async def body(conn: asyncpg.Connection) -> None:
-        with pytest.raises(asyncpg.ForeignKeyViolationError):
+        with pytest.raises(asyncpg.ForeignKeyViolationError) as violation:
             await conn.execute(
                 "insert into public.user_beer_logs (user_id, beer_id) "
                 "values ('00000000-0000-0000-0000-000000000001', "
                 "'00000000-0000-0000-0000-000000000000')"
             )
+        assert violation.value.constraint_name == "user_beer_logs_beer_id_fkey"
 
     _run(integration_dsn, body)
 
@@ -208,8 +230,9 @@ def test_user_beer_log_beer_id_is_restrict_not_cascade(integration_dsn):
             "values ('00000000-0000-0000-0000-000000000001', $1)",
             beer_id,
         )
-        with pytest.raises(asyncpg.ForeignKeyViolationError):
+        with pytest.raises(asyncpg.ForeignKeyViolationError) as violation:
             await conn.execute("delete from public.beers where id = $1", beer_id)
+        assert violation.value.constraint_name == "user_beer_logs_beer_id_fkey"
 
     _run(integration_dsn, body)
 
@@ -222,7 +245,7 @@ def test_user_beer_log_user_id_foreign_key_is_cascade(integration_dsn):
 
     async def body(conn: asyncpg.Connection) -> None:
         delete_rule = await conn.fetchval(
-            "select confdeltype from pg_constraint "
+            "select confdeltype::text from pg_constraint "
             "where conrelid = 'public.user_beer_logs'::regclass "
             "and confrelid = 'auth.users'::regclass"
         )
@@ -285,14 +308,15 @@ def test_user_beer_collection_user_beer_unique_constraint_is_enforced(integratio
     async def body(conn: asyncpg.Connection) -> None:
         beer_id = await _seed_beer(conn)
         await conn.execute(
-            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-            "values ('00000000-0000-0000-0000-000000000001', $1, true)",
+            "insert into public.user_beer_collection (user_id, beer_id, is_favorite, favorited_at) "
+            "values ('00000000-0000-0000-0000-000000000001', $1, true, now())",
             beer_id,
         )
         with pytest.raises(asyncpg.UniqueViolationError):
             await conn.execute(
-                "insert into public.user_beer_collection (user_id, beer_id, is_wishlist) "
-                "values ('00000000-0000-0000-0000-000000000001', $1, true)",
+                "insert into public.user_beer_collection "
+                "(user_id, beer_id, is_wishlist, wishlisted_at) "
+                "values ('00000000-0000-0000-0000-000000000001', $1, true, now())",
                 beer_id,
             )
 
@@ -301,12 +325,14 @@ def test_user_beer_collection_user_beer_unique_constraint_is_enforced(integratio
 
 def test_user_beer_collection_beer_id_foreign_key_is_enforced(integration_dsn):
     async def body(conn: asyncpg.Connection) -> None:
-        with pytest.raises(asyncpg.ForeignKeyViolationError):
+        with pytest.raises(asyncpg.ForeignKeyViolationError) as violation:
             await conn.execute(
-                "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
+                "insert into public.user_beer_collection "
+                "(user_id, beer_id, is_favorite, favorited_at) "
                 "values ('00000000-0000-0000-0000-000000000001', "
-                "'00000000-0000-0000-0000-000000000000', true)"
+                "'00000000-0000-0000-0000-000000000000', true, now())"
             )
+        assert violation.value.constraint_name == "user_beer_collection_beer_id_fkey"
 
     _run(integration_dsn, body)
 
@@ -315,12 +341,13 @@ def test_user_beer_collection_beer_id_is_restrict_not_cascade(integration_dsn):
     async def body(conn: asyncpg.Connection) -> None:
         beer_id = await _seed_beer(conn)
         await conn.execute(
-            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-            "values ('00000000-0000-0000-0000-000000000001', $1, true)",
+            "insert into public.user_beer_collection (user_id, beer_id, is_favorite, favorited_at) "
+            "values ('00000000-0000-0000-0000-000000000001', $1, true, now())",
             beer_id,
         )
-        with pytest.raises(asyncpg.ForeignKeyViolationError):
+        with pytest.raises(asyncpg.ForeignKeyViolationError) as violation:
             await conn.execute("delete from public.beers where id = $1", beer_id)
+        assert violation.value.constraint_name == "user_beer_collection_beer_id_fkey"
 
     _run(integration_dsn, body)
 
@@ -328,7 +355,7 @@ def test_user_beer_collection_beer_id_is_restrict_not_cascade(integration_dsn):
 def test_user_beer_collection_user_id_foreign_key_is_cascade(integration_dsn):
     async def body(conn: asyncpg.Connection) -> None:
         delete_rule = await conn.fetchval(
-            "select confdeltype from pg_constraint "
+            "select confdeltype::text from pg_constraint "
             "where conrelid = 'public.user_beer_collection'::regclass "
             "and confrelid = 'auth.users'::regclass"
         )

@@ -10,6 +10,7 @@ import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../design_system/tokens/app_typography.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../shared/collection_refresh_signal.dart';
+import '../../../../shared/widgets/beer_image.dart';
 import '../../../collection/domain/collection_repository.dart';
 import '../../../collection/presentation/collection_state_controller.dart';
 import '../../../logging/domain/log_repository.dart';
@@ -186,7 +187,7 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
         children: [
           AspectRatio(
             aspectRatio: 16 / 9,
-            child: _BeerImage(imageUrl: beer.imageUrl),
+            child: BeerImage(imageUrl: beer.imageUrl, fallbackIconSize: 48),
           ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -273,33 +274,6 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _BeerImage extends StatelessWidget {
-  const _BeerImage({required this.imageUrl});
-
-  final String? imageUrl;
-
-  @override
-  Widget build(BuildContext context) {
-    final url = imageUrl;
-    final fallback = Container(
-      color: AppColors.secondaryContainer,
-      alignment: Alignment.center,
-      child: const Icon(
-        Icons.local_bar_outlined,
-        size: 48,
-        color: AppColors.secondary,
-      ),
-    );
-    if (url == null) return fallback;
-    return Image.network(
-      url,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      errorBuilder: (context, error, stackTrace) => fallback,
     );
   }
 }

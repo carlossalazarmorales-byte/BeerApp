@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../design_system/components/buttons/primary_button.dart';
 import '../../../design_system/components/inputs/app_text_field.dart';
 import '../../../design_system/components/states/error_state.dart';
+import '../../../design_system/components/states/inline_progress.dart';
 import '../../../design_system/components/states/loading_state.dart';
 import '../../../design_system/tokens/app_spacing.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -256,7 +257,7 @@ class _SuggestBreweryScreenState extends State<SuggestBreweryScreen> {
               const SizedBox(height: AppSpacing.md),
             ],
             if (_controller.isBusy) ...[
-              const LinearProgressIndicator(minHeight: 2),
+              const InlineProgressBar(),
               const SizedBox(height: AppSpacing.md),
             ],
             PrimaryButton(

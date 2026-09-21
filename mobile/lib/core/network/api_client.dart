@@ -7,6 +7,12 @@ import 'package:http/http.dart' as http;
 import 'access_token_provider.dart';
 import 'api_exception.dart';
 
+/// How long a single request may take before it is abandoned. Generous enough
+/// for a slow mobile connection, bounded so a stalled connection can never leave
+/// a screen spinning forever. The backend enforces its own (shorter) database
+/// timeouts, so a healthy request finishes long before this.
+const Duration defaultApiRequestTimeout = Duration(seconds: 20);
+
 /// Thin JSON client for BeerApp's FastAPI backend. Attaches the current
 /// Supabase access token as a bearer header and maps the backend's shared
 /// `{"error": {"code", "message"}}` envelope to typed [ApiException]
@@ -17,11 +23,13 @@ class ApiClient {
     required this._httpClient,
     required this._baseUrl,
     required this._accessTokenProvider,
+    this._requestTimeout = defaultApiRequestTimeout,
   });
 
   final http.Client _httpClient;
   final String _baseUrl;
   final AccessTokenProvider _accessTokenProvider;
+  final Duration _requestTimeout;
 
   Future<dynamic> getJson(String path, {Map<String, String>? query}) {
     return _send('GET', path, query: query);
@@ -66,35 +74,52 @@ class ApiClient {
 
     final http.Response response;
     try {
-      switch (method) {
-        case 'GET':
-          response = await _httpClient.get(uri, headers: headers);
-        case 'POST':
-          response = await _httpClient.post(
-            uri,
-            headers: headers,
-            body: body == null ? null : jsonEncode(body),
-          );
-        case 'PATCH':
-          response = await _httpClient.patch(
-            uri,
-            headers: headers,
-            body: body == null ? null : jsonEncode(body),
-          );
-        case 'DELETE':
-          response = await _httpClient.delete(uri, headers: headers);
-        default:
-          throw ArgumentError('Unsupported method: $method');
-      }
+      // `.timeout` bounds the whole request/response round trip. The
+      // underlying socket work is not cancelled, but its (late) result is
+      // discarded, and the caller gets a definite answer.
+      response = await _dispatch(
+        method,
+        uri,
+        headers,
+        body,
+      ).timeout(_requestTimeout);
     } on SocketException catch (error) {
       throw NetworkApiException(message: error.message);
     } on http.ClientException catch (error) {
       throw NetworkApiException(message: error.message);
     } on TimeoutException {
-      throw const NetworkApiException(message: 'Request timed out.');
+      throw const TimeoutApiException();
     }
 
     return _decode(response);
+  }
+
+  Future<http.Response> _dispatch(
+    String method,
+    Uri uri,
+    Map<String, String> headers,
+    Map<String, dynamic>? body,
+  ) {
+    switch (method) {
+      case 'GET':
+        return _httpClient.get(uri, headers: headers);
+      case 'POST':
+        return _httpClient.post(
+          uri,
+          headers: headers,
+          body: body == null ? null : jsonEncode(body),
+        );
+      case 'PATCH':
+        return _httpClient.patch(
+          uri,
+          headers: headers,
+          body: body == null ? null : jsonEncode(body),
+        );
+      case 'DELETE':
+        return _httpClient.delete(uri, headers: headers);
+      default:
+        throw ArgumentError('Unsupported method: $method');
+    }
   }
 
   dynamic _decode(http.Response response) {
@@ -151,6 +176,12 @@ class ApiClient {
         );
       case 409:
         throw ConflictApiException(
+          statusCode: status,
+          code: code,
+          message: message,
+        );
+      case 413:
+        throw PayloadTooLargeApiException(
           statusCode: status,
           code: code,
           message: message,

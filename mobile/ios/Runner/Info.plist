@@ -16,6 +16,26 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>beerapp</string>
+	<!-- Supabase Auth deep link (email confirmation, password reset): the same
+	     custom scheme as Env.authRedirectUrl and the Android intent-filter.
+	     A regression test pins them together.
+	     NOT CONFIGURED: Google Sign-In on iOS also needs the Google iOS client ID
+	     (GIDClientID) and its reversed-client-ID URL scheme. That value is not
+	     known to this repository and is deliberately not invented; it is a
+	     release blocker for iOS Google sign-in (see docs/DECISIONS.md). -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.carlossalazarmorales.beerapp</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.carlossalazarmorales.beerapp</string>
+			</array>
+		</dict>
+	</array>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

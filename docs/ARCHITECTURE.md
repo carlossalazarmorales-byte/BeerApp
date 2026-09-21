@@ -1,7 +1,7 @@
 # Architecture
 
-High-level structure only. This will grow as features land; it does not describe
-features that don't exist yet.
+High-level structure only; it describes what exists in the repository today and is
+updated as features land.
 
 ## Mobile (`/mobile`)
 
@@ -9,16 +9,22 @@ Flutter app, feature-oriented per `CLAUDE.md`:
 
 ```
 mobile/lib/
-  app/            # app-level setup: entrypoint, routing, theming glue
-  core/           # cross-cutting concerns: env config, networking, error handling
-  design_system/  # shared tokens/components (colors, typography, spacing, radii)
-  features/       # one folder per feature, each optionally split into data/domain/presentation
+  app/            # app-level setup: launch/startup guard, router, theming glue
+  core/           # cross-cutting: auth, bootstrap (global error handlers), config
+                  #   (env + validation, legal links), links, locale, logging,
+                  #   network (API client), onboarding (age gate)
+  design_system/  # tokens (colors, gradients, typography, spacing, radii, shadows),
+                  #   theme, and components (buttons, cards, chips, inputs,
+                  #   navigation, states)
+  features/       # one folder per feature: achievements, auth, catalog, collection,
+                  #   contributions, discover, logging, map, profile, scan,
+                  #   statistics -- each split into data/domain/presentation as needed
+  l10n/           # ARB sources (EN, ES) and the generated localizations
   shared/         # widgets/utilities used by more than one feature
 ```
 
-None of these folders exist yet beyond `main.dart` — they will be introduced in
-Phase 1 (Design System & App Shell) as they're actually populated, rather than
-scaffolded empty ahead of time.
+Folders are created when they are actually populated, not scaffolded empty ahead of
+time.
 
 ## Backend (`/backend`)
 
@@ -32,8 +38,10 @@ backend/app/
   repositories/   # persistence access, hand-written parameterized SQL
   auth/           # JWKS fetch/cache, JWT verification, get_current_user dependency
   dependencies.py # pool -> repository -> service wiring, overridable per layer in tests
-  db.py           # asyncpg connection pool
-  errors.py       # exception -> JSON error envelope mapping
+  db.py           # asyncpg connection pool (bounded: connect/acquire/command timeouts)
+  errors.py       # exception -> JSON error envelope mapping (incl. 413/503/500)
+  middleware.py   # pure-ASGI body-size limit and request logging (Phase 14)
+  logging_config.py  # stdlib logging setup (Phase 14)
   config.py       # environment-driven settings (pydantic-settings)
 ```
 
@@ -183,7 +191,56 @@ itself and renders a localized "unavailable" state instead of building a
 MapTiler key is a client-visible, quota-limited credential, not a
 `service_role`-style secret.
 
+**Map data synchronization (Phase 14).** `MapScreen` no longer pushes data to the
+map itself. `MapDataSynchronizer` (`presentation/map_data_synchronizer.dart`) talks
+to a two-method `MapSurface` interface (`setGeoJsonSource`, `setLayerVisibility`;
+`MapScreen` supplies a thin MapLibre adapter), so the logic is testable without a
+platform view. It uploads a source only when that source's content fingerprint
+(ids and coordinates) changed, sets layer visibility only when the beers/breweries
+mode flips, coalesces overlapping syncs (re-reading the latest state), never throws,
+and leaves a failed piece unsynced so the next notification retries it. The
+style-load path calls `invalidate()` because the sources are recreated empty. See
+`docs/DECISIONS.md` (performance review) for the measured effect.
+
 Clustering is client-side only, via `maplibre_gl`'s built-in GeoJSON-source
 `cluster` support — no backend aggregation/viewport query exists. See
 `docs/DECISIONS.md` for why, and Phase 14 as the place real geo-scale work
 (if it's ever needed) belongs.
+
+## Production hardening (Phase 14)
+
+**Backend request path.** `app/main.py` builds the app from settings that need no
+secrets (`RuntimeSettings`), so it can be imported by tests and tooling without a
+populated `.env`. Two pure-ASGI middlewares wrap every request, outermost first:
+`RequestLogMiddleware` (request id, one log line per request with the route
+template and no query string, `X-Request-ID` on every response) and
+`BodySizeLimitMiddleware` (413 from `Content-Length` and from the streamed bytes).
+Because request logging is the outer layer, a rejected oversized request is logged
+too. `errors.py` maps failures to the standard envelope: a narrow set of temporary
+database/network errors to a sanitized 503, and everything else to a fixed 500.
+`services/db_errors.py` translates a foreign-key violation by *constraint name*
+(beer key -> 404, user key -> 401). The docs/OpenAPI routes exist only for
+`ENVIRONMENT` in `local`/`dev`; `Settings` validates deployment values at startup
+(https `SUPABASE_URL` outside local/dev; pool min <= max).
+
+**Mobile startup.** `main.dart` calls `launchApp` (`app/launch_app.dart`), which
+runs the app builder inside a guard: an invalid build configuration
+(`core/config/env_validator.dart` - pure rules, value-free problem names) shows a
+non-retryable localized `StartupFailureApp`, and any other startup error shows a
+retryable one. `core/bootstrap/global_error_handlers.dart` installs
+`FlutterError.onError` and `PlatformDispatcher.onError`; diagnostics go only
+through `core/logging/debug_log.dart`, which writes nothing outside debug builds.
+There is no crash-reporting or analytics vendor. Legal links are read from
+build-time configuration (`core/config/legal_config.dart`) and opened by
+`core/links/external_link_opener.dart` in the external browser.
+
+**Shared UI added for accessibility and performance (Phase 14).** `design_system/components/states/inline_progress.dart` (`InlineSpinner`,
+`InlineProgressBar`, labelled "Loading..."); `shared/widgets/beer_image.dart`
+(`BeerImage`: display-size decode, stable placeholder, icon fallback, used by both
+list tiles and the detail hero). `PrimaryButton`/`SecondaryButton` and the other
+design-system components now carry the semantics described in `docs/DECISIONS.md`.
+
+**Test support.** `backend/tests/integration/support/` (a minimal Supabase-like
+scaffold and the helper that applies it plus every migration) and
+`tests/integration/disposable_db.py` (the guard that keeps the integration suite off
+any shared database) are documented in `docs/DATABASE.md`.

@@ -1,6 +1,6 @@
 import asyncpg
 
-from app.errors import ConflictError, NotFoundError
+from app.errors import ConflictError, NotFoundError, SessionInvalidError
 from app.repositories.beers import BeerRepository
 from app.repositories.breweries import BreweryRepository
 from app.repositories.contributions import ContributionRepository
@@ -18,6 +18,7 @@ from app.schemas.contributions import (
     BreweryDuplicateCheckQuery,
     ContributionSummaryOut,
 )
+from app.services.db_errors import is_user_foreign_key
 
 # Enough to show a user "did you mean one of these?" without turning the
 # duplicate check into a second search endpoint.
@@ -221,6 +222,10 @@ def _translate_foreign_key_violation(
     exc: asyncpg.ForeignKeyViolationError,
     payload: BeerContributionCreate | BreweryContributionCreate,
 ) -> Exception:
+    if is_user_foreign_key(exc):
+        # The caller's own account is gone (a still-valid token for a deleted
+        # user): the same 401 a bad token gets, not a 404 and not a 500.
+        return SessionInvalidError()
     entity = _FOREIGN_KEY_ENTITY.get(exc.constraint_name or "")
     if entity is None:
         return exc

@@ -48,7 +48,8 @@ Product rules:
 - Do not create leaderboards based on alcohol volume.
 - Do not create streaks that reward drinking on consecutive days.
 - Do not create achievements based on liters consumed.
-- Exploration achievements may reward discovering countries, breweries, styles, regions, catalog entries, reviews and collection milestones.
+- Exploration achievements may reward discovering countries, breweries, styles, regions, catalog entries, reviews and collection milestones, provided progress never depends on how much or how often the user drinks (see §16).
+- Achievements must not reward or encourage drinking quantity, frequency, streaks or consumption volume.
 - Consumption-related history, if implemented for adult users, must remain descriptive rather than competitive.
 - Age-gating and store-policy requirements must be reviewed before release in each market.
 
@@ -479,24 +480,32 @@ Product Design rules, which apply to this statistic exactly as to any other.
 
 ## 16. Achievements
 
-BeerApp should include an achievement system.
+BeerApp includes an achievement system. Achievements recognize **exploration and collection**, never drinking.
 
-Possible categories:
+**Product rule.** An achievement must not reward or encourage drinking quantity, drinking frequency, streaks or consumption volume (see §3 and `CLAUDE.md`, "Responsible Product Design"). No achievement may be based on:
 
-- Number of unique beers
-- Number of logs
-- Countries explored
-- Regions explored
-- Styles explored
-- Breweries explored
-- Reviews written
-- Ratings submitted
-- Collection milestones
-- Map exploration
-- Special discoveries
-- Other exploration and collection milestones
+- the number of logs, or the number of beers or unique beers consumed or tried;
+- how often, or on how many consecutive days, a user logs;
+- any volume, amount or quantity consumed.
 
-The exact achievement list will be designed later.
+Logged consumption activity is therefore not a valid source of achievement progress. This is deliberate: counting logged beers toward a threshold gives users a reason to log more drinking to reach a number (see `docs/DECISIONS.md`, Phase 10).
+
+Permitted directions (each must be designed so that unlocking does not depend on how much or how often the user drinks):
+
+- Collection and curation milestones (favorites, wishlist, curated collections)
+- Catalog discovery and map exploration
+- Countries, regions, styles and breweries explored, **only** from a data source that does not incentivize consumption (for example catalog or map exploration), not from counts of logged beers
+- Special discoveries and compound achievements built from other unlocked achievements
+
+Reviews and ratings are permitted by `CLAUDE.md` as subject matter, but a count of reviews written or ratings given is a count of logged activity and is subject to the rule above; none exists.
+
+**Current starter achievements** (collection and curation only, derived from favorites and wishlist status, never from logs):
+
+- First favorite
+- First wishlist item
+- Collection curator (a compound achievement that requires the two above)
+
+The exact further list will be designed later within this rule.
 
 The achievement system must be data-driven so that achievements can be added or modified without rewriting large parts of the app.
 

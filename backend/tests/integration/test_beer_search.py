@@ -4,8 +4,9 @@ from contextlib import asynccontextmanager
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
 from app.repositories.beers import BeerRepository
+
+from .disposable_db import connection_kwargs
 
 pytestmark = pytest.mark.integration
 
@@ -78,7 +79,7 @@ async def _seed(conn: asyncpg.Connection) -> dict[str, str]:
 
 def _run(dsn: str, body) -> None:
     async def wrapper() -> None:
-        conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(dsn))
         transaction = conn.transaction()
         await transaction.start()
         try:

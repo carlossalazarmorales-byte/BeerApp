@@ -45,6 +45,49 @@ String _localizedMonthLabel(AppLocalizations l10n, int month) {
   }
 }
 
+/// The keys `statisticsMonthLongName` selects on, indexed by month - 1.
+const _monthNameKeys = [
+  'january',
+  'february',
+  'march',
+  'april',
+  'may',
+  'june',
+  'july',
+  'august',
+  'september',
+  'october',
+  'november',
+  'december',
+];
+
+/// The text a screen reader gets in place of the bars: the total, and the month
+/// with the most entries (the earliest one, if several tie) so the same fact a
+/// sighted user reads off the tallest bar is available. Descriptive only -- no
+/// ranking, goal or comparison wording.
+@visibleForTesting
+String monthlyChartSummary(
+  AppLocalizations l10n,
+  List<MonthlyActivityPoint> points,
+) {
+  var total = 0;
+  MonthlyActivityPoint? mostEntries;
+  for (final point in points) {
+    total += point.logCount;
+    if (mostEntries == null || point.logCount > mostEntries.logCount) {
+      mostEntries = point;
+    }
+  }
+  if (total == 0 || mostEntries == null) {
+    return l10n.statisticsMonthlyChartSemanticEmpty;
+  }
+  return l10n.statisticsMonthlyChartSemanticSummary(
+    total,
+    l10n.statisticsMonthLongName(_monthNameKeys[mostEntries.month.month - 1]),
+    mostEntries.logCount,
+  );
+}
+
 /// Bar chart of log counts for the trailing 12 UTC months. [points] is
 /// always exactly 12 entries (zero-filled), so this never needs an empty
 /// state of its own.
@@ -73,52 +116,63 @@ class MonthlyActivityChart extends StatelessWidget {
             style: AppTypography.titleLarge,
           ),
           const SizedBox(height: AppSpacing.md),
-          SizedBox(
-            height: 160,
-            child: BarChart(
-              BarChartData(
-                maxY: maxY,
-                gridData: const FlGridData(show: false),
-                borderData: FlBorderData(show: false),
-                titlesData: FlTitlesData(
-                  topTitles: const AxisTitles(),
-                  rightTitles: const AxisTitles(),
-                  leftTitles: const AxisTitles(),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 24,
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= points.length) {
-                          return const SizedBox.shrink();
-                        }
-                        final label = _localizedMonthLabel(
-                          l10n,
-                          points[index].month.month,
-                        );
-                        return SideTitleWidget(
-                          meta: meta,
-                          child: Text(label, style: AppTypography.bodySmall),
-                        );
-                      },
+          // The bars are drawn, not widgets, so a screen reader would find
+          // nothing: describe the chart in one label and hide the drawing.
+          Semantics(
+            image: true,
+            label: monthlyChartSummary(l10n, points),
+            child: ExcludeSemantics(
+              child: SizedBox(
+                height: 160,
+                child: BarChart(
+                  BarChartData(
+                    maxY: maxY,
+                    gridData: const FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
+                    titlesData: FlTitlesData(
+                      topTitles: const AxisTitles(),
+                      rightTitles: const AxisTitles(),
+                      leftTitles: const AxisTitles(),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 24,
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index < 0 || index >= points.length) {
+                              return const SizedBox.shrink();
+                            }
+                            final label = _localizedMonthLabel(
+                              l10n,
+                              points[index].month.month,
+                            );
+                            return SideTitleWidget(
+                              meta: meta,
+                              child: Text(
+                                label,
+                                style: AppTypography.bodySmall,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
                     ),
+                    barGroups: [
+                      for (final (index, point) in points.indexed)
+                        BarChartGroupData(
+                          x: index,
+                          barRods: [
+                            BarChartRodData(
+                              toY: point.logCount.toDouble(),
+                              color: AppColors.primary,
+                              width: 12,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
-                barGroups: [
-                  for (final (index, point) in points.indexed)
-                    BarChartGroupData(
-                      x: index,
-                      barRods: [
-                        BarChartRodData(
-                          toY: point.logCount.toDouble(),
-                          color: AppColors.primary,
-                          width: 12,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ],
-                    ),
-                ],
               ),
             ),
           ),

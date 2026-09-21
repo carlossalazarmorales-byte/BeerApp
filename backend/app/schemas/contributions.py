@@ -22,6 +22,10 @@ def _text(max_length: int):
     """
 
     def _validate(value: str) -> str:
+        # NUL is not whitespace, so it would survive the collapse below and
+        # then fail inside Postgres (text cannot store U+0000).
+        if "\x00" in value:
+            raise ValueError("must not contain NUL characters.")
         collapsed = " ".join(value.split())
         if not collapsed:
             raise ValueError("must not be blank.")

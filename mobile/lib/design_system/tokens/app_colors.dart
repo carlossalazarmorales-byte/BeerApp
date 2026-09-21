@@ -16,6 +16,16 @@ abstract final class AppColors {
   static const Color primaryContainer = Color(0xFFFFBF00);
   static const Color onPrimaryContainer = Color(0xFF6D5000);
 
+  /// Start of the amber call-to-action gradient (`AppGradients.primary`): 40%
+  /// of the way from [primary] to [primaryContainer] (`#af8200`). Lightened from
+  /// `primary` so a dark label reaches WCAG AA across the whole gradient.
+  static const Color primaryGradientStart = Color(0xFFAF8200);
+
+  /// Label/icon colour on `AppGradients.primary`. The existing dark
+  /// [onSurface] token: 4.90:1 at the darkest point of the gradient, 10.3:1 at
+  /// the brightest.
+  static const Color onPrimaryGradient = onSurface;
+
   static const Color secondary = Color(0xFF725948);
   static const Color secondaryContainer = Color(0xFFFBD9C2);
 

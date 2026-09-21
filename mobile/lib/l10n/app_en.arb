@@ -600,6 +600,17 @@
   "@settingsTermsOfServiceRowTitle": {"description": "Title of the Settings row that opens the Terms of Service placeholder."},
   "settingsLegalPlaceholderDescription": "This content isn't available yet. Check back before release.",
   "@settingsLegalPlaceholderDescription": {"description": "Description shown on the Privacy Policy / Terms of Service placeholder screen."},
+  "settingsLegalLinkOpenFailed": "Couldn't open the link. Please try again later.",
+  "@settingsLegalLinkOpenFailed": {"description": "Snackbar shown when the Privacy Policy / Terms of Service link could not be opened in the browser. Never includes the URL or an error message."},
+
+  "startupFailureConfigurationTitle": "BeerApp isn't set up correctly",
+  "@startupFailureConfigurationTitle": {"description": "Title of the startup-failure screen shown when the build's configuration is missing or invalid."},
+  "startupFailureConfigurationMessage": "This version of the app is missing required configuration. Please update BeerApp or try again later.",
+  "@startupFailureConfigurationMessage": {"description": "Body of the configuration startup-failure screen. Deliberately generic: never names a setting, URL or key."},
+  "startupFailureInitializationTitle": "BeerApp couldn't start",
+  "@startupFailureInitializationTitle": {"description": "Title of the startup-failure screen shown when starting the app failed for another reason."},
+  "startupFailureInitializationMessage": "Something went wrong while starting the app. Please try again.",
+  "@startupFailureInitializationMessage": {"description": "Body of the initialization startup-failure screen, shown with a Retry button."},
 
   "settingsDeleteAccountRowTitle": "Delete account",
   "@settingsDeleteAccountRowTitle": {"description": "Title of the Settings row that opens the delete-account confirmation."},
@@ -738,5 +749,17 @@
   "contributionErrorAlreadySubmitted": "You already have an identical suggestion pending review.",
   "@contributionErrorAlreadySubmitted": {"description": "Hard block: the user's own identical pending suggestion exists."},
   "contributionErrorGeneric": "Something went wrong. Please try again.",
-  "@contributionErrorGeneric": {"description": "Fallback contribution error."}
+  "@contributionErrorGeneric": {"description": "Fallback contribution error."},
+  "collectionRatingSemanticLabel": "Rated {rating} out of 5",
+  "@collectionRatingSemanticLabel": {"description": "Screen-reader label for a collection tile's latest rating badge (shown visually as 4/5).", "placeholders": {"rating": {"type": "int"}}},
+  "statisticsMonthlyChartSemanticEmpty": "Monthly activity: no entries in the last 12 months.",
+  "@statisticsMonthlyChartSemanticEmpty": {"description": "Screen-reader summary of the monthly activity chart when every month is empty."},
+  "statisticsMonthlyChartSemanticSummary": "Monthly activity over the last 12 months: {total, plural, =1{1 entry} other{{total} entries}} in total. Month with most entries: {month}, {count, plural, =1{1 entry} other{{count} entries}}.",
+  "@statisticsMonthlyChartSemanticSummary": {"description": "Screen-reader summary of the monthly activity bar chart: total logs and the busiest month.", "placeholders": {"total": {"type": "int"}, "month": {"type": "String"}, "count": {"type": "int"}}},
+  "statisticsYearlyChartSemanticEntry": "{year}: {count, plural, =1{1 entry} other{{count} entries}}",
+  "@statisticsYearlyChartSemanticEntry": {"description": "One year and its log count, as read by a screen reader for the yearly activity chart.", "placeholders": {"year": {"type": "int"}, "count": {"type": "int"}}},
+  "statisticsYearlyChartSemanticSummary": "Yearly activity: {entries}.",
+  "@statisticsYearlyChartSemanticSummary": {"description": "Screen-reader summary of the yearly activity bar chart; entries is a comma-separated list of year entries.", "placeholders": {"entries": {"type": "String"}}},
+  "statisticsMonthLongName": "{month, select, january{January} february{February} march{March} april{April} may{May} june{June} july{July} august{August} september{September} october{October} november{November} december{December} other{}}",
+  "@statisticsMonthLongName": {"description": "Full month name, read aloud in the monthly chart's screen-reader summary. month is one of january..december.", "placeholders": {"month": {"type": "String"}}}
 }

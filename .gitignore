@@ -4,6 +4,9 @@
 !.env.example
 mobile/config/dev.json
 !mobile/config/dev.example.json
+# A real release configuration (public values, but environment-specific).
+mobile/config/release.json
+!mobile/config/release.example.json
 
 # Python
 __pycache__/
@@ -29,6 +32,16 @@ build/
 **/*.jks
 **/*.keystore
 **/key.properties
+
+# Signing / cloud credentials -- never commit (Phase 15 will add real ones)
+**/google-services.json
+**/GoogleService-Info.plist
+**/service-account*.json
+*.p8
+*.p12
+*.mobileprovision
+*.pem
+*.key
 
 # IDE
 .vscode/

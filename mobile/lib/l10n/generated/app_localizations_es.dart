@@ -782,6 +782,25 @@ class AppLocalizationsEs extends AppLocalizations {
       'Este contenido aún no está disponible. Vuelve a consultarlo antes del lanzamiento.';
 
   @override
+  String get settingsLegalLinkOpenFailed =>
+      'No se pudo abrir el enlace. Inténtalo de nuevo más tarde.';
+
+  @override
+  String get startupFailureConfigurationTitle =>
+      'BeerApp no está configurada correctamente';
+
+  @override
+  String get startupFailureConfigurationMessage =>
+      'Esta versión de la app no tiene la configuración necesaria. Actualiza BeerApp o inténtalo de nuevo más tarde.';
+
+  @override
+  String get startupFailureInitializationTitle => 'BeerApp no pudo iniciarse';
+
+  @override
+  String get startupFailureInitializationMessage =>
+      'Algo salió mal al iniciar la app. Inténtalo de nuevo.';
+
+  @override
   String get settingsDeleteAccountRowTitle => 'Eliminar cuenta';
 
   @override
@@ -1013,4 +1032,70 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get contributionErrorGeneric => 'Algo salió mal. Inténtalo de nuevo.';
+
+  @override
+  String collectionRatingSemanticLabel(int rating) {
+    return 'Valoración: $rating de 5';
+  }
+
+  @override
+  String get statisticsMonthlyChartSemanticEmpty =>
+      'Actividad mensual: sin registros en los últimos 12 meses.';
+
+  @override
+  String statisticsMonthlyChartSemanticSummary(
+    int total,
+    String month,
+    int count,
+  ) {
+    String _temp0 = intl.Intl.pluralLogic(
+      total,
+      locale: localeName,
+      other: '$total registros',
+      one: '1 registro',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count registros',
+      one: '1 registro',
+    );
+    return 'Actividad mensual de los últimos 12 meses: $_temp0 en total. Mes con más registros: $month, $_temp1.';
+  }
+
+  @override
+  String statisticsYearlyChartSemanticEntry(int year, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count registros',
+      one: '1 registro',
+    );
+    return '$year: $_temp0';
+  }
+
+  @override
+  String statisticsYearlyChartSemanticSummary(String entries) {
+    return 'Actividad anual: $entries.';
+  }
+
+  @override
+  String statisticsMonthLongName(String month) {
+    String _temp0 = intl.Intl.selectLogic(month, {
+      'january': 'enero',
+      'february': 'febrero',
+      'march': 'marzo',
+      'april': 'abril',
+      'may': 'mayo',
+      'june': 'junio',
+      'july': 'julio',
+      'august': 'agosto',
+      'september': 'septiembre',
+      'october': 'octubre',
+      'november': 'noviembre',
+      'december': 'diciembre',
+      'other': '',
+    });
+    return '$_temp0';
+  }
 }

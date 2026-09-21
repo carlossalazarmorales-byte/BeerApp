@@ -423,7 +423,7 @@ Tasks:
 Exit criteria:
 
 - [x] User can explore beer geographically — implemented, covered by automated tests, and live-verified on a real Android emulator (see Status below)
-- [x] Map performance remains acceptable with many points — a server-side safety cap (`CappedList`, surfaced to the client as `truncated`) exists as a Phase 8 backstop; real viewport/bounding-box scale work remains deferred to Phase 14 at the current (small) catalog scale
+- [x] Map performance remains acceptable with many points — a server-side safety cap (`CappedList`, surfaced to the client as `truncated`) exists as a Phase 8 backstop; real viewport/bounding-box scale work was deferred to Phase 14, which measured it and did **not** build it (see Phase 14: the map is capped at 2,000 rows and stays a watch item)
 
 **Status (2026-09-16)**: complete. Backend (`pytest`, excluding
 `@pytest.mark.integration`) and Flutter (`flutter test`) suites both pass in
@@ -873,8 +873,10 @@ What was verified, and how:
   were not exercised.
 - **Pre-existing finding:** the same run showed **79 of the 111 older
   integration tests fail** (test-side defects; the suite had never been run
-  against a real database before). Not touched here; see `docs/DATABASE.md`
-  ("Status of this integration suite") and `docs/DECISIONS.md`.
+  against a real database before). Not touched here. **Resolved in Phase 14**:
+  the suite was repaired (test-side defects only) and all 269 integration tests now
+  pass on the PostgreSQL scaffold - see `docs/DATABASE.md` ("Testing") and
+  `docs/DECISIONS.md`.
 - **Migrations applied to `beerapp-dev`** (created with `supabase migration new`,
   timestamps `20260918155136`–`20260918155150`, all after the previous latest),
   with explicit go-ahead. `supabase db push --dry-run` first listed exactly those
@@ -916,31 +918,83 @@ is ASCII/case-insensitive only; cross-user name duplicates are not surfaced.
 
 Goal: prepare for real users.
 
+Status wording used below - **only DONE items are checked**: DONE = satisfied and
+evidenced; PARTIAL = part done, the rest stated; BLOCKED = needs something only the
+owner can supply; DEFERRED = deliberately postponed; NOT EXERCISED = could not be
+run here. Full write-ups are in `docs/DECISIONS.md` (dated 2026-09-21).
+
 Tasks:
 
-- [ ] Improve test coverage
-- [ ] Integration tests
-- [ ] End-to-end critical flows
-- [ ] Performance profiling
-- [ ] Image optimization
-- [ ] Map performance
-- [ ] API rate limiting
-- [ ] Error logging
-- [ ] Crash reporting
-- [ ] Analytics
-- [ ] Accessibility audit
-- [ ] Security review
-- [ ] Database backup strategy
-- [ ] Privacy policy
-- [ ] Adult audience / age-gating review
-- [ ] Responsible product design review
-- [ ] Terms
-- [ ] Account deletion compliance
+- [x] Improve test coverage — DONE. Backend default suite 336 -> 592, Flutter 476 -> 736, integration suite 269; new tests cover the hardening surfaces. No coverage *percentage* was measured.
+- [x] Integration tests — DONE on a PostgreSQL scaffold: the complete suite (269) passes with all 19 migrations, including a table x role x privilege security audit; no test touches `beerapp-dev`. **This is not full local Supabase verification** (Docker was unavailable; the preferred stack was not run). See `docs/DATABASE.md`.
+- [ ] End-to-end critical flows — **NOT EXERCISED.** No live authenticated flow was run (it needs a disposable account with inbox access). Covered only by controller, widget and service-level tests.
+- [ ] Performance profiling — **PARTIAL.** Backend profiled at 2k / 10k / 50k catalog rows on a disposable database (`EXPLAIN (ANALYZE, BUFFERS)`). Flutter profile-mode measurement **NOT EXERCISED**: no Android emulator or device was available.
+- [x] Image optimization — DONE. One shared `BeerImage` decodes at display size, with a stable placeholder and the existing fallback; verified by unit/widget tests (device memory saving not measured). URLs and storage untouched.
+- [x] Map performance — DONE for redundant work: platform calls in a scripted session 80 -> 19 (`MapDataSynchronizer`). The bounding-box endpoint the Phase 8 note deferred here was **not built** - the map is capped at 2,000 rows (about 43 ms at 50k in the profile) - and stays a watch item. Real-device rendering NOT EXERCISED.
+- [ ] API rate limiting — **PARTIAL / DEFERRED.** Implemented: request-body limit (413), bounded inputs, pagination bounds, database/network timeouts. **Not implemented:** requests-per-minute / per-user / edge rate limiting, which is a deployment-layer prerequisite once hosting is chosen. The bounds are not "full rate limiting"; no `429` exists. Trust scoring (from Phase 13) not implemented. There is deliberately **no per-user cap on pending contributions** (payload bounds, ownership controls, duplicate protections and DB constraints apply); a known operational consideration to revisit only if beta/production evidence shows real abuse.
+- [x] Error logging — DONE. Backend: standard-library request/error logging with request ids, no query strings, bodies, tokens or secrets. Mobile: global error handlers with debug-only diagnostics. No log aggregation or retention is configured (deployment).
+- [ ] Crash reporting — **PARTIAL.** Local/global Flutter error handling, guarded startup and a localized failure screen are implemented; **no remote crash-reporting provider is selected** (owner decision), so device crashes are not collected.
+- [ ] Analytics — **NOT IMPLEMENTED, by decision.** No analytics SDK; the privacy-conscious default (no analytics) stands.
+- [x] Accessibility audit — DONE (the audit and its fixes). The `PrimaryButton` contrast gap was fixed: the amber gradient's dark end was lightened (`#af8200`) and the label is the existing dark `onSurface`, at least 4.5:1 across the **whole** gradient (worst point 4.90:1, asserted by test); `ScanNavButton` uses the same pair. Open items: no TalkBack or VoiceOver pass; map markers have no screen-reader alternative; navigation labels clamp at 1.3x text; hardware-keyboard focus is not comprehensive (`PrimaryButton` only). Not a WCAG conformance claim.
+- [x] Security review — DONE for the code and database (documented). **Not covered:** the remote Supabase Auth dashboard settings (owner-owned), an external penetration test, a dependency vulnerability audit.
+- [ ] Database backup strategy — **BLOCKED.** Requirements and open tasks are documented; **nothing is configured and no restore was tested** - no production Supabase project exists (`beerapp-dev` is not production) and the plan tier is the owner's decision.
+- [ ] Privacy policy — **BLOCKED.** The external-link infrastructure (validated public HTTPS URL, external browser, placeholder while unset) is implemented; the real text and URL must be supplied by the owner. No legal text was written.
+- [x] Adult audience / age-gating review — DONE (facts documented; no contradiction found): mandatory adult-audience acknowledgement, no guest mode, device-local **self-declaration, not age verification**. Per-market and store age-rating review remains for Phase 15.
+- [x] Responsible product design review — DONE; no contradiction with `PRODUCT.md` §3 or `CLAUDE.md` in the implementation. The monthly chart's screen-reader summary was reworded to neutral "entries" language, and `PRODUCT.md` §16 was rewritten to match `CLAUDE.md` and the Phase 10 decision (no achievements from log counts, frequency, streaks or volume).
+- [ ] Terms — **BLOCKED.** Same as Privacy policy: infrastructure done, real text and URL owner-supplied.
+- [ ] Account deletion compliance — **PARTIAL.** The deletion path and cascade to all six user-owned tables are documented and proven on the scaffold; a live deletion against a real project is **NOT EXERCISED**; retention (including future backups) and store deletion-URL requirements are open.
 
 Exit criteria:
 
-- Core flows are stable
-- App is production-ready
+- [ ] Core flows are stable — **automated verification complete; not claimed as met.** The final verification pass is green (Flutter 736, backend 592, integration 269), but no live authenticated end-to-end flow has been exercised, so this stays unchecked until one is.
+- [ ] App is production-ready — **No.** This is the full production/store readiness question; it depends on Phase 15 and the owner-supplied prerequisites below.
+
+**Status (2026-09-21) - final verification done.**
+
+- **A. Phase 14 engineering/hardening work: complete.** It is implemented, reviewed,
+  documented and verified: backend default suite 592 passed and integration suite
+  269 passed on a clean rebuild of the disposable PostgreSQL scaffold (scaffold plus
+  all 19 migrations, no rows left behind, `beerapp-dev` never touched); Flutter 736
+  passed, `flutter analyze` and `dart format` clean; `ruff` clean; an Android
+  **release** build compiles with a production-shaped placeholder configuration
+  (which the release guard accepts) and a **debug** build compiles with the normal
+  development configuration. This is verification of the engineering work, not a
+  production-signed or store-ready build.
+- **B. Full production/store readiness: NOT achieved, and is not claimed.** It still
+  depends on Phase 15 and the owner-supplied prerequisites listed below (legal text
+  and URLs, hosting, a production Supabase project with backups, signing, store
+  setup, and more).
+
+The `private.set_updated_at()` privilege migration
+`20260921100000_revoke_public_execute_on_set_updated_at` is **applied to
+`beerapp-dev`**: the dry-run contained exactly that migration; linked lint passed;
+all 19 migrations match the remote and none is pending; a read-only before/after
+comparison showed only the intended ACL change and no row data changed, and a
+re-check at final verification found no drift (both contribution tables still empty).
+
+Found and fixed during final verification: `ios/Runner/Info.plist` was not
+well-formed XML (a `--` inside a comment I had added), which Xcode would reject and
+the previous test could not see; it is fixed and now covered by a regression test on
+the raw file (for the plist and all three Android manifests). Found and documented,
+not changed: the merged Android release manifest requests location, WiFi/network-state
+and biometric permissions that libraries add (see Phase 15 checks below).
+
+Release blockers (owner-supplied; not chosen or invented here):
+
+1. Real Privacy Policy and Terms **text and public URLs**.
+2. Hosting choice and a public **https API URL** (a release build refuses to start against a local or non-https URL).
+3. A **production Supabase project**, its plan, backup/PITR configuration and a recorded **restore drill**.
+4. A review of the **remote Supabase Auth settings** (redirect allowlist, email confirmation, password policy, CAPTCHA, auth rate limits).
+5. **Requests-per-time rate limiting** at the deployment layer.
+6. A **crash-reporting provider** decision (and confirmation that analytics stays off).
+7. Google **iOS client ID** (`GIDClientID`) - iOS Google sign-in is NOT CONFIGURED; iOS itself was never built or run here.
+8. A **disposable test account** with inbox access, for live end-to-end and live account-deletion checks.
+9. Release **signing** and store material (Phase 15).
+
+NOT EXERCISED in Phase 14: live authenticated end-to-end flows; live account deletion;
+Android profile-mode performance and real map rendering; TalkBack/VoiceOver; anything
+on iOS; a real local Supabase stack (Docker); live trigger firing on `beerapp-dev`
+after the privilege migration; a backup restore.
 
 ---
 
@@ -971,6 +1025,26 @@ iOS:
 - [ ] TestFlight
 - [ ] App Review
 - [ ] Production release
+
+Checks carried in from Phase 14 (none is done; each is a known limitation, not a
+silent gap):
+
+- [ ] Re-check current App Store policy on whether Sign in with Apple is required
+  alongside Google sign-in before any iOS release (Apple sign-in is not implemented)
+- [ ] iOS has never been built or run here; supply the Google iOS client ID
+  (`GIDClientID`) - Google sign-in on iOS is NOT CONFIGURED
+- [ ] Per-market age-gating and store age-rating review (the app has a device-local
+  self-declaration only, not age verification)
+- [ ] Store account-deletion requirements, including any web deletion URL
+- [ ] Physical-device TalkBack and VoiceOver pass; keyboard/focus behaviour is not
+  comprehensive
+- [ ] Live authenticated end-to-end and live account-deletion checks, with an
+  explicitly disposable account
+- [ ] Release signing (the release build still uses the debug key)
+- [ ] Review the **merged Android permissions** for the store privacy/data-safety
+  disclosures: the release APK also requests location, WiFi/network state and
+  biometric permissions that libraries add (the app's own manifest declares only
+  `INTERNET` and `CAMERA`); decide whether to remove the unused ones
 
 ---
 

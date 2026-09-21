@@ -1,7 +1,11 @@
 # API
 
 Phase 3 adds the backend's first protected endpoints and, with them, the
-first real conventions below. `GET /health` remains unauthenticated.
+first real conventions below. `GET /health` remains unauthenticated - it is a
+**liveness probe only** (the process is up and serving HTTP), identical in every
+environment; it deliberately does not check the database, Supabase or auth, so a
+database outage cannot make an orchestrator restart a healthy process. It is not a
+readiness check.
 
 ## Auth
 
@@ -14,6 +18,13 @@ trusted from the token header), `exp`, `iss` (derived from `SUPABASE_URL`),
 `aud` (defaults to `authenticated`), and the `role` claim (`authenticated`).
 See `docs/DECISIONS.md` for the JWKS preflight this was gated on.
 
+**Bounded JWKS refresh (Phase 14).** A token's `kid` is attacker-supplied, so key
+loading is rate-bounded: a loaded key set is trusted for at most
+`JWKS_CACHE_TTL_SECONDS` (default 600), and an unknown `kid` or a failed load can
+trigger a refresh at most once per `JWKS_REFRESH_COOLDOWN_SECONDS` (default 30).
+Forged tokens therefore cannot make the backend call Supabase repeatedly. Token
+validation itself is unchanged.
+
 FastAPI has no role in *issuing* sessions — that's still entirely Supabase
 Auth via `supabase_flutter` on the mobile side (Phase 2). FastAPI only
 verifies tokens Supabase already issued.
@@ -21,7 +32,8 @@ verifies tokens Supabase already issued.
 ## Conventions
 
 - **Pagination**: `?page=&page_size=` (1-indexed, default `page_size=20`, max
-  `page_size=100`). Paginated responses: `{ "items": [...], "page": ...,
+  `page_size=100`; `page` is at most 10,000, so a request past the end of the data
+  returns an empty page rather than an error). Paginated responses: `{ "items": [...], "page": ...,
   "page_size": ..., "total": ... }`.
 - **Errors**: every error response shares one envelope:
   `{ "error": { "code": ..., "message": ... } }`.
@@ -46,10 +58,57 @@ verifies tokens Supabase already issued.
   Phase 6's beer logs are the first real cases: a future `consumed_at`
   (create or update), and a PATCH that would leave `price`/`currency`
   inconsistent (see the beer-logs section below).
-- **503** — the JWKS endpoint itself is unreachable (an infrastructure
-  failure, not a bad token).
-- **500** — any other unhandled infrastructure failure (`asyncpg`, `httpx`).
-  Raw driver/library exceptions and stack traces never reach the client.
+- **413** — the request body exceeds the size limit (64 KiB by default,
+  `MAX_REQUEST_BODY_BYTES`). Checked from a declared `Content-Length` (refused
+  without reading the body) *and* from the bytes actually received (so a chunked
+  or understated body is cut off as soon as the limit is crossed). Envelope code
+  `payload_too_large`.
+- **503** — a genuinely *temporary* availability failure; the caller did nothing
+  wrong and a retry may succeed. Fixed message, no detail: the JWKS endpoint is
+  unreachable, the database connection is lost/refused/saturated/shutting down, a
+  statement was cancelled, or an acquire/command timeout fired (connect 10 s,
+  acquire 10 s, command 30 s by default). Deliberately narrow: constraint
+  violations, bad SQL and data errors are **not** 503.
+- **500** — any other unhandled failure. The body is always the fixed
+  `internal_error` envelope; raw driver/library exceptions, SQL, constraint names
+  and stack traces never reach the client.
+- **No `429`.** The API does not rate-limit by request count and never returns 429;
+  see "Rate limiting" below.
+- **Request id.** Every response carries `X-Request-ID`. A client-supplied value is
+  kept only if it is 1-64 characters of `A-Z a-z 0-9 . _ -`; otherwise the server
+  generates one.
+- **Input bounds** (all overflow is a `422`, never a `500`): `price` has at most 10
+  digits and 2 decimals; `serving_volume_ml` is `1..2,147,483,647` (the `integer`
+  column's range); `q` is at most 100 characters and may not contain NUL; barcodes
+  are ASCII digits only; text fields have explicit maximum lengths and reject NUL
+  (beer-log `review` 2,000, `serving_note` 500, `venue_name` 200 characters;
+  contribution fields match their database CHECKs).
+- **A valid token for a deleted account** is a `401` (same message as any bad
+  token), on any write that violates the `user_id` foreign key. It is decided by
+  the constraint name, never by guessing: a violation of the *beer* foreign key
+  remains a `404` for that beer id.
+
+### Interactive docs
+
+`/docs`, `/redoc` and `/openapi.json` are served **only** when `ENVIRONMENT` is
+`local` or `dev`; in any other environment (including a misspelled value - the check
+fails closed) they return 404, so a deployed API does not publish its schema.
+
+### Rate limiting (status, exactly)
+
+**Implemented:** the request-body limit, bounded inputs, pagination bounds and the
+database/network timeouts above. These cap the size and cost of a *single* request.
+
+**Not implemented:** requests-per-minute, per-user or per-IP limiting, and any
+distributed/edge rate limiting. The bounds above are **not** "full rate limiting".
+True rate limiting is a **deployment-layer prerequisite**, to be added at a reverse
+proxy, gateway or edge once hosting is chosen (an in-process limiter would be
+per-instance and easy to sidestep). A `429` will be documented here only when a code
+path really returns one. Trust scoring is also not implemented. There is deliberately
+**no per-user cap on pending contributions**: payload/input bounds, ownership
+controls, duplicate protections and database constraints apply, and a pending-state
+cap will be reconsidered only if beta or production evidence shows a real abuse
+problem (a known operational consideration, not a missing Phase 14 feature).
 
 ## Endpoints (Phase 3)
 
@@ -491,8 +550,10 @@ treated as success), so a retried `DELETE /account` is always safe.
 reasoning): deleting the account invalidates its refresh sessions, but an
 already-issued access JWT remains a stateless, signature-verified token
 until its own expiry — `get_current_user` does not check a revocation list.
-Every table this token could still address now has zero rows for that id,
-so this is a documented, accepted gap, not a data-exposure risk.
+Every table this token could still address now has zero rows for that id, so
+reads return nothing, and (since Phase 14) a write fails with `401` because the
+`user_id` foreign key no longer resolves. This is a documented, accepted gap, not a
+data-exposure risk.
 
 ## Contributions (`/beer-contributions`, `/brewery-contributions`, `/contributions`, Phase 13)
 

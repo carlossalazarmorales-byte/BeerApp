@@ -1817,3 +1817,678 @@ server-controlled status). Images, media and Supabase Storage were not touched
   SQL, constraints, RLS and function privileges, but *not* a Supabase project: it
   does not exercise Supabase's own `auth` schema, PostgREST, or the real Supabase
   roles/defaults.
+
+## 2026-09-21 — Phase 14: security review (posture after hardening, and what it does not cover)
+
+A review of the security posture as it stands after Phase 14 Stages 1-5. Every
+control below is backed by an automated test unless it says otherwise; anything
+that could not be exercised is listed under "Not covered".
+
+**Controls in place**
+
+- **Token verification.** `app/auth/` verifies Supabase JWTs locally against the
+  project's JWKS: signature, an algorithm allowlist (`RS256`/`ES256`, chosen from
+  the matched key's own type, never from the token header), `exp`, `iss`, `aud`
+  and `role`. Every failure is one uniform 401.
+- **Bounded JWKS refresh.** A token's `kid` is attacker-supplied, so the key
+  cache cannot be allowed to trigger an outbound fetch per request. A loaded key
+  set is trusted for at most `JWKS_CACHE_TTL_SECONDS` (default 600 s); an unknown
+  `kid` or a failed load can trigger a refresh at most once per
+  `JWKS_REFRESH_COOLDOWN_SECONDS` (default 30 s). The very first load does not
+  start the unknown-`kid` cooldown, so a legitimate key rotation right after
+  startup still resolves. Worst case is about two fetches per cooldown window.
+  Validation itself was not loosened. (`tests/auth/test_jwks_cache.py`)
+- **Request-body limit.** 64 KiB by default (`MAX_REQUEST_BODY_BYTES`), enforced
+  twice: a declared `Content-Length` over the limit is refused without reading the
+  body, and the bytes actually received are counted as they stream, so a chunked
+  body or an understated length is cut off as soon as the limit is crossed. Both
+  return **413** in the standard error envelope (`payload_too_large`).
+- **Input bounds aligned to the schema.** `price` is `numeric(10,2)`-shaped
+  (`max_digits=10`, `decimal_places=2`); `serving_volume_ml` is bounded only by
+  the `integer` column's maximum (2,147,483,647 - a deliberate decision: no
+  tighter cap was justified); `page` is `1..10,000` (`MAX_PAGE`) and `page_size`
+  `1..100`; search `q` is capped at 100 characters and rejects NUL; text fields have explicit
+  maximum lengths (beer-log `review` 2,000, `serving_note` 500, `venue_name` 200;
+  contribution fields match their database CHECKs); barcodes are ASCII digits only (a non-ASCII "digit" such as an Arabic-Indic
+  numeral is rejected at the request boundary instead of reaching the database
+  CHECK as a 500). Overflow is a 422, never a 500.
+- **Database and network timeouts.** Connect 10 s, acquire (waiting for a pooled
+  connection) 10 s, command 30 s - all configurable and all `> 0`. A saturated
+  or unreachable database fails fast instead of hanging requests.
+- **Sanitized error behaviour.** 413, 503 and 500 all use the standard envelope
+  and never carry driver text, SQL, stack traces or constraint names. **503**
+  is reserved for genuinely temporary availability failures (connection lost or
+  refused, server saturated or shutting down, statement cancelled, our own
+  timeouts, DNS); constraint violations, bad SQL, data errors and every other
+  exception stay **500** - a programming error must not masquerade as "try
+  again later". A valid token for a deleted account (its `user_id` foreign key
+  fails) is a **401**, decided by the *constraint name*, so it is no longer
+  misreported as "beer not found" and reveals nothing about any other user.
+- **Request logging.** Standard-library logging only. One line per request:
+  request id, method, path, status, duration. The path is the matched route
+  *template* (`/beers/{beer_id}`), never the query string (search text,
+  barcodes); bodies, `Authorization` and tokens are never read or logged. Every
+  response carries `X-Request-ID`; a client-supplied id is kept only if it is
+  short and made of safe characters. `uvicorn.access`, `httpx` and `httpcore` are
+  quieted because they would log the query string and outbound URLs.
+- **Production surface.** `/docs`, `/redoc` and `/openapi.json` exist only when
+  `ENVIRONMENT` is `local` or `dev`. The check fails closed: any other value,
+  including a misspelling, is treated as production-like (docs off, `https`
+  required for `SUPABASE_URL`). `/health` is a deliberate, documented liveness
+  probe: unauthenticated, identical everywhere, and it does not touch the
+  database.
+- **Mobile release guard.** A release build refuses to start (a localized
+  "not configured correctly" screen, value-free diagnostics) unless the Supabase
+  URL, the publishable key and the API URL are present, both URLs are `https`,
+  and neither host is loopback/private/link-local/CGNAT or a local-only name
+  (this catches `http://10.0.2.2:8000`). Debug builds keep the relaxed rules.
+- **Legal URLs.** Public `https` only, no credentials, no local/private host.
+  Unset means the placeholder screen; a value that is *configured but invalid in
+  a release build* is a startup configuration failure, not a silent downgrade to
+  the placeholder (an owner decision: a broken compliance link should be caught
+  before shipping). Opened in the external/default browser, never a WebView.
+- **Database boundary.** `backend/tests/integration/test_security_audit.py`
+  pins the exact set of `public` tables, RLS on every one, the full table x role
+  x privilege matrix for `anon`, `authenticated`, `beerapp_backend` and
+  `beerapp_seed`, nothing granted to `PUBLIC`, the exact set of RLS policies
+  (owner policies keyed on the request identity, never `USING (true)` for user
+  data), the catalog unwritable by the backend role, the contribution tables
+  `SELECT`+`INSERT` only, and that *every* foreign key to `auth.users` cascades
+  and none is unaudited. It also audits every function in `private`: a fixed
+  `search_path` on each `SECURITY DEFINER` function, only the intended `EXECUTE`
+  grants, and nothing reachable through `USAGE` on schema `private`. A new table,
+  function or policy fails these tests until it is reviewed and added.
+- **`private.set_updated_at()`.** The audit found `EXECUTE` still held by
+  `PUBLIC` (PostgreSQL's default for a new function), so `anon`,
+  `authenticated` and `beerapp_backend` could call it. It is a trigger function
+  and not callable meaningfully, but there was no reason to leave it open, so
+  migration `20260921100000_revoke_public_execute_on_set_updated_at` revokes it
+  from `public, anon, authenticated`. Owner and definition are unchanged; the
+  seven `updated_at` triggers still fire for their real writers without any role
+  holding `EXECUTE` (proven).
+- **Integration-suite isolation.** The suite refuses to run unless its database
+  is disposable: it may not equal, or share a host with, `DATABASE_URL` or
+  `SEED_DATABASE_URL`, and must be loopback unless
+  `INTEGRATION_DATABASE_ALLOW_REMOTE` is set. No test connects to `beerapp-dev`
+  or to any DSN from the runtime `.env`.
+- **Seed-script guard.** `scripts/seed_catalog.py` refuses to run unless
+  `ENVIRONMENT` is `local`/`dev`, the target differs from the runtime
+  `DATABASE_URL`, and `--yes` is passed; without `--yes` it prints only the target
+  host, never credentials.
+- **Android.** `allowBackup="false"` (the app's local storage holds the auth
+  session), no backup-rule files, `INTERNET` and `CAMERA` only in the app's *own*
+  (main) manifest - **but the built release APK requests more, merged in from
+  libraries** (see "Not covered" below) - release cleartext blocked (only the *debug* source set allows
+  cleartext, and only to `10.0.2.2`), the only exported component is the launcher
+  activity. All pinned by `test/platform/android_manifest_test.dart`.
+- **Credential hygiene.** Two database role credentials that had been committed to
+  a tracked test file were rotated by the project owner and the tracked file now
+  uses obviously fake values; a scan confirmed no tracked file contains the old
+  ones. Git history was deliberately **not** rewritten (CLAUDE.md), so the old
+  values remain in private history - rotated, therefore no longer valid.
+  `.gitignore` now also covers signing and cloud-config files.
+
+**Not covered / remaining limitations (stated, not silent)**
+
+- **No requests-per-time-window rate limiting** (see the rate-limiting entry).
+- **The remote Supabase Auth settings were not reviewed** - redirect allowlist,
+  email confirmation, password policy, CAPTCHA and Supabase's own auth rate limits
+  are dashboard settings, not in the repository. This is owner-owned and open.
+- **Residual access-token lifetime.** Deleting an account cannot revoke an
+  already-issued access JWT; it stays valid until `exp`. Reads then return
+  nothing and writes now fail with 401 (the user foreign key), so this is not a
+  data-exposure path, but the token still authenticates.
+- **`ssl="require"` encrypts but does not verify the server certificate.** It
+  protects against passive eavesdropping, not an active man-in-the-middle on the
+  path to the database pooler. Whether to pin the CA is a deployment decision.
+- **Server logs are sensitive.** The application does not log secrets, bodies or
+  query strings, but an unhandled asyncpg error's traceback (server side only,
+  never sent to the client) can contain a `DETAIL:` line with row values. No log
+  aggregation, retention policy or access control exists yet; when one is chosen
+  it must be treated as holding personal data.
+- **The backend credential is the trust boundary.** RLS scopes each request by a
+  transaction-local `app.user_id` that `beerapp_backend` sets itself, so RLS here is
+  defence in depth against a *bug*, not against a compromised backend credential.
+- **Operational consideration: no per-user cap on pending contributions.** This
+  is a deliberate decision, not a missing Phase 14 implementation. Each
+  contribution is bounded in size and protected by ownership controls (owner-only
+  rows, `user_id` from the verified token, `status` pinned to `pending`), duplicate
+  protections and database constraints; the *count* is not capped, because an
+  arbitrary product-state cap was not justified without evidence. Requests-per-time
+  limiting belongs to the deployment layer once hosting is chosen. A pending-state
+  cap will be reconsidered only if beta or production evidence shows a real abuse
+  problem.
+- **Not done:** an external penetration test; a dependency vulnerability audit
+  (`pip-audit` or equivalent) - no dependency was upgraded in Phase 14 by design
+  (`flutter pub` reports 7 packages with newer, constraint-incompatible versions);
+  R8/minification tuning; release signing (Phase 15; the release build still uses
+  the debug key); certificate pinning.
+- **The shipped Android APK requests more permissions than the app's own
+  manifest declares.** Inspecting the merged manifest of the release build (final
+  verification) shows, besides `INTERNET` and `CAMERA`: `ACCESS_FINE_LOCATION`,
+  `ACCESS_COARSE_LOCATION`, `ACCESS_WIFI_STATE` and `ACCESS_NETWORK_STATE` (added by
+  MapLibre's `android-sdk-opengl`; `ACCESS_NETWORK_STATE` also by the ML Kit
+  transport library), and `USE_BIOMETRIC` / `USE_FINGERPRINT` (added by
+  `androidx.biometric`, a transitive dependency). The app uses none of location,
+  WiFi state or biometrics itself. These predate Phase 14 and were not changed: the
+  manifest test pins only the app's own manifests. They matter for the store privacy
+  and data-safety disclosures (Phase 15), and each can be removed with a
+  `tools:node="remove"` entry once that is decided and tested on a device. A
+  decision for the owner - not made here.
+- **iOS is unverified.** No iOS build or run was possible on this machine.
+  The auth-redirect URL scheme is registered in `Info.plist`, but Google Sign-In
+  on iOS needs a `GIDClientID` that has **not** been supplied and was **not**
+  invented - **NOT CONFIGURED, a release blocker** until the owner provides a
+  Google iOS client ID.
+- **Deep links** use a custom URL scheme, not a verified App Link/Universal Link;
+  whether another app on a device could claim the same scheme was not assessed.
+
+## 2026-09-21 — Phase 14: adult-audience / age-gating review
+
+Facts about what the app does today, checked against `PRODUCT.md` §3/§6 and
+`CLAUDE.md`. This is a description of the implementation, **not a claim of legal
+compliance in any jurisdiction**.
+
+- **Model.** BeerApp is adult-only and authentication is mandatory - there is no
+  guest mode and no path into the app without an account.
+- **The gate.** The first screen (`WelcomeScreen`) has a required checkbox,
+  "I confirm I am of legal drinking age in my jurisdiction." Sign in, sign up and
+  Google sign-in are disabled until it is checked, and acknowledging is what
+  advances the user.
+- **It is the first thing the router decides.** The age gate is the *first* layer
+  of the router's redirect: until it is acknowledged, every location redirects to
+  the welcome screen. It is merged with the auth controller into one redirect
+  decision so neither can be skipped by targeting the other. Tested: with the gate
+  unacknowledged, a direct navigation to the sign-in route bounces back to welcome
+  (`test/app/router_test.dart`); the checkbox gating of the three sign-in actions is
+  covered in `test/features/auth/welcome_screen_test.dart`. An operating-system
+  deep link was not separately tested against the gate.
+- **What it is.** A **self-declaration stored locally on the device**
+  (`SharedPreferences` key `age_gate_acknowledged`, a boolean). It is not sent to
+  the backend, not tied to an account, and not verified.
+- **What it is not.** It is not identity or age *verification*: no date of birth,
+  no document check, no per-country legal age. The statement is deliberately
+  jurisdiction-neutral ("legal drinking age in my jurisdiction").
+- **Consequences of "device-local", stated plainly.** A reinstall or cleared app
+  data asks again; a second account on the same device is not asked again; and the
+  backend neither knows nor enforces it, so a caller holding a valid token and
+  using the API directly is not subject to the gate. That is inherent to the
+  chosen model, not an accidental gap.
+- **No attempt to bypass store or platform requirements.** Nothing here claims or
+  implies a store age rating or questionnaire answer.
+- **Contradictions found: none.** The implementation matches PRODUCT.md §3 and §6
+  and CLAUDE.md, so it was not redesigned.
+- **Still to do before release, per PRODUCT.md §3 ("must be reviewed before
+  release in each market"):** the store age-rating questionnaires, each target
+  market's age-assurance expectations, and whether a stronger mechanism is
+  required for any market. That is Phase 15 / counsel territory and is **not done**.
+  (Separately, Apple sign-in - listed in PRODUCT.md §6 as an initial method and
+  unchecked in ROADMAP Phase 2 - is not implemented; whether Apple requires it
+  alongside Google sign-in on iOS should be checked against current App Store
+  policy in Phase 15.)
+
+## 2026-09-21 — Phase 14: responsible product design review
+
+Each rule in `PRODUCT.md` §3 and `CLAUDE.md` ("Responsible Product Design"),
+checked against the code as it stands. **Result: no contradiction found.** One
+Phase 14 string is called out below as a judgement call.
+
+| Rule | Finding |
+|---|---|
+| No achievements based on quantity consumed | The achievement catalog (`app/services/achievement_catalog.py`) has exactly three entries: first favorite, first wishlist item, and a "collection curator" that requires those two. All derive from the *collection* (`is_favorite`/`is_wishlist`); none reads `user_beer_logs`, and none counts logs, beers tried or volume. The unused categories (`beers_tried`, `countries`, ...) exist in the enum but have no entries, on purpose. `PRODUCT.md` §16 was rewritten in Phase 14 to say exactly this: achievements must not reward or encourage drinking quantity, frequency, streaks or consumption volume, and log counts are not a valid source. |
+| No streaks, leaderboards, speed or quantity competition | None exists in the backend or the app. (The only occurrences of "streak" in the code are comments stating there are none.) |
+| Statistics are descriptive, not a target | The screen shows unique beers, total logs, countries/styles/breweries discovered, average rating, amount spent on priced logs, a favorite style/country/brewery, and monthly/yearly activity charts. There are no goals, targets, comparisons, rankings, notifications or "keep it up" copy. **Recorded volume is not computed or shown at all** (PRODUCT.md §15 lists it as a possibility; it was not built). |
+| Scanner never auto-logs | `ScanScreen` only looks a barcode up and navigates to the existing beer detail screen; it never creates a beer, a log or a contribution. A "not found" result *offers* a suggestion, which the user must start and submit themselves. |
+| Contributions never modify the canonical catalog | Suggestions live in their own tables and only reach `pending`. `beerapp_backend` is `SELECT`-only on the four catalog tables (audited), and an end-to-end test shows a submission that mirrors a verified beer leaves it unchanged. |
+| Favorites/wishlist are collection metadata | They live on the separate, user-owned `user_beer_collection` row, never on the global `Beer` record (the CLAUDE.md data-model rule), and are independent of logging. |
+| No new Phase 14 copy introduces consumption pressure | New strings were reviewed: loading and error messages, the startup-failure screen, legal-link placeholders, the delete-account field label, the collection rating label ("Rated 4 out of 5"), and the chart summaries. Only the chart summaries touch consumption data - see "Resolved" below. |
+| Verification did not create consumption data | No log, favorite, wishlist entry or achievement was created on `beerapp-dev` at any point in Phase 14. Profiling used synthetic rows in a disposable local database only; the remote migration check was read-only and compared per-table row counts and content hashes before and after. Live emulator flows were **not exercised**. |
+
+**Resolved: chart summary wording.** The monthly chart's screen-reader summary
+gives a screen-reader user what a sighted user reads off the bars, and it is
+descriptive, not a goal. An earlier draft framed the tallest month as the
+"busiest"; on review that language was rejected as competitive framing. It now
+reads, for example, "Monthly activity over the last 12 months: 11 entries in total.
+Month with most entries: January, 5 entries." (Spanish: "... 11 registros en total.
+Mes con más registros: enero, 5 registros."), using "entries" and no ranking, goal
+or comparison words. A test asserts that no such words appear in either language.
+Nothing else in Phase 14 ranks activity.
+
+**Resolved: `PRODUCT.md` §16.** The section used to list "Number of unique beers"
+and "Number of logs" as possible achievement categories, which contradicted
+`CLAUDE.md` and the Phase 10 decision. It was rewritten to match them and the
+implementation: achievements must not reward or encourage drinking quantity,
+frequency, streaks or consumption volume; logged consumption is not a valid
+achievement source; the starter achievements (first favorite, first wishlist,
+collection curator) are collection/curation based. §3 gained the same rule. No new
+achievement was added.
+
+**Observation, not a contradiction:** the empty-state text "Log a beer or favorite
+one to see your statistics here" is a neutral invitation, not a target.
+
+## 2026-09-21 — Phase 14: account-deletion review
+
+Documents the deletion path as it exists and what was and was not proved. Not a
+statement of regulatory or store compliance.
+
+- **Architecture.** Settings -> Delete account -> a confirmation dialog that
+  requires typing the user's own username -> `DELETE /account` on FastAPI with the
+  session token. The backend deletes the account of the token's verified `sub`
+  (never a client-supplied id) by calling the Supabase Auth **Admin API**
+  (`DELETE {SUPABASE_URL}/auth/v1/admin/users/{id}`, `apikey` header, 10 s
+  timeout). Deleting through the Admin API - not by writing to `auth.users` - is
+  the only path Supabase supports, and no Postgres role holds that privilege.
+- **Backend-only secret.** The Admin call uses `SUPABASE_SECRET_KEY`
+  (`sb_secret_...`), held only in the backend environment, optional at boot, never
+  logged, never in a response, never in `mobile/config/*`. If it is unset, only
+  `DELETE /account` degrades (503); the rest of the API is unaffected.
+- **Data removal is by cascade, not by application code.** Every user-owned table
+  references `auth.users(id) ON DELETE CASCADE`: `profiles`, `user_beer_logs`,
+  `user_beer_collection`, `user_achievements`, `beer_contributions` and
+  `brewery_contributions`. `AccountService` deliberately deletes nothing itself.
+- **Integration proof.** `test_security_audit.py` asserts that every foreign key
+  to `auth.users` cascades and that none is unaudited, and that deleting an
+  `auth.users` row removes every row the user owns across all six tables; the
+  per-table cascade tests and the contributions cascade test do the same. This was
+  run against the disposable PostgreSQL scaffold - **not** a real Supabase project
+  (see `docs/DATABASE.md`).
+- **Status codes and idempotency.** `204` with an empty body on success. A `404`
+  from Supabase (already deleted) is treated as success, so a retry is always safe
+  and "already deleted" is indistinguishable from "just deleted". A failed Admin
+  call, or a missing secret key, is a sanitized `503` - never a `500`, `404` or
+  `403`.
+- **Local sign-out sequencing.** The app signs the user out locally only *after* a
+  `204`; on failure it shows a generic error and keeps the session so the user can
+  retry. The sequencing relies on the verified gotrue behaviour recorded in the
+  Phase 12 entry.
+- **Residual access-token lifetime (unchanged limitation).** The already-issued
+  access JWT stays valid until `exp`. Reads return nothing; writes now fail with
+  `401` because the `user_id` foreign key no longer resolves (Phase 14 - previously
+  misreported as "beer not found"/500).
+- **NOT EXERCISED:** a live end-to-end deletion against a real Supabase project.
+  The owner's own account was **not** deleted, and the only permitted live test is
+  one with an explicitly disposable account.
+- **Open items for the retention/privacy statement and Phase 15:** whether
+  Supabase-managed copies (auth logs, and backups once they exist) outlive the
+  deletion and for how long; that there is no data-export feature; that Google
+  Play's requirements for account deletion (including a web-accessible deletion
+  path for apps that offer account creation) must be checked against current
+  policy; and, once a moderation workflow exists, how an *approved* contribution
+  that became a catalog row relates to its deleted author.
+
+## 2026-09-21 — Phase 14: database backup strategy is not configured
+
+**Nothing here was configured, and no restore was tested.**
+
+- `beerapp-dev` is a development project. It is **not** production and its backup
+  posture says nothing about production.
+- **No production Supabase project exists yet.** What backups and point-in-time
+  recovery (PITR) are available depends on the plan and project that will be
+  chosen; that choice, and its cost, belong to the owner. No paid plan was chosen
+  or recommended.
+- What is and is not recoverable *without* backups: the **schema** is fully
+  reproducible from `supabase/migrations/` in Git. **User data** (logs,
+  collection, achievements, contributions, profiles) exists only in the database,
+  so it is exactly what backups must protect. Catalog rows in dev come from a
+  dev-only seed script and are not a source of truth for production.
+- Decisions and tasks that remain **release/deployment work**: choose the plan and
+  region; enable and verify automated backups (and PITR if the recovery-point
+  target needs it); set retention; decide who may access and restore them; agree
+  recovery point/time targets; **perform and record a restore drill**; and reconcile
+  retention with account deletion (see the account-deletion entry).
+- **Status of the restore test: NOT EXERCISED - it cannot truthfully be marked
+  passed until a project with backups exists.**
+
+## 2026-09-21 — Phase 14: rate limiting - what exists and what does not
+
+Precise wording matters here, because "rate limiting" is a ROADMAP item.
+
+**Implemented - deterministic technical bounds** (they cap the *size and cost of a
+single request*, not how often a client may call):
+
+- a request-body limit (64 KiB, 413);
+- bounded inputs: text lengths, numeric ranges, barcode shape, query length;
+- pagination bounds (`page` <= 10,000, `page_size` <= 100);
+- database connect/acquire/command timeouts and a bounded connection pool;
+- a bounded JWKS refresh rate (so unauthenticated forged tokens cannot make the
+  backend call Supabase repeatedly).
+
+**Not implemented: requests-per-minute, per-user or per-IP limiting, and any
+distributed/edge rate limiting.** These bounds are **not** "full rate limiting":
+nothing stops a client from sending many valid requests quickly, and the API returns
+no `429` (a `429` will be added only when a code path really produces one).
+
+**Deployment-layer prerequisite.** True rate limiting needs the hosting
+environment: a reverse proxy, API gateway or edge/WAF that sees the real client
+address and can share counters across instances. It should be chosen and
+configured once hosting is chosen; an in-process limiter would be per-instance and
+easy to sidestep. Supabase Auth's own limits on sign-in and sign-up are a remote
+setting that was not reviewed.
+
+**Related, also not implemented:** trust scoring (deferred from Phase 13). There is
+also **no per-user cap on pending contributions**, by decision: an arbitrary
+product-state cap will not be invented without evidence. The protections that do
+exist are the payload/input bounds, ownership controls, duplicate protections and
+database constraints; the future steps are deployment-layer distributed request-rate
+limiting once hosting is selected, and reconsidering a pending-state cap only if
+beta or production evidence shows a real abuse problem. This is a known operational
+consideration, not a missing Phase 14 implementation.
+
+## 2026-09-21 — Phase 14: crash reporting and analytics
+
+**Crash handling - implemented locally, no remote provider selected.**
+- Flutter: `FlutterError.onError` and `PlatformDispatcher.instance.onError` are
+  installed, so an uncaught async error does not terminate the app and no
+  exception text or stack trace reaches the UI. A guarded bootstrap
+  (`launchApp`) turns a startup failure into a localized failure screen (a
+  non-retryable "not configured correctly" screen, or a retryable "couldn't start"
+  screen). Diagnostics are written only in debug builds, and only value-free names
+  or types.
+- Backend: structured, safe request and error logging (see the security review).
+- **There is no remote crash-reporting provider** (no Sentry, Firebase or
+  equivalent): crashes on user devices are not collected anywhere. Choosing a
+  provider - and what it may collect - is an open pre-release decision for the owner.
+
+**Analytics - not implemented.** No analytics SDK, no event tracking, no
+advertising identifier. The privacy-conscious default (`PRODUCT.md` §28) is to
+collect none, and that default stands; it is not "planned but pending".
+
+Neither remote crash reporting nor analytics may be described as implemented.
+
+## 2026-09-21 — Phase 14: legal documents - infrastructure only, content blocked
+
+Supersedes, in part, "Phase 12: legal links are a static in-app placeholder".
+
+**Implemented**
+- `LEGAL_PRIVACY_URL` and `LEGAL_TERMS_URL` build-time values (public
+  configuration, never secrets; see `mobile/config/release.example.json`).
+- Validation: a legal URL is used only if it is `https`, has a host, carries no
+  credentials and is not a loopback/private/local host. Unset (or, in a debug
+  build, invalid) leaves the placeholder screen; a configured-but-invalid URL in a
+  **release** build is a startup configuration failure (owner decision).
+- Settings opens a valid URL in the external/default browser
+  (`LaunchMode.externalApplication`); no WebView. A launch failure shows a
+  localized error.
+- `url_launcher` became a **direct** dependency (`^6.3.2`). It was already in the
+  dependency tree transitively through `supabase_flutter` at this exact locked
+  version, so no new package or native code was added; it is declared directly
+  because the app now calls it itself, and a transitive dependency can change
+  without notice.
+
+**Still blocked (owner-supplied)**
+- The real Privacy Policy **text** and its public **URL**.
+- The real Terms of Service **text** and its public **URL**.
+- No legal text was written or fabricated, and no URL was invented. Until both URLs
+  are supplied, release builds show the placeholders.
+
+## 2026-09-21 — Phase 14: accessibility review (Stage 5 audit)
+
+An audit of BeerApp's own widgets. It is **not a WCAG conformance claim** and no
+external audit was done.
+
+**Fixed** (each with a test that failed before the fix): `PrimaryButton` and
+`SecondaryButton` now expose a button role and enabled/disabled state, and a
+disabled `PrimaryButton` exposes no tap action; `PrimaryButton` gained keyboard
+focus, Enter/Space activation and a visible focus ring, and its label wraps
+instead of overflowing at 2x text; `SecondaryButton` has a visible disabled style;
+filter chips have a 48 dp hit target; beer and collection tiles are single labelled
+buttons, and the icon-only favorite/wishlist/rating state is announced (localized,
+EN/ES); text fields keep their accessible name once text is typed (and the drawn
+placeholder is hidden from semantics so it is not read twice); the delete-account
+confirmation field is labelled; both statistics charts have a localized summary in
+place of their drawing; 11 inline spinners/progress bars announce "Loading...";
+the bottom navigation bar no longer overflows at 2x text and no longer announces
+each item twice.
+
+**Contrast.** Computed from the design tokens (so a token change re-runs it) in
+`test/accessibility/token_contrast_test.dart`: every text pair checked reaches AA
+4.5:1, and graphics/icons reach 3:1. The one pair that used to fail - the
+`PrimaryButton` label - was fixed in Phase 14 (see the next entry), and the test now
+asserts AA compliance over the whole gradient instead of recording a gap. It is a
+token-level computation, not a measurement of rendered pixels, and does not cover
+images, map tiles, text over user content or platform-drawn UI.
+
+**Also verified:** 2x text scale does not overflow the buttons, tiles, navigation
+bar, error/empty states, filter chip, charts or the startup-failure screen (widget
+tests); list and hero images decode at display size (see the performance entry).
+
+**Remaining limitations**
+- No TalkBack pass on a device, and no VoiceOver pass at all (no device or iOS
+  build was available).
+- **Map markers are drawn natively by MapLibre and have no screen-reader
+  alternative.** The same beers and breweries are reachable through Discover and
+  Collection.
+- Bottom-navigation labels stop scaling at 1.3x (as Material's own
+  `NavigationBar` does) and shrink to fit; the full name remains available to
+  screen readers.
+- Hardware-keyboard focus exists for `PrimaryButton` only; the list tiles are not
+  keyboard-focusable. `PRODUCT.md` §29 lists "clear focus states"; this is only
+  partly met.
+- Large-text behaviour was tested in widgets, not on a device.
+- Keyboard/focus and screen-reader behaviour must be re-verified on real devices
+  before release (a Phase 15 check).
+
+## 2026-09-21 — Phase 14: the amber call-to-action gradient was adjusted for WCAG AA
+
+The `PrimaryButton` label was white over the Stitch gradient `primary` `#795900` ->
+`primaryContainer` `#ffbf00`. Measured over the whole gradient (sampled every
+0.5%), white was 6.48:1 at the dark end but 1.65:1 at the bright end, and **no
+existing token, and no colour at all, passed 4.5:1 across it**: even pure black gets
+only 3.24:1 at the dark end, because the gradient spans relative luminance 0.112 to
+0.585. The dark end was too dark for any dark label; the bright end too bright for a
+light one.
+
+**Decision (owner):** keep an amber gradient, lighten its dark end, and use an
+existing dark token for the label. Implemented as:
+
+- `AppColors.primaryGradientStart` = `#af8200`, 40% of the way from `primary` to
+  `primaryContainer` (same amber hue; the gradient's ends remain visibly different at
+  2.1:1);
+- `AppGradients.primary` = `primaryGradientStart` -> `primaryContainer`, top-left to
+  bottom-right, one shared token;
+- `AppColors.onPrimaryGradient` = the existing `onSurface` (`#1b1c1a`), used for the
+  `PrimaryButton` label and icon.
+
+**Measured** (`onSurface` on the gradient): 4.90:1 at the dark end (the worst point
+of the whole gradient), 6.00 at 25%, 7.26 at the centre, 8.75 at 75%, 10.35 at the
+bright end. The focus ring (also `onSurface`) is at least 3:1 against every point.
+`token_contrast_test.dart` asserts the endpoints, the midpoint and the worst of 201
+samples (>= 4.5, and > 4.8 to keep headroom), and that both `PrimaryButton` and
+`ScanNavButton` really draw that gradient and colour.
+
+**Preserved:** the disabled styling (flat `surfaceContainerHigh`, `onSurfaceVariant`
+label), the press animation, the focus ring and keyboard activation.
+
+**Visible changes to report:** primary buttons now have a dark label on a slightly
+lighter, more golden gradient; **`ScanNavButton` uses the same gradient and now has a
+dark icon instead of a white one** - it used the identical failing pair, and leaving
+it on the old gradient would have meant two different amber gradients. The button's
+glow shadow is unchanged. `docs/DESIGN_SYSTEM.md` records the token change (Stitch
+remains the unmodified reference).
+
+## 2026-09-21 — Phase 14: performance review (measured, with the limits of the measurements)
+
+**Method (backend).** A disposable local PostgreSQL 16 (never `beerapp-dev`),
+catalogs of **2,000, 10,000 and 50,000 beers** (breweries scaled with them) and
+one heavy user (2,000 logs, up to 300 favorites and 300 wishlist entries). The
+*real* repositories ran as the `beerapp_backend` role; each case had 5 warm-up and
+40 timed runs (median/p95 reported), and every statement was replayed under
+`EXPLAIN (ANALYZE, BUFFERS)`. Measured result vs. limitation: **these are local,
+single-machine timings on a PostgreSQL scaffold, not Supabase** - the *scaling
+shape* is the reliable part, not the absolute milliseconds.
+
+**Measured results (median ms).**
+
+| Query | 2k | 10k | 50k |
+|---|---|---|---|
+| Discover page 1 | 1.2 | 2.2 | 8.6 |
+| Discover page 100 (offset 1,980) | 1.9 | 4.9 | 28.1 |
+| Text search `q` (e.g. "stout") | 5.0 | 21.1 | 102 |
+| Country / style filter | 0.7 | 0.8-1.0 | 1.2-1.4 |
+| Barcode lookup | 0.3 | 0.3 | 0.4 |
+| Map beers, all (capped at 2,000 rows) | 8.6 | 15.9 | 42.6 |
+| Map breweries | 1.4 | 4.2 | 9.4 |
+| Collection, logged | 4.5 | 7.5 | 15.9 |
+| Statistics | 7.2 | 9.4 | 17.4 |
+
+- **Scan strategy.** Filtered lookups (country, style, brewery, barcode) use
+  indexes and stay roughly flat. Everything else is a sequential scan with a top-N
+  sort and grows roughly linearly with the catalog.
+- **Search scaling finding.** Text search (`ILIKE '%q%'` across beer, brewery,
+  style and country with joins) is the only query that becomes slow: about 5 ms at
+  2k, 21 ms at 10k and about 100 ms at 50k rows (p95 about 108 ms). The dev
+  catalog is 32 rows, so this is a **future watch item**, not a current problem.
+- **High offset / `MAX_PAGE`.** `MAX_PAGE` stays 10,000 (owner decision). A request
+  at `MAX_PAGE` returns an empty page in about 64 ms at 50k, because the sort must
+  still run (a 5.6 MB external merge) before everything is discarded. That is
+  2x-8x a normal page and does not grow with the page number, so the bound is not
+  an amplification risk at this size. **Alternatives, evidence only and not
+  implemented:** short-circuit when `offset >= total` (the count is already
+  computed); cursor pagination.
+- **Map (Flutter side).** Every controller notification used to rebuild both
+  GeoJSON collections and make 2 source uploads and 6 layer-visibility calls, even
+  when nothing changed. `MapDataSynchronizer` now uploads a source only when its
+  content fingerprint changed and sets visibility only when the beers/breweries mode
+  flips. Measured on a scripted 10-notification session: **80 platform calls
+  (20 uploads) before, 19 (7 uploads) after**, identical final state. Building a
+  **2,000-feature** GeoJSON collection took about 0.7 ms (about 374 KB serialized)
+  and a no-op resync about 0.13 ms - measured under the JIT on a desktop, so
+  indicative only.
+- **Images.** List/collection thumbnails and the detail hero share one `BeerImage`
+  that decodes at display size (box x device pixel ratio x 1.5, aspect ratio kept)
+  instead of decoding the full source, with a stable placeholder and the existing
+  fallback icon. Verified by unit and widget tests; the memory saving on a device
+  was not measured.
+
+**Not exercised:** no Android emulator or device was available, so there is **no
+profile-mode frame-timing measurement**, no real map rendering measurement, and no
+authenticated live flow was profiled (no credentials were created; no consumption
+data was generated).
+
+**Future watch items (none implemented, each needs owner approval and, where it
+touches the schema, a migration):** a `pg_trgm` index for text search if the
+catalog reaches tens of thousands of rows; a viewport/bounding-box map endpoint
+(the map is capped at 2,000 rows, so the cost today is the truncation banner, not
+speed); cursor pagination; the `offset >= total` short-circuit.
+
+## 2026-09-21 — Phase 14: integration suite and migration status
+
+Supersedes the Phase 13 finding "79 of the 111 older integration tests fail".
+
+- **Cause and repair.** All failures were defects in the older *tests* (made-up
+  `user_id`s with no `auth.users` row, seeding catalog data after switching to the
+  read-only role, un-paired favorite/wishlist columns, a brewery without its
+  `country_id`, `confdeltype` bytes vs. str, `abv` overflowing `numeric(4,2)`), plus
+  the never-categorised remainder. None was a production defect and no production
+  schema was changed to satisfy a test.
+- **Result.** The complete integration suite - **269 tests** - passes against a
+  disposable database with every migration applied. That includes the security audit
+  above. It is a Postgres-scaffold result; **it is not full local Supabase
+  verification**, and it has not been run against a local Supabase stack.
+- **Environment.** The first choice remains a real local Supabase stack via Docker
+  (`supabase start`). Docker was unavailable here, so the verified fallback is a
+  repository-owned scaffold (`backend/tests/integration/support/`) applied to a
+  local throwaway PostgreSQL 16. See `docs/DATABASE.md` for how to run it and what it
+  does not reproduce. No test touches `beerapp-dev`.
+- **Migration `20260921100000_revoke_public_execute_on_set_updated_at`** (the
+  `private.set_updated_at()` privilege hardening) is **applied to `beerapp-dev`**.
+  `supabase db push --dry-run` listed exactly that one migration and nothing else;
+  `db push` applied it; `supabase db lint --linked --level error` reported no schema
+  errors; `supabase migration list` shows all **19** local migrations recorded
+  remotely. A read-only snapshot before and after showed only the intended change -
+  the function's ACL went from "`PUBLIC` has `EXECUTE`" to owner-only - with owner,
+  definition, `search_path`, the eight triggers, the other functions' ACLs and the
+  `private` schema's `USAGE` unchanged. **No row data was created or modified**
+  for the verification (row counts and content hashes of all ten tables matched).
+  Live trigger firing on `beerapp-dev` was **not** exercised (proven in the
+  disposable database instead), and the applied migration must not be edited.
+
+## 2026-09-21 — Phase 14: final verification (results, and two findings)
+
+The close-out pass. Every result below was produced in that pass, not carried over.
+
+- **Backend.** Default suite **592 passed** (269 integration deselected, as
+  collected); `ruff check` and `ruff format --check` clean (136 files).
+- **Integration.** The disposable database was rebuilt from clean state (databases
+  and cluster roles dropped) through the repository's own scaffold and helper,
+  applying the scaffold plus all **19** migrations; the complete suite, **269
+  passed** (no skips), ran with only the loopback disposable DSN set (no
+  `DATABASE_URL`/`SEED_DATABASE_URL` in the process); every table was at 0 rows
+  before and after, so nothing was left behind. This is a Postgres-scaffold result,
+  not full local Supabase.
+- **Flutter.** `dart format` (273 files) and `flutter analyze` clean; **736 passed**
+  in 79 files. Areas confirmed by their actual results: router/auth guards, age gate,
+  catalog and search, logging, collection, map (including the synchronizer),
+  statistics, achievements, scanner, profile/settings, contributions,
+  startup/global error handling, release environment validation, legal link states,
+  accessibility, the `PrimaryButton`/`ScanNavButton` contrast test, the platform
+  manifest/plist regression tests and the image-decode tests.
+- **Android release build.** `flutter build apk --release` with a temporary
+  configuration of public placeholder values (public https Supabase/API/legal URLs,
+  fake keys) compiled; the release guard accepts that same configuration and
+  rejects the emulator URL in release (checked with the real validator). The built
+  APK's merged manifest has `allowBackup=false` and no cleartext flag, network-security
+  config or `debuggable`. It is debug-signed and is **not** a store-ready or
+  production-signed build; the temporary configuration was deleted. The app bundle
+  was left for Phase 15.
+- **Android debug build.** `flutter build apk --debug` with the normal development
+  configuration compiled. (A first attempt failed only because the machine's disk
+  was full while copying the finished APK; after clearing git-ignored build output it
+  succeeded.) Runtime UI: NOT EXERCISED (no emulator or device).
+- **`beerapp-dev`, read-only.** `supabase migration list`: all 19 local migrations
+  match remote; `db push --dry-run`: "Remote database is up to date" (nothing
+  pending); `db lint --linked --level error`: no errors; a SELECT-only snapshot
+  matched the one taken right after the migration exactly (0 differences):
+  `private.set_updated_at()` has an owner-only ACL and no role can execute it, all 8
+  triggers and the `private` schema privileges are unchanged, and
+  `beer_contributions`/`brewery_contributions` have 0 rows. Nothing was created,
+  reset or seeded.
+- **Secrets and hygiene.** Nothing staged. All 540 tracked and untracked-but-visible
+  files were scanned (paths and counts only): none contains an old rotated database
+  credential; no private key, `sb_secret_` key, cloud-config or signing file is
+  present; the only token/DSN-shaped strings are obvious test fixtures
+  (`.example.invalid` hosts, a fake project ref, a JWT with a 19-character
+  signature) and placeholder example configs. `.env` and the real mobile config
+  files are git-ignored and untracked; `build.gradle` is untouched (no signing or
+  application-id change), so no Phase 15 work entered the tree.
+- **iOS (static checks only).** `Info.plist` content: the auth URL scheme matches
+  the Android intent filter and `Env`, a camera usage description is present, there
+  is no `GIDClientID`, no other usage descriptions, no ATS override and no
+  entitlement or provisioning files. **iOS build and runtime: NOT EXERCISED - needs
+  macOS/Xcode.**
+
+**Finding 1 - fixed: `Info.plist` was not well-formed XML.** The comment added in
+Phase 14 for the auth URL scheme contained a double hyphen, which XML forbids, so a
+strict parser (and therefore Xcode) rejects the file. The existing plist test
+stripped comments before inspecting the file and could not see it. The comment was
+reworded, and the platform tests now check the raw plist and all three Android
+manifests for illegal comments (verified by making the test fail on the defective
+file, then pass on the fixed one). All 12 native XML/plist files parse strictly.
+
+**Finding 2 - documented, not changed: the shipped APK requests more permissions
+than the app's own manifest.** See the security review ("Not covered").
+
+**Not exercised in Phase 14 (not test failures):** a live authenticated end-to-end
+flow; live account deletion (no disposable account); physical barcode decoding;
+TalkBack; VoiceOver; an Android profile-mode run (no device or emulator); iOS build
+and runtime; a real local Supabase stack via Docker; a backup restore; live trigger
+firing on `beerapp-dev` after the privilege migration.
+
+**Status.** Phase 14 *engineering* work is complete. Full production/store readiness
+is not: it depends on Phase 15 and the owner-supplied prerequisites in `ROADMAP.md`.
+
+## 2026-09-21 — Phase 14: other decisions recorded
+
+- **`MAX_PAGE` stays 10,000** (owner decision); the measurement above is evidence
+  only.
+- **The database-error mapping stays constraint-name based**, with integration
+  assertions that the expected foreign-key names exist; no migration was made to
+  rename constraints.
+- **`serving_volume_ml` is bounded only by the `integer` maximum**; no tighter cap.
+- **`ApiClient` timeout stays 20 seconds** (owner decision), mapped to the existing
+  localized network error; it will be revisited only on real-device evidence.
+  `413` and `503` are mapped to localized errors; `429` is not, since the API does
+  not return it.
+- **The environment check fails closed** (see the security review).
+- **`intl` is still not declared directly** (a Category C item; `dart fix` will add
+  it silently, so check `pubspec.yaml` after running it).

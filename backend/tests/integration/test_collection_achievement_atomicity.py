@@ -20,12 +20,13 @@ from contextlib import asynccontextmanager
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
 from app.repositories.achievements import AchievementsRepository
 from app.repositories.collection import CollectionRepository
 from app.schemas.collection import CollectionStateUpdate
 from app.services.achievement_evaluator import AchievementEvaluator
 from app.services.collection import CollectionService
+
+from .disposable_db import connection_kwargs, ensure_users
 
 pytestmark = pytest.mark.integration
 
@@ -52,10 +53,11 @@ class _FailingEvaluator:
 
 
 async def _in_rolled_back_transaction(dsn: str, body) -> None:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     transaction = conn.transaction()
     await transaction.start()
     try:
+        await ensure_users(conn, _USER_ID)
         await body(conn)
     finally:
         await transaction.rollback()

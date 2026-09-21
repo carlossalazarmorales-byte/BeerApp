@@ -6,6 +6,9 @@ from app.errors import InvalidRequestError, NotFoundError
 from app.repositories.beer_logs import BeerLogRepository
 from app.schemas.beer_logs import BeerLogCreate, BeerLogOut, BeerLogUpdate
 from app.schemas.common import Page
+from app.services.db_errors import translate_beer_write_foreign_key_violation
+
+_BEER_FOREIGN_KEY = "user_beer_logs_beer_id_fkey"
 
 
 class BeerLogService:
@@ -40,7 +43,9 @@ class BeerLogService:
                 serving_volume_ml=payload.serving_volume_ml,
             )
         except asyncpg.ForeignKeyViolationError as exc:
-            raise NotFoundError(f"Beer {payload.beer_id} not found") from exc
+            raise translate_beer_write_foreign_key_violation(
+                exc, beer_constraint=_BEER_FOREIGN_KEY, beer_id=payload.beer_id
+            ) from exc
         return BeerLogOut.model_validate(dict(row))
 
     async def list_logs(

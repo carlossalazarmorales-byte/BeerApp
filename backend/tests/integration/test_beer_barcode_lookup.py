@@ -4,8 +4,9 @@ from contextlib import asynccontextmanager
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
 from app.repositories.beers import BeerRepository
+
+from .disposable_db import connection_kwargs
 
 pytestmark = pytest.mark.integration
 
@@ -25,8 +26,14 @@ class _SingleConnectionPool:
 
 
 async def _seed(conn: asyncpg.Connection) -> dict[str, str]:
+    country_id = await conn.fetchval(
+        "insert into public.countries (iso_code, name, continent) "
+        "values ('ZZ', 'Barcode Test Land', 'Europe') returning id"
+    )
     brewery_id = await conn.fetchval(
-        "insert into public.breweries (name) values ('Barcode Test Brewery') returning id"
+        "insert into public.breweries (name, country_id) "
+        "values ('Barcode Test Brewery', $1) returning id",
+        country_id,
     )
     with_barcode_id = await conn.fetchval(
         "insert into public.beers (official_name, brewery_id, barcode) "
@@ -47,7 +54,7 @@ async def _seed(conn: asyncpg.Connection) -> dict[str, str]:
 
 def _run(dsn: str, body) -> None:
     async def wrapper() -> None:
-        conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(dsn))
         transaction = conn.transaction()
         await transaction.start()
         try:

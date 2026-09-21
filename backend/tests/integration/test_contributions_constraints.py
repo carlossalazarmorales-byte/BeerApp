@@ -18,7 +18,7 @@ from decimal import Decimal
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
+from .disposable_db import connection_kwargs
 
 pytestmark = pytest.mark.integration
 
@@ -38,7 +38,7 @@ _INSERT_BREWERY = (
 
 
 async def _in_rolled_back_transaction(dsn: str, body) -> None:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     transaction = conn.transaction()
     await transaction.start()
     try:

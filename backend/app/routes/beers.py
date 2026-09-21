@@ -7,7 +7,7 @@ from pydantic import AfterValidator
 from app.auth.dependencies import get_current_user
 from app.dependencies import get_beer_service
 from app.schemas.beers import BeerOut
-from app.schemas.common import Page
+from app.schemas.common import MAX_PAGE, NO_NUL_PATTERN, Page
 from app.services.barcode import canonicalize_barcode
 from app.services.beers import BeerService
 
@@ -29,8 +29,8 @@ async def list_beers(
     country_id: UUID | None = None,
     style_id: UUID | None = None,
     brewery_id: UUID | None = None,
-    q: str | None = Query(default=None, max_length=100),
-    page: int = Query(default=1, ge=1),
+    q: str | None = Query(default=None, max_length=100, pattern=NO_NUL_PATTERN),
+    page: int = Query(default=1, ge=1, le=MAX_PAGE),
     page_size: int = Query(default=20, ge=1, le=100),
     service: BeerService = Depends(get_beer_service),
 ) -> Page[BeerOut]:

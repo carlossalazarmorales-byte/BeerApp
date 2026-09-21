@@ -6,6 +6,9 @@ from app.repositories.scoped_connection import scoped_connection
 from app.schemas.collection import CollectionBeerOut, CollectionStateOut, CollectionStateUpdate
 from app.schemas.common import Page
 from app.services.achievement_evaluator import AchievementEvaluator
+from app.services.db_errors import translate_beer_write_foreign_key_violation
+
+_BEER_FOREIGN_KEY = "user_beer_collection_beer_id_fkey"
 
 
 class CollectionService:
@@ -131,6 +134,8 @@ class CollectionService:
                     is_wishlist=payload.is_wishlist,
                 )
             except asyncpg.ForeignKeyViolationError as exc:
-                raise NotFoundError(f"Beer {beer_id} not found") from exc
+                raise translate_beer_write_foreign_key_violation(
+                    exc, beer_constraint=_BEER_FOREIGN_KEY, beer_id=beer_id
+                ) from exc
             await self._achievement_evaluator.evaluate_and_unlock(conn, user_id=user_id)
         return CollectionStateOut.model_validate(result)

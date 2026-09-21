@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../tokens/app_colors.dart';
+import '../../tokens/app_gradients.dart';
 
 /// The always-emphasized, always-on circular Scan action shown at the
 /// center of the bottom navigation bar.
@@ -42,11 +43,7 @@ class ScanNavButton extends StatelessWidget {
               height: _diameter,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.primary, AppColors.primaryContainer],
-                ),
+                gradient: AppGradients.primary,
                 boxShadow: [
                   BoxShadow(
                     color: AppColors.primary.withValues(alpha: 0.3),
@@ -57,7 +54,7 @@ class ScanNavButton extends StatelessWidget {
               ),
               child: const Icon(
                 Icons.qr_code_scanner,
-                color: AppColors.onPrimary,
+                color: AppColors.onPrimaryGradient,
                 size: 28,
               ),
             ),

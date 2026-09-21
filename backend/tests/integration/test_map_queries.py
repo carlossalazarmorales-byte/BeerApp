@@ -22,8 +22,9 @@ import asyncpg
 import pytest
 
 import app.repositories.map as map_repository_module
-from app.db import parse_dsn_kwargs
 from app.repositories.map import MapRepository
+
+from .disposable_db import connection_kwargs, ensure_users
 
 pytestmark = pytest.mark.integration
 
@@ -32,12 +33,29 @@ _USER_B = "22222222-2222-2222-2222-222222222222"
 
 
 class _SingleConnectionPool:
+    """Stands in for the app's pool: a repository acquires the connection AS
+    `beerapp_backend` (as in production) and gives it back on exit, while
+    test setup between repository calls runs as the connecting admin role --
+    `beerapp_backend` is SELECT-only on the catalog by design, so seeding
+    catalog rows as that role can never work. Nested acquires keep the role
+    until the outermost one exits.
+    """
+
     def __init__(self, conn: asyncpg.Connection) -> None:
         self._conn = conn
+        self._depth = 0
 
     @asynccontextmanager
     async def acquire(self):
-        yield self._conn
+        if self._depth == 0:
+            await _as_backend_role(self._conn)
+        self._depth += 1
+        try:
+            yield self._conn
+        finally:
+            self._depth -= 1
+            if self._depth == 0:
+                await self._conn.execute("reset role")
 
 
 async def _as_backend_role(conn: asyncpg.Connection) -> None:
@@ -76,11 +94,11 @@ async def _insert_beer(
 
 def _run(dsn: str, body) -> None:
     async def wrapper() -> None:
-        conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(dsn))
         transaction = conn.transaction()
         await transaction.start()
         try:
-            await _as_backend_role(conn)
+            await ensure_users(conn, _USER_A, _USER_B)
             repository = MapRepository(_SingleConnectionPool(conn))
             await body(conn, repository)
         finally:
@@ -157,16 +175,17 @@ def test_fallback_never_mixes_beer_latitude_with_brewery_longitude(integration_d
         assert len(rows) == 1
         row = rows[0]
         assert str(row["beer_id"]) == str(beer_id)
-        own_pair = row["latitude"] == pytest.approx(1.5) and row["longitude"] == pytest.approx(2.5)
-        brewery_pair = row["latitude"] == pytest.approx(10.0) and row["longitude"] == pytest.approx(
-            20.0
-        )
+        # numeric columns come back as Decimal; pytest.approx cannot subtract a
+        # float from a Decimal on the non-matching branch, so compare as float.
+        latitude, longitude = float(row["latitude"]), float(row["longitude"])
+        own_pair = latitude == pytest.approx(1.5) and longitude == pytest.approx(2.5)
+        brewery_pair = latitude == pytest.approx(10.0) and longitude == pytest.approx(20.0)
         assert own_pair or brewery_pair
         assert not (own_pair and brewery_pair)
         # Explicitly rule out a hybrid: beer's own latitude with the
         # brewery's longitude (or the reverse).
-        hybrid_a = row["latitude"] == pytest.approx(1.5) and row["longitude"] == pytest.approx(20.0)
-        hybrid_b = row["latitude"] == pytest.approx(10.0) and row["longitude"] == pytest.approx(2.5)
+        hybrid_a = latitude == pytest.approx(1.5) and longitude == pytest.approx(20.0)
+        hybrid_b = latitude == pytest.approx(10.0) and longitude == pytest.approx(2.5)
         assert not hybrid_a
         assert not hybrid_b
 
@@ -188,8 +207,9 @@ def test_user_a_sees_own_tried_favorite_wishlist_state(integration_dsn):
                 beer_id,
             )
             await scoped_conn.execute(
-                "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-                "values ($1, $2, true)",
+                "insert into public.user_beer_collection "
+                "(user_id, beer_id, is_favorite, favorited_at) "
+                "values ($1, $2, true, now())",
                 _USER_A,
                 beer_id,
             )
@@ -217,7 +237,8 @@ def test_user_b_never_sees_user_a_personal_state(integration_dsn):
             )
             await scoped_conn.execute(
                 "insert into public.user_beer_collection (user_id, beer_id, is_favorite, "
-                "is_wishlist) values ($1, $2, true, true)",
+                "is_wishlist, favorited_at, wishlisted_at) "
+                "values ($1, $2, true, true, now(), now())",
                 _USER_A,
                 beer_id,
             )
@@ -274,14 +295,16 @@ def test_state_filter_favorites_and_wishlist_are_independent(integration_dsn):
 
         async with repository._scoped(_USER_A) as scoped_conn:
             await scoped_conn.execute(
-                "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-                "values ($1, $2, true)",
+                "insert into public.user_beer_collection "
+                "(user_id, beer_id, is_favorite, favorited_at) "
+                "values ($1, $2, true, now())",
                 _USER_A,
                 favorite_beer_id,
             )
             await scoped_conn.execute(
-                "insert into public.user_beer_collection (user_id, beer_id, is_wishlist) "
-                "values ($1, $2, true)",
+                "insert into public.user_beer_collection "
+                "(user_id, beer_id, is_wishlist, wishlisted_at) "
+                "values ($1, $2, true, now())",
                 _USER_A,
                 wishlist_beer_id,
             )

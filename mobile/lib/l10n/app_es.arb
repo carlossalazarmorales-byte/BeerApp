@@ -293,6 +293,12 @@
   "settingsPrivacyPolicyRowTitle": "Política de privacidad",
   "settingsTermsOfServiceRowTitle": "Términos del servicio",
   "settingsLegalPlaceholderDescription": "Este contenido aún no está disponible. Vuelve a consultarlo antes del lanzamiento.",
+  "settingsLegalLinkOpenFailed": "No se pudo abrir el enlace. Inténtalo de nuevo más tarde.",
+
+  "startupFailureConfigurationTitle": "BeerApp no está configurada correctamente",
+  "startupFailureConfigurationMessage": "Esta versión de la app no tiene la configuración necesaria. Actualiza BeerApp o inténtalo de nuevo más tarde.",
+  "startupFailureInitializationTitle": "BeerApp no pudo iniciarse",
+  "startupFailureInitializationMessage": "Algo salió mal al iniciar la app. Inténtalo de nuevo.",
 
   "settingsDeleteAccountRowTitle": "Eliminar cuenta",
   "settingsDeleteAccountRowSubtitle": "Borra permanentemente tu cuenta y tus datos",
@@ -362,5 +368,11 @@
   "contributionErrorNotFound": "Una de las entradas del catálogo elegidas ya no existe. Elige de nuevo.",
   "contributionErrorBarcodeInCatalog": "Este código de barras ya pertenece a una cerveza del catálogo.",
   "contributionErrorAlreadySubmitted": "Ya tienes una sugerencia idéntica pendiente de revisión.",
-  "contributionErrorGeneric": "Algo salió mal. Inténtalo de nuevo."
+  "contributionErrorGeneric": "Algo salió mal. Inténtalo de nuevo.",
+  "collectionRatingSemanticLabel": "Valoración: {rating} de 5",
+  "statisticsMonthlyChartSemanticEmpty": "Actividad mensual: sin registros en los últimos 12 meses.",
+  "statisticsMonthlyChartSemanticSummary": "Actividad mensual de los últimos 12 meses: {total, plural, =1{1 registro} other{{total} registros}} en total. Mes con más registros: {month}, {count, plural, =1{1 registro} other{{count} registros}}.",
+  "statisticsYearlyChartSemanticEntry": "{year}: {count, plural, =1{1 registro} other{{count} registros}}",
+  "statisticsYearlyChartSemanticSummary": "Actividad anual: {entries}.",
+  "statisticsMonthLongName": "{month, select, january{enero} february{febrero} march{marzo} april{abril} may{mayo} june{junio} july{julio} august{agosto} september{septiembre} october{octubre} november{noviembre} december{diciembre} other{}}"
 }

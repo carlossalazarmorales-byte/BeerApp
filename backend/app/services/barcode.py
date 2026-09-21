@@ -26,7 +26,11 @@ def canonicalize_barcode(raw: str) -> str:
     for it defined yet.
     """
     trimmed = raw.strip()
-    if not trimmed.isdigit():
+    # `str.isdigit()` alone is not enough: it is True for Arabic-Indic,
+    # fullwidth and other non-ASCII digits, which int() parses, so such a code
+    # would canonicalize to a non-ASCII string that the database's ASCII-only
+    # barcode CHECK then rejects (a 500). A barcode is ASCII 0-9 only.
+    if not (trimmed.isascii() and trimmed.isdigit()):
         raise ValueError("barcode must contain digits only")
 
     if len(trimmed) == 12:

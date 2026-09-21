@@ -9,10 +9,16 @@
          camera-frame-only and frames never leave the device. -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- allowBackup="false": the app's local storage holds the Supabase session
+         (access/refresh token) and the user's device-only preferences. Neither
+         belongs in a cloud backup or a device-to-device transfer, where a
+         restored session token could outlive the account or land on another
+         device. -->
     <application
         android:label="beerapp"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/logging/debug_log.dart';
 import '../domain/auth_models.dart';
 import '../domain/auth_repository.dart';
 import '../domain/profile.dart';
@@ -47,8 +48,9 @@ class AuthController extends ChangeNotifier {
         // Current Supabase guidance: network errors (e.g. an offline token
         // refresh) are emitted as stream errors, not events. Without this,
         // Dart rethrows them as unhandled zone exceptions. Only the error
-        // itself is logged, never a session/token.
-        debugPrint('AuthController: auth stream error: $error');
+        // itself is logged (debug builds only, sanitized), never a
+        // session/token.
+        DebugLog.error('auth', 'auth stream error', error);
       },
     );
     unawaited(_initialize());
@@ -118,7 +120,7 @@ class AuthController extends ChangeNotifier {
       // one way or the other. `authenticatedProfileUnavailable` is its own
       // state precisely so an existing user with a set username is never
       // wrongly routed to `/complete-profile` just because a fetch failed.
-      debugPrint('AuthController: profile fetch failed: $error');
+      DebugLog.error('auth', 'profile fetch failed', error);
       _status = AppAuthStatus.authenticatedProfileUnavailable;
     }
   }

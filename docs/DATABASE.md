@@ -1,15 +1,21 @@
 # Database
 
-PostgreSQL, hosted via Supabase. As of Phase 7, seven tables exist:
-`public.profiles` (Phase 2), the Phase 3 catalog tables `public.countries`,
-`public.beer_styles`, `public.breweries`, `public.beers`, the Phase 6
-user-owned `public.user_beer_logs`, and the Phase 7 user-owned
-`public.user_beer_collection`, plus two roles (`beerapp_backend`,
-`beerapp_seed`) that gate access to the catalog tables (and, since Phase 6,
-the user-owned tables too). Migrations live under `supabase/migrations/`.
-Phase 13 adds two more user-owned tables, `public.beer_contributions` and
-`public.brewery_contributions` (private *proposals* for catalog growth — never
-catalog rows; see their section below).
+PostgreSQL, hosted via Supabase. Ten tables exist in `public`:
+
+- `public.profiles` (Phase 2, extended Phase 12);
+- the four global catalog tables (Phase 3): `public.countries`,
+  `public.beer_styles`, `public.breweries`, `public.beers`;
+- the user-owned tables `public.user_beer_logs` (Phase 6),
+  `public.user_beer_collection` (Phase 7) and `public.user_achievements`
+  (Phase 10);
+- `public.beer_contributions` and `public.brewery_contributions` (Phase 13) —
+  private *proposals* for catalog growth, never catalog rows.
+
+Two dedicated roles, `beerapp_backend` (the running API) and `beerapp_seed` (the
+dev seed script only), gate access to them, and a `private` schema holds three
+trigger/helper functions (see "Function privileges in schema `private`"). There
+are 19 migrations under `supabase/migrations/`, all applied to `beerapp-dev`.
+Every table has RLS enabled; the access model is below.
 
 ## Planned approach
 
@@ -22,6 +28,9 @@ catalog rows; see their section below).
 - Migrations are managed via the Supabase CLI in **remote-only** mode (no
   local Docker dev stack) — `supabase migration new`, hand-edited SQL,
   `supabase db push --dry-run` then `supabase db push`. See `docs/DECISIONS.md`.
+  (That describes how migrations reach the *dev project*. The integration tests
+  use a separate, disposable database - a local Supabase stack when Docker is
+  available, otherwise the repository's PostgreSQL scaffold; see "Testing".)
 
 ## `public.profiles` (Phase 2, extended Phase 12)
 
@@ -487,12 +496,15 @@ connection as originally planned.
 and `..._create_beerapp_seed_role.sql`**: neither migration sets a password
 (none is committed). Both were set manually against the project (outside any
 migration) and are now in the local `.env` as `DATABASE_URL` and
-`SEED_DATABASE_URL` respectively — verified working end-to-end, including by
-`backend/tests/integration/test_role_grants.py` (`beerapp_backend`) and a
-one-off privilege check covering both roles (`beerapp_seed`: `SELECT`/
+`SEED_DATABASE_URL` respectively. They were **rotated by the project owner in
+Phase 14** (a test file had committed the earlier values); the local `.env` holds
+the current ones and no password is in any tracked file. When first set, a one-off
+privilege check against the project covered both roles (`beerapp_seed`: `SELECT`/
 `INSERT`/`UPDATE`/`DELETE` succeed on the four catalog tables, `SELECT` on
-`public.profiles` correctly denied). See `docs/DECISIONS.md` for the
-session history.
+`public.profiles` correctly denied). The privilege boundary is now verified
+continuously against the **disposable** database by `test_role_grants.py` and
+`test_security_audit.py` (see "Testing" below) - not against the shared project.
+See `docs/DECISIONS.md` for the session history.
 
 ## Connection strategy
 
@@ -510,13 +522,25 @@ prepared statements, which a persistent backend pool relies on by default.
 If `DATABASE_URL`/`SEED_DATABASE_URL` are ever pointed at a Transaction
 Pooler connection instead, `app/config.py`'s `db_statement_cache_size` must
 be set to `0`. SSL is required and enforced in code (`app/db.py`), not just
-assumed from the DSN.
+assumed from the DSN. `ssl="require"` **encrypts the connection but does not verify
+the server certificate**, so it does not defend against an active man-in-the-middle
+on the path to the pooler; whether to verify or pin the CA is a deployment decision.
+
+The pool is bounded on every axis (Phase 14): connect 10 s
+(`DB_CONNECT_TIMEOUT_SECONDS`), acquiring a pooled connection 10 s
+(`DB_ACQUIRE_TIMEOUT_SECONDS`), and each statement 30 s
+(`DB_COMMAND_TIMEOUT_SECONDS`). A timeout or an unreachable/saturated database
+surfaces as a sanitized `503` (see `docs/API.md`), never a hung request.
 
 ## Seed strategy (dev)
 
 `backend/scripts/seed_catalog.py`, run manually, connects via
 `SEED_DATABASE_URL` only — never `DATABASE_URL`, which has no write
-privilege. Idempotent: `countries` upserts on its genuine natural key
+privilege. Since Phase 14 it also refuses to run unless `ENVIRONMENT` is `local`
+or `dev` (unset counts as `local`), `SEED_DATABASE_URL` is set and differs from
+`DATABASE_URL`, and `--yes` is passed; without `--yes` it prints only the target
+host (never credentials) and exits — it writes fabricated `verified` rows, so it
+must never reach a production database. Idempotent: `countries` upserts on its genuine natural key
 (`iso_code`); `beer_styles`/`breweries`/`beers` have no natural unique key
 (names are not globally unique, by design), so each seeded row uses a
 deterministic fixed UUID constant and upserts on `id` — no UNIQUE constraint
@@ -526,51 +550,148 @@ was added purely to make seeding easier. Seeded rows are marked
 Run twice against the dev project; row counts (10 countries, 8 beer styles,
 6 breweries, 8 beers) were identical both times, confirming no duplicates.
 
+## Function privileges in schema `private` (Phase 14)
+
+Three functions live in `private`, and each one's `EXECUTE` privilege is audited
+(`backend/tests/integration/test_security_audit.py`):
+
+| function | kind | who may `EXECUTE` |
+|---|---|---|
+| `private.handle_new_user()` | `SECURITY DEFINER` trigger (creates the profile row) | its owner only |
+| `private.other_user_pending_beer_barcode_exists(text)` | `SECURITY DEFINER`, boolean-only (Phase 13) | `beerapp_backend` and its owner |
+| `private.set_updated_at()` | trigger function (maintains `updated_at`) | its owner only — see below |
+
+Both `SECURITY DEFINER` functions pin `search_path = ''`. `USAGE` on schema
+`private` is granted to `beerapp_backend` only (nobody can create objects there),
+and the audit checks that this exposes nothing beyond the one intended helper.
+
+**`private.set_updated_at()`.** PostgreSQL grants `EXECUTE` on a new function to
+`PUBLIC` by default, and the original migration did not revoke it, so `anon`,
+`authenticated` and `beerapp_backend` could call it. Migration
+`20260921100000_revoke_public_execute_on_set_updated_at` revokes it from
+`public, anon, authenticated`. The function body, its owner and every trigger
+definition are unchanged, and the owner keeps its privileges. A trigger function
+runs with the *invoking* statement's rights and needs no `EXECUTE` grant to fire, so
+the seven `updated_at` triggers keep working for their real writers - the
+integration tests prove this rather than assume it. The original migration was
+not edited; this one is forward-only.
+
+## Migration status (2026-09-21)
+
+- 19 migrations exist; **all 19 are recorded on `beerapp-dev`**
+  (`supabase migration list`).
+- The last one, `20260921100000_revoke_public_execute_on_set_updated_at`, was
+  applied in Phase 14 after a `supabase db push --dry-run` that listed **exactly
+  that migration** and nothing else. `supabase db lint --linked --level error`
+  afterwards reported no schema errors.
+- Read-only verification against `beerapp-dev` compared a snapshot taken before
+  and after the push. The only difference was the intended one: the
+  function's ACL changed from "`PUBLIC` has `EXECUTE`" to owner-only (and the
+  effective `EXECUTE` for `PUBLIC`, `anon`, `authenticated`, `beerapp_backend` and
+  `beerapp_seed` went from true to false). Owner, definition, `search_path`, all
+  eight triggers, the other two functions' ACLs and `USAGE` on schema `private`
+  were unchanged, and the row counts and content hashes of all ten tables were
+  identical - **no row data was created or modified for verification.**
+- **Not exercised on `beerapp-dev`:** live firing of the triggers after the
+  change (it is proven in the disposable database instead).
+- An applied migration is never edited; corrections are new forward-only migrations.
+
+## Backup and restore
+
+**Not configured. No restore has been tested.**
+
+- `beerapp-dev` is a development project, **not production**, and says nothing
+  about production backups.
+- **No production Supabase project exists yet.** The backups and point-in-time
+  recovery (PITR) that will be available depend on the plan and project chosen,
+  which is the owner's decision; none has been chosen.
+- The **schema** is reproducible from `supabase/migrations/`. **User data** exists
+  only in the database, so it is what backups must protect; dev catalog rows come
+  from a dev-only seed and are not a source of truth for production.
+- Release/deployment tasks still open: choose the plan; enable and verify automated
+  backups (and PITR if the recovery-point target needs it); set retention and access;
+  agree recovery point/time targets; **run and record a restore drill**; reconcile
+  retention with account deletion. Until a project with backups exists, the restore
+  test **cannot truthfully be marked passed.** See `docs/DECISIONS.md`.
+
 ## Testing
 
-`backend/tests/integration/` (marked `@pytest.mark.integration`, excluded
-from the default `pytest` run) covers the CHECK/FK/unique constraints above
-and the `beerapp_backend` privilege boundary, against `INTEGRATION_DATABASE_URL`
-(constraint tests, rolled back per test) and `DATABASE_URL` (role/grant
-tests — safe to use directly since that role has no write privilege at all).
-Neither is `SEED_DATABASE_URL`.
+### Backend suites
 
-`user_beer_logs`'/`user_beer_collection`'s RLS tests (`test_user_beer_logs_rls.py`,
-`test_user_beer_collection_rls.py`) deliberately issue unfiltered and
-cross-identity SQL a correct repository would never write, and therefore
-**must only run against a disposable `INTEGRATION_DATABASE_URL`**, never
-`DATABASE_URL`/`SEED_DATABASE_URL` or the shared dev project — this is a hard
-rule, not a preference, since the whole point of those tests is exercising
-SQL shapes that would be unsafe against real data. Both expect that
-database's connecting role to be able to `SET ROLE beerapp_backend` (a
-superuser, or a role explicitly `GRANT`ed membership).
+- **Default suite** (`python -m pytest`): unit and route tests with no database.
+  Integration tests are deselected by default (`addopts = "-m 'not integration'"`).
+- **Integration suite** (`python -m pytest -m integration`): 269 tests against a real
+  PostgreSQL with every repository migration applied. It runs **only** against a
+  disposable database named by `INTEGRATION_DATABASE_URL`. Without that variable the
+  tests skip.
 
-**Status of this integration suite.** It was written phase by phase but not
-executed against a real database until Phase 13, when it was run for the first
-time against a disposable local Postgres 16 (a minimal `auth.users`/`anon`/
-`authenticated` scaffold, every repo migration applied in order). Result: the
-Phase 13 tests (`test_contributions_*`, 81 tests) all pass, but **79 of the 111
-pre-existing integration tests fail** for reasons unrelated to Phase 13. Of the
-79, 67 were categorized by their first error (the other 12 were not sorted
-individually): 37 insert made-up `user_id` UUIDs that have no `auth.users` row
-and so violate the `user_id` foreign key (`user_beer_logs` 24,
-`user_beer_collection` 8, `user_achievements` 5); 13 (the Map query tests) fail
-with `permission denied for table countries`; 11 insert `user_beer_collection`
-rows that violate its `..._favorited_at_paired` CHECK; 3 insert a brewery
-without its required `country_id`; 2 (the older `user_id`-cascade tests)
-compare `pg_constraint.confdeltype` — a `"char"` that asyncpg returns as
-`bytes` — to a `str`; and 1 inserts `abv = 150` into a `numeric(4,2)` column,
-which overflows before the `0..100` CHECK can fire. These look like defects in
-the older *tests*, not in the schema or the application (the Phase 13 tests
-exercise the same migrations and pass), but each cause was read from the error
-output, not individually fixed or root-caused; they were left untouched (out of
-Phase 13's scope) and are recorded here so nobody trusts that suite as a green
-regression guard yet. The Phase 13 tests avoid these pitfalls (real
-`auth.users` rows, explicit `::text` casts, `numeric(4,2)`-aware bounds).
+### The disposable-database rule (hard, enforced in code)
 
-`test_collection_concurrency.py` additionally proves
-`CollectionRepository.set_state`'s atomic merge is race-safe under real
-concurrent transactions (two genuinely separate connections, not two
-savepoints on one connection) — the one place in this test suite where rows
-are committed for real rather than rolled back, with explicit cleanup in a
-`finally` block. Also `INTEGRATION_DATABASE_URL`-only.
+Several tests deliberately issue SQL a correct repository would never write
+(unfiltered and cross-identity queries, forged `user_id`s), and a few commit rows. So
+**no integration test may touch `beerapp-dev`, production or any shared database**,
+not even read-only. `backend/tests/integration/disposable_db.py` enforces this:
+`INTEGRATION_DATABASE_URL` may not equal, or share a host with, `DATABASE_URL` or
+`SEED_DATABASE_URL` (those are protected values, never targets), and its host must
+be loopback unless `INTEGRATION_DATABASE_ALLOW_REMOTE=1` is set for a dedicated
+hosted test database. The connecting role must be able to `SET ROLE beerapp_backend`
+(a superuser, or an explicit membership). The privilege tests connect to the
+disposable database and switch roles; they do not use `DATABASE_URL`. SSL follows
+the DSN (`sslmode`), so a local server without TLS works; the running API's
+`ssl="require"` is unchanged.
+
+### Environment: which database
+
+1. **Preferred: a real local Supabase stack** (`supabase start`, requires Docker).
+   It provides Supabase's own `auth` schema, roles and defaults, so the migrations run
+   as they will on a real project.
+2. **Current verified fallback: the repository's PostgreSQL scaffold.** Where Docker
+   is unavailable, apply `backend/tests/integration/support/supabase_scaffold.sql`
+   followed by every migration in filename order to an **empty, local, throwaway**
+   PostgreSQL 16 database. `backend/tests/integration/support/apply_schema.py` does
+   both (it refuses a non-disposable target and an already-scaffolded database, and
+   never drops anything):
+
+   ```
+   INTEGRATION_DATABASE_URL=postgresql://postgres@127.0.0.1:5432/beerapp_test \
+       python backend/tests/integration/support/apply_schema.py
+   ```
+
+   The scaffold is test support only: no passwords, project identifiers, URLs,
+   Postgres binaries or Docker scripts.
+
+### Status (2026-09-21)
+
+**The complete integration suite (269 tests) passes** against the scaffold with all
+19 migrations applied, and the default suite passes separately. This supersedes the
+Phase 13 finding that 79 of 111 older tests failed: those were defects in the *tests*
+(fake `user_id`s without an `auth.users` row, catalog rows seeded after switching to
+the read-only role, un-paired favorite/wishlist columns, a brewery without its
+`country_id`, `confdeltype` bytes vs. str, `abv` overflowing `numeric(4,2)`), all
+repaired without changing the production schema. The suite now includes
+`test_security_audit.py` (table x role x privilege matrix, RLS, policies, cascades,
+constraint names, `private` function privileges) and `test_schema_support.py` /
+`test_disposable_db_guard.py` (the helper and the guard themselves).
+
+**This is scaffold verification, not full Supabase verification.** It has not been run
+against a local Supabase stack, and no test has touched `beerapp-dev`.
+
+### What the scaffold does not reproduce
+
+The scaffold provides only the `anon`, `authenticated` and `service_role` roles, a
+minimal `auth.users` (just `id` and `raw_user_meta_data`) with `auth.uid()`, and
+Supabase's default privileges on new `public` objects (so the migrations' explicit
+`REVOKE`s are tested against realistic defaults). It does **not** provide GoTrue
+(real auth behaviour, the Admin API, JWT issuing), PostgREST, the connection pooler
+(session vs. transaction mode, TLS), the other Supabase-managed roles, schemas and
+extensions, the non-superuser `postgres` role, or real password/login roles for
+`beerapp_backend` and `beerapp_seed` (the tests reach them by `SET ROLE`). Behaviour
+that depends on any of those - for example a real `DELETE /account` through the Admin
+API, or pooler quirks - is **not** covered by this suite.
+
+### Special cases
+
+`test_collection_concurrency.py` proves `CollectionRepository.set_state`'s atomic
+merge is race-safe under real concurrent transactions (two separate connections, not
+two savepoints); it is one of the few places that commits rows for real, with
+explicit cleanup, and it too runs only against the disposable database.

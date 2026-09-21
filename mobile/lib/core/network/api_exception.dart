@@ -69,8 +69,22 @@ class ValidationApiException extends ApiException {
   });
 }
 
-/// 503 — the backend couldn't verify the session (e.g. JWKS unreachable) or
-/// is otherwise temporarily unavailable.
+/// 413 — the request body exceeded the backend's size limit (`payload_too_large`).
+/// The app's own request bodies are far below that limit, so this is not
+/// expected in normal use; it maps to its own type so callers never mistake it
+/// for a generic failure, while the UI still shows only the feature's
+/// localized generic error -- never the backend message.
+class PayloadTooLargeApiException extends ApiException {
+  const PayloadTooLargeApiException({
+    required super.message,
+    super.statusCode,
+    super.code,
+  });
+}
+
+/// 503 — the backend couldn't verify the session (e.g. JWKS unreachable), a
+/// database/network dependency was temporarily unavailable
+/// (`service_unavailable`), or it is otherwise temporarily unavailable.
 class ServiceUnavailableApiException extends ApiException {
   const ServiceUnavailableApiException({
     required super.message,
@@ -83,4 +97,12 @@ class ServiceUnavailableApiException extends ApiException {
 /// timeout. Distinct from a server-returned error.
 class NetworkApiException extends ApiException {
   const NetworkApiException({required super.message});
+}
+
+/// The request outlived [ApiClient]'s request timeout. A [NetworkApiException]
+/// on purpose: every feature's error mapping already turns that type into its
+/// localized "check your connection / try again" text, so a timeout needs no
+/// new UI string and can never surface a raw message.
+class TimeoutApiException extends NetworkApiException {
+  const TimeoutApiException() : super(message: 'Request timed out.');
 }

@@ -1,10 +1,10 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
+import '../logging/debug_log.dart';
 
 /// The subset of `app_links`' [AppLinks] this handler needs, so tests can
 /// supply a fake instead of a real platform channel.
@@ -81,7 +81,7 @@ class AuthDeepLinkHandler {
     _subscription = _source.uriLinkStream.listen(
       _handleUri,
       onError: (Object error, StackTrace stackTrace) {
-        debugPrint('AuthDeepLinkHandler: uriLinkStream error: $error');
+        DebugLog.error('auth', 'deep link stream error', error);
       },
     );
 
@@ -95,7 +95,7 @@ class AuthDeepLinkHandler {
         await _handleUri(initialUri);
       }
     } catch (error) {
-      debugPrint('AuthDeepLinkHandler: getInitialLink failed: $error');
+      DebugLog.error('auth', 'getInitialLink failed', error);
     }
   }
 
@@ -108,12 +108,12 @@ class AuthDeepLinkHandler {
       await _exchangeSessionFromUrl(uri);
     } on AuthException catch (error) {
       // Invalid/expired/already-used recovery or confirmation links land
-      // here. Fail safely: no crash, no state change, and only the
-      // (non-sensitive) rejection reason is logged — never the URL itself,
-      // which carries a one-time auth code.
-      debugPrint('AuthDeepLinkHandler: link rejected: ${error.message}');
+      // here. Fail safely: no crash, no state change. Debug builds only, and
+      // sanitized (DebugLog strips URLs, tokens and codes) -- the link itself
+      // carries a one-time auth code and is never logged.
+      DebugLog.error('auth', 'link rejected', error);
     } catch (error) {
-      debugPrint('AuthDeepLinkHandler: getSessionFromUrl failed: $error');
+      DebugLog.error('auth', 'getSessionFromUrl failed', error);
     }
   }
 

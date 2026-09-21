@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/auth/auth_scope.dart';
+import '../../../core/config/legal_config.dart';
+import '../../../core/links/external_link_opener.dart';
 import '../../../core/locale/locale_scope.dart';
 import '../../../design_system/components/cards/app_card.dart';
+import '../../../design_system/components/states/inline_progress.dart';
 import '../../../design_system/tokens/app_colors.dart';
 import '../../../design_system/tokens/app_radii.dart';
 import '../../../design_system/tokens/app_spacing.dart';
@@ -21,6 +24,8 @@ class SettingsScreen extends StatefulWidget {
     required this.profileRepository,
     required this.authRepository,
     required this.accountRepository,
+    this.legalConfig,
+    this.linkOpener,
     super.key,
   });
 
@@ -28,11 +33,24 @@ class SettingsScreen extends StatefulWidget {
   final AuthRepository authRepository;
   final AccountRepository accountRepository;
 
+  /// Where the Privacy Policy / Terms live. Defaults to the build-time
+  /// `LEGAL_PRIVACY_URL` / `LEGAL_TERMS_URL`; injectable for tests.
+  final LegalConfig? legalConfig;
+
+  /// Opens a legal document in the system browser. Defaults to url_launcher;
+  /// injectable for tests.
+  final ExternalLinkOpener? linkOpener;
+
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  late final LegalConfig _legalConfig =
+      widget.legalConfig ?? LegalConfig.fromEnvironment();
+  late final ExternalLinkOpener _linkOpener =
+      widget.linkOpener ?? const UrlLauncherLinkOpener();
+
   bool _isSavingCurrency = false;
   bool _isSendingPasswordReset = false;
   bool _isDeletingAccount = false;
@@ -176,6 +194,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  /// A legal document row: opens [uri] in the system browser when configured;
+  /// otherwise keeps the "not available yet" placeholder. A failed launch shows
+  /// one localized message -- never the URL or an exception.
+  Future<void> _openLegalDocument(Uri? uri, String title) async {
+    if (uri == null) {
+      _openLegalPlaceholder(title);
+      return;
+    }
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final opened = await _linkOpener.open(uri);
+    if (!opened && mounted) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.settingsLegalLinkOpenFailed)),
+      );
+    }
+  }
+
   void _openLegalPlaceholder(String title) {
     final l10n = AppLocalizations.of(context);
     Navigator.of(context).push(
@@ -244,11 +280,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: l10n.settingsCurrencyRowTitle,
             subtitle: currencySubtitle,
             trailing: _isSavingCurrency
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const InlineSpinner(size: 20)
                 : const Icon(Icons.chevron_right),
             onTap: _isSavingCurrency ? null : _pickCurrency,
           ),
@@ -264,11 +296,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: l10n.settingsChangePasswordRowTitle,
             subtitle: l10n.settingsChangePasswordRowSubtitle,
             trailing: _isSendingPasswordReset
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
+                ? const InlineSpinner(size: 20)
                 : const Icon(Icons.chevron_right),
             onTap: _isSendingPasswordReset ? null : _changePassword,
           ),
@@ -287,15 +315,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _SettingsRow(
             icon: Icons.privacy_tip_outlined,
             title: l10n.settingsPrivacyPolicyRowTitle,
-            onTap: () =>
-                _openLegalPlaceholder(l10n.settingsPrivacyPolicyRowTitle),
+            trailing: _legalConfig.privacyPolicyUri == null
+                ? null
+                : const Icon(Icons.open_in_new),
+            onTap: () => _openLegalDocument(
+              _legalConfig.privacyPolicyUri,
+              l10n.settingsPrivacyPolicyRowTitle,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
           _SettingsRow(
             icon: Icons.article_outlined,
             title: l10n.settingsTermsOfServiceRowTitle,
-            onTap: () =>
-                _openLegalPlaceholder(l10n.settingsTermsOfServiceRowTitle),
+            trailing: _legalConfig.termsOfServiceUri == null
+                ? null
+                : const Icon(Icons.open_in_new),
+            onTap: () => _openLegalDocument(
+              _legalConfig.termsOfServiceUri,
+              l10n.settingsTermsOfServiceRowTitle,
+            ),
           ),
           const SizedBox(height: AppSpacing.xl),
           _SettingsRow(
@@ -304,13 +342,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: l10n.settingsDeleteAccountRowSubtitle,
             iconColor: AppColors.error,
             titleColor: AppColors.error,
-            trailing: _isDeletingAccount
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : null,
+            trailing: _isDeletingAccount ? const InlineSpinner(size: 20) : null,
             onTap: _isDeletingAccount ? null : _confirmAndDeleteAccount,
           ),
         ],
@@ -413,7 +445,12 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
           const SizedBox(height: AppSpacing.md),
           Text(l10n.deleteAccountDialogConfirmHint(widget.username)),
           const SizedBox(height: AppSpacing.sm),
-          TextField(controller: _controller, autofocus: true),
+          // The instruction above is plain text; naming the field itself lets a
+          // screen reader say what to type when focus lands here (autofocus).
+          Semantics(
+            label: l10n.deleteAccountDialogConfirmHint(widget.username),
+            child: TextField(controller: _controller, autofocus: true),
+          ),
         ],
       ),
       actions: [

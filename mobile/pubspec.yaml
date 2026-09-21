@@ -27,6 +27,13 @@ dependencies:
   # call it ourselves (see core/auth/auth_deep_link_handler.dart), and a
   # transitive dependency can be dropped or changed without notice.
   app_links: ^7.2.1
+  # Already pulled in transitively by supabase_flutter (its OAuth flow uses it)
+  # at this exact locked version, with its platform plugins -- made direct
+  # because Settings now opens the Privacy Policy / Terms of Service URLs in the
+  # system browser itself (core/links/external_link_opener.dart). No WebView, and
+  # no new package or native code was added: pubspec.lock is unchanged. See
+  # docs/DECISIONS.md.
+  url_launcher: ^6.3.2
   maplibre_gl: ^0.27.1
   fl_chart: ^1.2.0
   # Barcode scanning for Phase 11 (Scanner). CameraX/ML Kit on Android,

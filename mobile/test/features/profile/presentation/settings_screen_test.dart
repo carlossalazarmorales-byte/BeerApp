@@ -228,6 +228,29 @@ void main() {
     },
   );
 
+  testWidgets('the delete-account confirmation field has an accessible name', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    final harness = _Harness();
+    await tester.pumpWidget(harness.app);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Delete account'));
+    await tester.pumpAndSettle();
+
+    final data = tester.getSemantics(find.byType(TextField)).getSemanticsData();
+    expect(data.label, 'Type your username, beerfan, to confirm.');
+
+    await tester.enterText(find.byType(TextField), 'beerfan');
+    await tester.pump();
+    final typed = tester
+        .getSemantics(find.byType(TextField))
+        .getSemanticsData();
+    expect(typed.label, 'Type your username, beerfan, to confirm.');
+    handle.dispose();
+  });
+
   testWidgets(
     'confirmed deletion calls deleteAccount then signs out locally, never '
     'the other way around',

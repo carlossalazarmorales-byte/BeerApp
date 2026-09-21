@@ -2,8 +2,9 @@
 
 Reference summary of `/stitch/amber_froth/DESIGN.md` ("The Artisanal Draught").
 `/stitch` stays the source of truth and is never modified; this document exists
-so the tokens below can be implemented natively in Flutter starting in Phase 1
-(Design System & App Shell) — nothing here is implemented yet.
+so the tokens below can be implemented natively in Flutter. They live in
+`mobile/lib/design_system/`; where the implementation deliberately differs from
+the Stitch value, the row says so.
 
 ## Colors
 
@@ -12,8 +13,10 @@ so the tokens below can be implemented natively in Flutter starting in Phase 1
 | surface | `#faf9f5` | base background |
 | surface-container-low | `#f4f4f0` | secondary content blocks |
 | surface-container-high | `#e9e8e4` | interactive cards |
-| primary | `#795900` | gradient start (CTAs) |
+| primary | `#795900` | solid primary (e.g. selected nav label); **not** the CTA gradient start |
+| primary-gradient-start | `#af8200` | CTA gradient start (`AppColors.primaryGradientStart`): 40% from primary toward primary-container. Lightened from Stitch's `primary` start so the dark label passes WCAG AA over the whole gradient |
 | primary-container | `#ffbf00` | gradient end (CTAs) |
+| on-primary-gradient | `#1b1c1a` (= on-surface) | label/icon colour on the CTA gradient (`AppColors.onPrimaryGradient`), 4.90:1 worst case, 10.3:1 at the bright end |
 | on-secondary-fixed | `#29180a` | deep dark text — never pure black |
 | outline-variant | `#d4c5ab` | borders, at 15% opacity only, accessibility fallback |
 

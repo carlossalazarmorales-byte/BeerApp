@@ -38,19 +38,35 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      onChanged: onChanged,
-      validator: validator,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      autofillHints: autofillHints,
-      decoration: InputDecoration(
-        hintText: hintText,
-        errorText: errorText,
-        prefixIcon: leadingIcon == null ? null : Icon(leadingIcon),
-        suffixIcon: suffixIcon,
+    final hint = hintText;
+
+    // A placeholder disappears once the user types, so on its own it gives a
+    // filled-in field no accessible name. The name is therefore attached to the
+    // field itself (always present), and the drawn hint -- styled exactly as
+    // `hintText` would be -- is hidden from semantics so it is not read twice.
+    return Semantics(
+      label: hint,
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        onChanged: onChanged,
+        validator: validator,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        autofillHints: autofillHints,
+        decoration: InputDecoration(
+          hint: hint == null
+              ? null
+              : ExcludeSemantics(
+                  child: Text(
+                    hint,
+                    style: Theme.of(context).inputDecorationTheme.hintStyle,
+                  ),
+                ),
+          errorText: errorText,
+          prefixIcon: leadingIcon == null ? null : Icon(leadingIcon),
+          suffixIcon: suffixIcon,
+        ),
       ),
     );
   }

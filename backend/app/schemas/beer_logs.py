@@ -4,6 +4,14 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.schemas.common import NO_NUL_PATTERN
+
+# Limits below mirror what the columns can store, not product rules.
+# user_beer_logs.price is numeric(10, 2): at most 8 whole digits, 2 decimals.
+MAX_PRICE = Decimal("99999999.99")
+# user_beer_logs.serving_volume_ml is integer (int4).
+MAX_SERVING_VOLUME_ML = 2_147_483_647
+
 
 def _require_aware_or_none(value: datetime | None) -> datetime | None:
     """A client-supplied consumed_at with no UTC offset would otherwise
@@ -44,13 +52,13 @@ class BeerLogCreate(BaseModel):
 
     beer_id: UUID
     rating: int | None = Field(default=None, ge=1, le=5)
-    review: str | None = Field(default=None, max_length=2000)
+    review: str | None = Field(default=None, max_length=2000, pattern=NO_NUL_PATTERN)
     consumed_at: datetime | None = Field(default=None)
-    serving_note: str | None = Field(default=None, max_length=500)
-    price: Decimal | None = Field(default=None, ge=0)
+    serving_note: str | None = Field(default=None, max_length=500, pattern=NO_NUL_PATTERN)
+    price: Decimal | None = Field(default=None, ge=0, le=MAX_PRICE, max_digits=10, decimal_places=2)
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
-    venue_name: str | None = Field(default=None, max_length=200)
-    serving_volume_ml: int | None = Field(default=None, gt=0)
+    venue_name: str | None = Field(default=None, max_length=200, pattern=NO_NUL_PATTERN)
+    serving_volume_ml: int | None = Field(default=None, gt=0, le=MAX_SERVING_VOLUME_ML)
 
     @field_validator("consumed_at")
     @classmethod
@@ -72,13 +80,13 @@ class BeerLogUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     rating: int | None = Field(default=None, ge=1, le=5)
-    review: str | None = Field(default=None, max_length=2000)
+    review: str | None = Field(default=None, max_length=2000, pattern=NO_NUL_PATTERN)
     consumed_at: datetime | None = Field(default=None)
-    serving_note: str | None = Field(default=None, max_length=500)
-    price: Decimal | None = Field(default=None, ge=0)
+    serving_note: str | None = Field(default=None, max_length=500, pattern=NO_NUL_PATTERN)
+    price: Decimal | None = Field(default=None, ge=0, le=MAX_PRICE, max_digits=10, decimal_places=2)
     currency: str | None = Field(default=None, pattern=r"^[A-Z]{3}$")
-    venue_name: str | None = Field(default=None, max_length=200)
-    serving_volume_ml: int | None = Field(default=None, gt=0)
+    venue_name: str | None = Field(default=None, max_length=200, pattern=NO_NUL_PATTERN)
+    serving_volume_ml: int | None = Field(default=None, gt=0, le=MAX_SERVING_VOLUME_ML)
 
     @field_validator("consumed_at")
     @classmethod

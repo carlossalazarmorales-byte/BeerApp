@@ -20,7 +20,6 @@ from uuid import uuid4
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
 from app.errors import ConflictError, NotFoundError
 from app.repositories.beers import BeerRepository
 from app.repositories.breweries import BreweryRepository
@@ -32,6 +31,8 @@ from app.schemas.contributions import (
     BreweryDuplicateCheckQuery,
 )
 from app.services.contributions import ContributionService
+
+from .disposable_db import connection_kwargs
 
 pytestmark = pytest.mark.integration
 
@@ -51,8 +52,8 @@ async def _environment(dsn: str):
     real service plus an admin connection for out-of-band assertions, and
     removes everything it created.
     """
-    kwargs = parse_dsn_kwargs(dsn)
-    admin = await asyncpg.connect(**kwargs, ssl="require")
+    kwargs = connection_kwargs(dsn)
+    admin = await asyncpg.connect(**kwargs)
     ids: dict = {}
     try:
         await admin.execute("insert into auth.users (id) values ($1), ($2)", _USER_A, _USER_B)
@@ -85,7 +86,7 @@ async def _environment(dsn: str):
         )
 
         pool = await asyncpg.create_pool(
-            **kwargs, ssl="require", min_size=1, max_size=3, init=_become_backend_role
+            **kwargs, min_size=1, max_size=3, init=_become_backend_role
         )
         try:
             service = ContributionService(

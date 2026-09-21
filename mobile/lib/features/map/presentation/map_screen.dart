@@ -26,6 +26,7 @@ import 'brewery_preview_card.dart';
 import 'map_camera_fit.dart';
 import 'map_cluster_utils.dart';
 import 'map_controller.dart';
+import 'map_data_synchronizer.dart';
 import 'map_debug_log.dart';
 import 'map_error_text.dart';
 import 'map_mode_selector.dart';
@@ -92,6 +93,23 @@ class _MapScreenState extends State<MapScreen> {
 
   MapLibreMapController? _mapLibreController;
   bool _sourcesReady = false;
+
+  /// Pushes controller data to the map, doing no work when nothing changed.
+  late final MapDataSynchronizer _synchronizer = MapDataSynchronizer(
+    surface: _MapLibreSurface(() => _mapLibreController),
+    beersSourceId: _beersSourceId,
+    breweriesSourceId: _breweriesSourceId,
+    beerLayerIds: const [
+      _beersClusterLayerId,
+      _beersClusterCountLayerId,
+      _beersPointsLayerId,
+    ],
+    breweryLayerIds: const [
+      _breweriesClusterLayerId,
+      _breweriesClusterCountLayerId,
+      _breweriesPointsLayerId,
+    ],
+  );
   String? _lastFitSignature;
 
   @override
@@ -175,6 +193,11 @@ class _MapScreenState extends State<MapScreen> {
     await map.setLayerVisibility(_breweriesClusterLayerId, false);
     await map.setLayerVisibility(_breweriesClusterCountLayerId, false);
     await map.setLayerVisibility(_breweriesPointsLayerId, false);
+
+    // The sources were just created EMPTY: whatever the synchronizer last sent
+    // (for a previous map instance/style) is gone, so the next sync must
+    // upload everything again.
+    _synchronizer.invalidate();
   }
 
   Future<void> _addMarkerLayers(
@@ -221,54 +244,17 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Future<void> _syncMapData() async {
-    final map = _mapLibreController;
-    if (map == null || !_sourcesReady) return;
+    if (_mapLibreController == null || !_sourcesReady) return;
 
-    await map.setGeoJsonSource(
-      _beersSourceId,
-      _featureCollectionFor(_controller.beers),
+    // Reads the LATEST controller state when it runs, and skips whatever the
+    // map already has -- see MapDataSynchronizer.
+    await _synchronizer.sync(
+      () => MapSnapshot(
+        beers: _controller.beers,
+        breweries: _controller.breweries,
+        mode: _controller.mode,
+      ),
     );
-    await map.setGeoJsonSource(
-      _breweriesSourceId,
-      _featureCollectionFor(_controller.breweries),
-    );
-
-    final showBreweries = _controller.mode == MapMode.breweries;
-    await map.setLayerVisibility(_beersClusterLayerId, !showBreweries);
-    await map.setLayerVisibility(_beersClusterCountLayerId, !showBreweries);
-    await map.setLayerVisibility(_beersPointsLayerId, !showBreweries);
-    await map.setLayerVisibility(_breweriesClusterLayerId, showBreweries);
-    await map.setLayerVisibility(_breweriesClusterCountLayerId, showBreweries);
-    await map.setLayerVisibility(_breweriesPointsLayerId, showBreweries);
-  }
-
-  Map<String, dynamic> _featureCollectionFor(List<Object> items) {
-    return {
-      'type': 'FeatureCollection',
-      'features': [
-        for (final item in items)
-          if (item is MapBeer)
-            {
-              'type': 'Feature',
-              'id': item.beerId,
-              'geometry': {
-                'type': 'Point',
-                'coordinates': [item.longitude, item.latitude],
-              },
-              'properties': {'beer_id': item.beerId},
-            }
-          else if (item is MapBrewery)
-            {
-              'type': 'Feature',
-              'id': item.breweryId,
-              'geometry': {
-                'type': 'Point',
-                'coordinates': [item.longitude, item.latitude],
-              },
-              'properties': {'brewery_id': item.breweryId},
-            },
-      ],
-    };
   }
 
   Future<void> _handleFeatureTapped(
@@ -584,6 +570,29 @@ class _MapScreenState extends State<MapScreen> {
         ),
       ),
     );
+  }
+}
+
+/// Adapts MapLibre's controller to [MapSurface]. The controller is read lazily
+/// because the platform view creates it after the screen's state exists; with
+/// no controller yet, an operation is simply skipped (the next sync after the
+/// style loads re-sends everything).
+class _MapLibreSurface implements MapSurface {
+  const _MapLibreSurface(this._controller);
+
+  final MapLibreMapController? Function() _controller;
+
+  @override
+  Future<void> setGeoJsonSource(
+    String sourceId,
+    Map<String, dynamic> data,
+  ) async {
+    await _controller()?.setGeoJsonSource(sourceId, data);
+  }
+
+  @override
+  Future<void> setLayerVisibility(String layerId, bool visible) async {
+    await _controller()?.setLayerVisibility(layerId, visible);
   }
 }
 

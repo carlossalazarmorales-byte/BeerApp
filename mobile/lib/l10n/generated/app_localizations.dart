@@ -1496,6 +1496,36 @@ abstract class AppLocalizations {
   /// **'This content isn\'t available yet. Check back before release.'**
   String get settingsLegalPlaceholderDescription;
 
+  /// Snackbar shown when the Privacy Policy / Terms of Service link could not be opened in the browser. Never includes the URL or an error message.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the link. Please try again later.'**
+  String get settingsLegalLinkOpenFailed;
+
+  /// Title of the startup-failure screen shown when the build's configuration is missing or invalid.
+  ///
+  /// In en, this message translates to:
+  /// **'BeerApp isn\'t set up correctly'**
+  String get startupFailureConfigurationTitle;
+
+  /// Body of the configuration startup-failure screen. Deliberately generic: never names a setting, URL or key.
+  ///
+  /// In en, this message translates to:
+  /// **'This version of the app is missing required configuration. Please update BeerApp or try again later.'**
+  String get startupFailureConfigurationMessage;
+
+  /// Title of the startup-failure screen shown when starting the app failed for another reason.
+  ///
+  /// In en, this message translates to:
+  /// **'BeerApp couldn\'t start'**
+  String get startupFailureInitializationTitle;
+
+  /// Body of the initialization startup-failure screen, shown with a Retry button.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong while starting the app. Please try again.'**
+  String get startupFailureInitializationMessage;
+
   /// Title of the Settings row that opens the delete-account confirmation.
   ///
   /// In en, this message translates to:
@@ -1909,6 +1939,46 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong. Please try again.'**
   String get contributionErrorGeneric;
+
+  /// Screen-reader label for a collection tile's latest rating badge (shown visually as 4/5).
+  ///
+  /// In en, this message translates to:
+  /// **'Rated {rating} out of 5'**
+  String collectionRatingSemanticLabel(int rating);
+
+  /// Screen-reader summary of the monthly activity chart when every month is empty.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly activity: no entries in the last 12 months.'**
+  String get statisticsMonthlyChartSemanticEmpty;
+
+  /// Screen-reader summary of the monthly activity bar chart: total logs and the busiest month.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly activity over the last 12 months: {total, plural, =1{1 entry} other{{total} entries}} in total. Month with most entries: {month}, {count, plural, =1{1 entry} other{{count} entries}}.'**
+  String statisticsMonthlyChartSemanticSummary(
+    int total,
+    String month,
+    int count,
+  );
+
+  /// One year and its log count, as read by a screen reader for the yearly activity chart.
+  ///
+  /// In en, this message translates to:
+  /// **'{year}: {count, plural, =1{1 entry} other{{count} entries}}'**
+  String statisticsYearlyChartSemanticEntry(int year, int count);
+
+  /// Screen-reader summary of the yearly activity bar chart; entries is a comma-separated list of year entries.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly activity: {entries}.'**
+  String statisticsYearlyChartSemanticSummary(String entries);
+
+  /// Full month name, read aloud in the monthly chart's screen-reader summary. month is one of january..december.
+  ///
+  /// In en, this message translates to:
+  /// **'{month, select, january{January} february{February} march{March} april{April} may{May} june{June} july{July} august{August} september{September} october{October} november{November} december{December} other{}}'**
+  String statisticsMonthLongName(String month);
 }
 
 class _AppLocalizationsDelegate

@@ -16,7 +16,7 @@ import asyncio
 import asyncpg
 import pytest
 
-from app.db import parse_dsn_kwargs
+from .disposable_db import connection_kwargs, ensure_users, remove_users
 
 pytestmark = pytest.mark.integration
 
@@ -25,10 +25,11 @@ _USER_B = "22222222-2222-2222-2222-222222222222"
 
 
 async def _in_rolled_back_transaction(dsn: str, body) -> None:
-    conn = await asyncpg.connect(**parse_dsn_kwargs(dsn), ssl="require")
+    conn = await asyncpg.connect(**connection_kwargs(dsn))
     transaction = conn.transaction()
     await transaction.start()
     try:
+        await ensure_users(conn, _USER_A, _USER_B)
         await body(conn)
     finally:
         await transaction.rollback()
@@ -70,8 +71,9 @@ def test_backend_role_can_crud_its_own_rows(integration_dsn):
         await _set_identity(conn, _USER_A)
 
         row_id = await conn.fetchval(
-            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-            "values ($1, $2, true) returning id",
+            "insert into public.user_beer_collection "
+            "(user_id, beer_id, is_favorite, favorited_at) "
+            "values ($1, $2, true, now()) returning id",
             _USER_A,
             beer_id,
         )
@@ -81,7 +83,9 @@ def test_backend_role_can_crud_its_own_rows(integration_dsn):
         assert row is not None
 
         await conn.execute(
-            "update public.user_beer_collection set is_wishlist = true where id = $1", row_id
+            "update public.user_beer_collection "
+            "set is_wishlist = true, wishlisted_at = now() where id = $1",
+            row_id,
         )
         result = await conn.execute("delete from public.user_beer_collection where id = $1", row_id)
         assert result == "DELETE 1"
@@ -95,8 +99,9 @@ def test_unfiltered_select_as_other_user_sees_nothing(integration_dsn):
         await _as_backend_role(conn)
         await _set_identity(conn, _USER_A)
         await conn.execute(
-            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-            "values ($1, $2, true)",
+            "insert into public.user_beer_collection "
+            "(user_id, beer_id, is_favorite, favorited_at) "
+            "values ($1, $2, true, now())",
             _USER_A,
             beer_id,
         )
@@ -116,14 +121,17 @@ def test_unfiltered_update_as_other_user_affects_nothing(integration_dsn):
         await _as_backend_role(conn)
         await _set_identity(conn, _USER_A)
         await conn.execute(
-            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-            "values ($1, $2, true)",
+            "insert into public.user_beer_collection "
+            "(user_id, beer_id, is_favorite, favorited_at) "
+            "values ($1, $2, true, now())",
             _USER_A,
             beer_id,
         )
 
         await _set_identity(conn, _USER_B)
-        result = await conn.execute("update public.user_beer_collection set is_wishlist = true")
+        result = await conn.execute(
+            "update public.user_beer_collection set is_wishlist = true, wishlisted_at = now()"
+        )
         assert result == "UPDATE 0"
 
         await _set_identity(conn, _USER_A)
@@ -139,8 +147,9 @@ def test_unfiltered_delete_as_other_user_affects_nothing(integration_dsn):
         await _as_backend_role(conn)
         await _set_identity(conn, _USER_A)
         await conn.execute(
-            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-            "values ($1, $2, true)",
+            "insert into public.user_beer_collection "
+            "(user_id, beer_id, is_favorite, favorited_at) "
+            "values ($1, $2, true, now())",
             _USER_A,
             beer_id,
         )
@@ -160,8 +169,9 @@ def test_insert_with_foreign_user_id_is_rejected_by_with_check(integration_dsn):
 
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             await conn.execute(
-                "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-                "values ($1, $2, true)",
+                "insert into public.user_beer_collection "
+                "(user_id, beer_id, is_favorite, favorited_at) "
+                "values ($1, $2, true, now())",
                 _USER_A,
                 beer_id,
             )
@@ -175,8 +185,9 @@ def test_identity_absent_or_cleared_denies_all_rows_without_raising(integration_
         await _as_backend_role(conn)
         await _set_identity(conn, _USER_A)
         await conn.execute(
-            "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-            "values ($1, $2, true)",
+            "insert into public.user_beer_collection "
+            "(user_id, beer_id, is_favorite, favorited_at) "
+            "values ($1, $2, true, now())",
             _USER_A,
             beer_id,
         )
@@ -186,8 +197,9 @@ def test_identity_absent_or_cleared_denies_all_rows_without_raising(integration_
         assert rows == []
         with pytest.raises(asyncpg.InsufficientPrivilegeError):
             await conn.execute(
-                "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-                "values ($1, $2, true)",
+                "insert into public.user_beer_collection "
+                "(user_id, beer_id, is_favorite, favorited_at) "
+                "values ($1, $2, true, now())",
                 _USER_A,
                 beer_id,
             )
@@ -202,9 +214,10 @@ def test_no_session_level_leakage_across_committed_transactions(integration_dsn)
     """
 
     async def body() -> None:
-        conn = await asyncpg.connect(**parse_dsn_kwargs(integration_dsn), ssl="require")
+        conn = await asyncpg.connect(**connection_kwargs(integration_dsn))
         row_id = beer_id = brewery_id = country_id = None
         try:
+            await ensure_users(conn, _USER_A)
             async with conn.transaction():
                 country_id = await conn.fetchval(
                     "insert into public.countries (iso_code, name, continent) "
@@ -223,8 +236,9 @@ def test_no_session_level_leakage_across_committed_transactions(integration_dsn)
                 await _as_backend_role(conn)
                 await _set_identity(conn, _USER_A)
                 row_id = await conn.fetchval(
-                    "insert into public.user_beer_collection (user_id, beer_id, is_favorite) "
-                    "values ($1, $2, true) returning id",
+                    "insert into public.user_beer_collection "
+                    "(user_id, beer_id, is_favorite, favorited_at) "
+                    "values ($1, $2, true, now()) returning id",
                     _USER_A,
                     beer_id,
                 )
@@ -234,6 +248,11 @@ def test_no_session_level_leakage_across_committed_transactions(integration_dsn)
                     "select nullif(current_setting('app.user_id', true), '')"
                 )
                 assert normalized is None
+                # The connecting admin role bypasses RLS, so re-adopt the
+                # backend role WITHOUT an identity: if the previous
+                # transaction's identity had leaked, its row would be
+                # visible here.
+                await _as_backend_role(conn)
                 rows = await conn.fetch("select id from public.user_beer_collection")
                 assert rows == []
         finally:
@@ -250,6 +269,7 @@ def test_no_session_level_leakage_across_committed_transactions(integration_dsn)
                 await conn.execute("delete from public.breweries where id = $1", brewery_id)
             if country_id is not None:
                 await conn.execute("delete from public.countries where id = $1", country_id)
+            await remove_users(conn, _USER_A)
             await conn.close()
 
     asyncio.run(body())

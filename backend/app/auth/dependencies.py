@@ -4,6 +4,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.auth.jwks import JWKSCache, JWKSUnavailableError
 from app.auth.verifier import TokenInvalidError, verify_access_token
 from app.config import Settings, get_settings
+from app.errors import UNAUTHORIZED_MESSAGE
 
 # auto_error=False: a missing Authorization header should produce our own
 # 401 + WWW-Authenticate envelope, not FastAPI's default.
@@ -17,7 +18,7 @@ def get_jwks_cache(request: Request) -> JWKSCache:
 def _unauthorized() -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Missing or invalid credentials.",
+        detail=UNAUTHORIZED_MESSAGE,
         headers={"WWW-Authenticate": "Bearer"},
     )
 

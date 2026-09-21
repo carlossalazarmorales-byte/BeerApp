@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from app.auth.dependencies import get_current_user
 from app.dependencies import get_collection_service
 from app.schemas.collection import CollectionBeerOut, CollectionStateOut, CollectionStateUpdate
-from app.schemas.common import Page
+from app.schemas.common import MAX_PAGE, Page
 from app.services.collection import CollectionService
 
 _Sort = Literal["recent", "rating", "name"]
@@ -25,7 +25,7 @@ async def list_logged_collection(
     style_id: UUID | None = None,
     brewery_id: UUID | None = None,
     sort: _Sort = "recent",
-    page: int = Query(default=1, ge=1),
+    page: int = Query(default=1, ge=1, le=MAX_PAGE),
     page_size: int = Query(default=20, ge=1, le=100),
     user_id: str = Depends(get_current_user),
     service: CollectionService = Depends(get_collection_service),
@@ -47,7 +47,7 @@ async def list_favorite_collection(
     style_id: UUID | None = None,
     brewery_id: UUID | None = None,
     sort: _Sort = "recent",
-    page: int = Query(default=1, ge=1),
+    page: int = Query(default=1, ge=1, le=MAX_PAGE),
     page_size: int = Query(default=20, ge=1, le=100),
     user_id: str = Depends(get_current_user),
     service: CollectionService = Depends(get_collection_service),
@@ -69,7 +69,7 @@ async def list_wishlist_collection(
     style_id: UUID | None = None,
     brewery_id: UUID | None = None,
     sort: _Sort = "recent",
-    page: int = Query(default=1, ge=1),
+    page: int = Query(default=1, ge=1, le=MAX_PAGE),
     page_size: int = Query(default=20, ge=1, le=100),
     user_id: str = Depends(get_current_user),
     service: CollectionService = Depends(get_collection_service),
