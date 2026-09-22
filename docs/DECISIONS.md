@@ -2622,3 +2622,72 @@ the Stage 1A entry above and in `docs/RELEASE.md`) was deleted. The scratch Post
 and both temporary Python venvs used for this verification were confirmed removed, with no
 lingering `postgres` process. `git diff --check` reported no whitespace errors. Nothing new was
 committed or pushed; Stage 1B and Stage 2 were not started.
+
+## 2026-09-22 — Phase 15, Stage 2 (repo-only): final identity settled, release-signing wiring added
+
+**Owner decisions recorded.**
+- **Final public product name: "BeerApp"** (exact capitalization, user-visible/store-facing).
+  Not a working placeholder any more.
+- **Final release identifier, unchanged: `com.carlossalazarmorales.beerapp`.** Android
+  applicationId/namespace, iOS bundle id, and the auth/deep-link scheme are not renamed.
+- **No domain purchased now; not a Stage 2 blocker.** Future public HTTPS requirements (API URL,
+  Privacy Policy, Terms, account-deletion page, SMTP sender) may use appropriate hosted/public
+  URLs chosen later during infrastructure and store setup; none is invented now.
+- **Store accounts:** the owner intends to be the Play/App Store publisher when those accounts
+  are created later, subject to real eligibility/account requirements at that time. No account
+  was created; no age/identity/legal account-holder requirement is bypassed.
+- **Android upload key:** not generated now or ever by the assistant. The owner creates and
+  manages it locally, before the first real Play upload. The assistant never receives the
+  keystore, its passwords, or any signing secret.
+
+**Signing wiring added (`mobile/android/app/build.gradle.kts`), fail-closed by design.** Reads a
+git-ignored `android/key.properties` if present, building the release `signingConfig` from it.
+If it is absent, `assembleRelease`/`bundleRelease` fail immediately via
+`gradle.taskGraph.whenReady` - at task-graph resolution, before any compilation runs - with a
+message naming `docs/RELEASE.md`. **No silent fallback to the debug key.** The only way to still
+get a local, debug-signed release build (the kind Stage 1A used for manifest inspection) is the
+explicit, intentionally specific opt-in `-PallowDebugSigningForReleaseInspection=true`, whose own
+message says plainly "NEVER UPLOAD THIS BUILD TO GOOGLE PLAY." `key.properties`/`*.jks`/`*.keystore`
+were already git-ignored at both the root and `mobile/android/` level; confirmed again with
+`git check-ignore` at the real paths.
+
+**Verified for real, not just by reading the source (2026-09-22).**
+- First attempt used a plain `doFirst` hook on `assembleRelease`/`bundleRelease`, which fires
+  only after those tasks' dependencies (including compilation) already ran. A real
+  `./gradlew.bat :app:bundleRelease` run hit an unrelated Java-toolchain error
+  (`invalid source release: 21`, from invoking Gradle directly rather than through
+  `flutter build`) *before* that hook ever got a chance to fire - proving the design was not
+  actually "early." Redesigned to `gradle.taskGraph.whenReady`, which runs once before any task
+  executes, independent of whether unrelated build steps succeed.
+- **A. Fail-closed:** with no `key.properties` and no flag, `./gradlew.bat :app:bundleRelease`
+  failed in **under 5 seconds**, before any compilation, with exactly the intended message.
+- **B. Inspection-only opt-in:** with no `key.properties` and only
+  `-PallowDebugSigningForReleaseInspection=true`, `flutter build appbundle --release` (the flag
+  forwarded through to Gradle as expected) produced a real `app-release.aab` (74.9 MB); `jarsigner
+  -verify` confirmed it is genuinely signed with the debug certificate (`CN=Android Debug`), not
+  unsigned or silently something else.
+- No `key.properties` file and no keystore were created for either test.
+
+**Regression coverage.** New `mobile/test/platform/android_signing_test.dart` (source-text
+checks, the same style as the existing manifest/plist tests): no unconditional debug-signing
+line remains; the `key.properties` fields are read; the specific opt-in flag name and its
+"never upload" wording are present; both real Gradle task names and `GradleException` appear;
+`key.properties`/`*.jks`/`*.keystore` stay in both `.gitignore` files; the Android
+applicationId/namespace, the iOS bundle id, and `Env.authRedirectUri.scheme` all still equal the
+final identifier. It states plainly that it cannot prove Gradle's real runtime behaviour itself
+(that is the A/B verification above).
+
+**Documentation.** `docs/RELEASE.md`: the identity/domain/account gates in the Stage 1-6 table
+and Section 8 "Signing" were rewritten to record the settled decisions and split Stage 2 into
+**2a** (this repo-only work, done) and **2b** (the owner-operated upload-key step, still open);
+Section 7's redirect-scheme note and Section 12's naming note were updated from "working name" /
+"if it differs" to final and settled.
+
+**Verification matrix run for this change:** `flutter analyze` clean; `dart format` clean;
+`flutter test` 747 passed (740 + 7 new); backend default suite 604 passed and `ruff` clean
+(unaffected by this change, re-run for completeness). `mobile/build/` (1.4 GB from the two real
+Gradle/Flutter invocations above) was deleted afterward.
+
+**Not done, by design:** no signing key generated, no store account created, no AAB/APK
+uploaded, no Google OAuth client, no production Supabase, no hosting choice, no domain
+purchased. Stage 1B and Stage 3 were not started. Nothing was committed or pushed.

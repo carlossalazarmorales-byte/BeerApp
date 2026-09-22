@@ -1,29 +1,31 @@
 # Release runbook (Phase 15)
 
 Working document for taking BeerApp to the stores. It records **facts, owner-operated
-procedures and gates**; it is not a claim that anything is store-ready. "BeerApp" is the
-working product name. The Play and App Store **Production release** items stay
-**unchecked** until the owner gives a later, explicit instruction; the owner's manual QA and
-beta cycle comes after the roadmap.
+procedures and gates**; it is not a claim that anything is store-ready. **"BeerApp" is the final
+public product name** (owner decision, 2026-09-22). The Play and App Store **Production release**
+items stay **unchecked** until the owner gives a later, explicit instruction; the owner's manual
+QA and beta cycle comes after the roadmap.
 
 Evidence labels: **[repo]** read from files, **[build]** observed in a real build on this
 machine, **[official]** from Apple/Google/Supabase documentation (links below), **[inference]**
 reasoning that has not been proven, **[owner]** the owner must supply or do it.
 
 Hard boundaries that stay in force: no signing keys, store/Supabase/hosting accounts,
-production credentials, uploads or public release are created or used by the assistant, and
-nothing here changes the applicationId / bundle id / auth scheme
-(`com.carlossalazarmorales.beerapp`) until the identity gate below is passed.
+production credentials, uploads or public release are created or used by the assistant.
+**`com.carlossalazarmorales.beerapp` is the final release identity** (owner decision,
+2026-09-22): Android applicationId/namespace, iOS bundle id, and the auth/deep-link scheme are
+**not** renamed.
 
 ## 1. Stage map and gates
 
 | Stage | Content | Gate (owner input needed first) |
 |---|---|---|
-| **1A** (done in this repo) | merged-manifest inspection, permission provenance, `.aab` compile with placeholder config, backend cleanup, reference-data and beta-catalog tooling, working-name polish, this document | none |
+| **1A** (done) | merged-manifest inspection, permission provenance, `.aab` compile with placeholder config, backend cleanup, reference-data and beta-catalog tooling, working-name polish, this document | none |
 | **1B** | physical-device release smoke test (section 6) | a public HTTPS backend from Stage 3, a physical Android device |
-| **2** | permanent identity + release signing (section 8) | final public name, domain/reverse-domain, publisher identity, an upload key **you** create |
-| **3** | production infrastructure (sections 3, 4, 5) | hosting choice, domain, production Supabase plan/region, SMTP |
-| **4** | store setup + Play internal/closed testing (section 10) | a Google Play Console account; Stages 2 and 3 done |
+| **2a** (done) | identity settled, release-signing Gradle wiring, fail-closed guard, identity regression tests (section 8) | none |
+| **2b** | the owner creates the upload keystore and `android/key.properties` locally | an upload key **you** create (never generated or received by the assistant) |
+| **3** | production infrastructure (sections 3, 4, 5) | hosting choice, a public domain (any suitable hosted/public URL is fine; no custom domain purchase required), production Supabase plan/region, SMTP |
+| **4** | store setup + Play internal/closed testing (section 10) | a Google Play Console account (owner as publisher, subject to real eligibility at that time); Stages 2b and 3 done |
 | **5** | iOS (section 9) | a Mac with Xcode 26, an Apple Developer account, the final iOS auth decision |
 | **6** | stop line: beta tracks ready, production unchecked | explicit later instruction for public release |
 
@@ -242,7 +244,7 @@ tests or an eligible adult tester.
 ## 7. Supabase Auth dashboard checklist (owner; not verifiable from the repository)
 
 - **URL Configuration:** Site URL = the production value (not `localhost`); the Redirect URLs allow-list must contain
-  the app's redirect `com.carlossalazarmorales.beerapp://login-callback` (or the renamed scheme after Stage 2). A `redirectTo`
+  the app's redirect `com.carlossalazarmorales.beerapp://login-callback` (final, unchanged -- see section 8). A `redirectTo`
   that is not allow-listed falls back to the Site URL **[official, supabase.com/docs/guides/auth/redirect-urls]**.
 - **Custom SMTP is required before real testers.** The built-in email service only delivers to members of the
   Supabase project team, at 2 messages per hour, and is "not meant for production use"
@@ -259,18 +261,50 @@ tests or an eligible adult tester.
 
 The assistant never generates, receives, stores or asks for keys or passwords.
 
-1. The owner generates an **upload keystore** locally (for example with `keytool -genkeypair ...`), keeps it and its
-   passwords outside the repository (`*.jks`, `*.keystore`, `key.properties` are git-ignored), and enrolls in
-   **Play App Signing** in Play Console (Google holds the app-signing key; the upload key is replaceable).
-2. Stage 2 then adds Gradle wiring that reads a git-ignored `android/key.properties` and **fails the release
-   build closed** when it is missing (no silent debug key), an atomic rename of the identifiers if the identity
-   changed, adaptive/legacy launcher icons from owner artwork, and `versionCode` discipline
-   (`pubspec.yaml version: MAJOR.MINOR.PATCH+N`, one increasing `N` for both stores; nothing to change until then).
-3. The owner registers the SHA-1 of the **upload key and of the Play App Signing key** (from Play Console) in the Google
-   Cloud Android OAuth client bound to the final package name. A debug SHA-1 will not match store builds.
+**Final release identity (owner decision, 2026-09-22): `com.carlossalazarmorales.beerapp`,
+unchanged** -- Android applicationId/namespace, iOS bundle id, and the auth/deep-link scheme. No
+rename is pending and none is planned; the OAuth-client and store-record binding below applies to
+this identifier as-is.
 
-**Do not change the applicationId / bundle id / auth scheme before this gate.** They become effectively permanent
-once a Play or App Store record exists, and the Android OAuth client is bound to the package name.
+**2a. Repo-side signing wiring (done, `mobile/android/app/build.gradle.kts`).** Fail-closed, no
+key or account needed:
+- If `android/key.properties` (git-ignored, alongside `*.jks`/`*.keystore`) exists, its
+  `storeFile`/`storePassword`/`keyAlias`/`keyPassword` build the release `signingConfig`.
+- If it does **not** exist, `assembleRelease`/`bundleRelease` fail immediately -- at Gradle's
+  task-graph resolution, before any compilation -- with a message pointing at this section. There
+  is **no** silent fallback to the debug key for what looks like a real release build.
+- The one way to still get a local, debug-signed release build for inspection (merged manifest,
+  build shape -- the kind Stage 1A used) is an explicit, intentionally specific opt-in:
+  `-PallowDebugSigningForReleaseInspection=true`. Its own error/success paths say plainly
+  **"NEVER UPLOAD THIS BUILD TO GOOGLE PLAY."** Verified for real (not just by reading the
+  source) on 2026-09-22: with neither `key.properties` nor the flag, `gradlew :app:bundleRelease`
+  failed in under 5 seconds with the intended message; with only the flag (still no
+  `key.properties`),`flutter build appbundle --release -PallowDebugSigningForReleaseInspection=true`
+  produced a real `.aab`, confirmed debug-signed (`jarsigner -verify`: `CN=Android Debug`). Neither
+  run created a keystore or `key.properties`. Regression coverage:
+  `mobile/test/platform/android_signing_test.dart`.
+- `versionCode`/`versionName` (`pubspec.yaml version: MAJOR.MINOR.PATCH+N`, one increasing `N` for
+  both stores) are unchanged by this wiring.
+
+**2b. Owner-operated, still to come (needs no Play account yet):**
+1. Generate an **upload keystore** locally (for example with `keytool -genkeypair ...`); keep it
+   and its passwords outside the repository.
+2. Write `android/key.properties` (git-ignored) next to it, in the standard Flutter/Gradle form:
+   ```properties
+   storePassword=<keystore password>
+   keyPassword=<key password>
+   keyAlias=<key alias>
+   storeFile=<path to the keystore file, e.g. C:/keys/beerapp-upload.jks>
+   ```
+   As soon as this file exists, `flutter build appbundle --release` (no flag needed) signs with
+   it instead of failing.
+3. When a Play Console account exists (Stage 4): enroll in **Play App Signing** (Google then
+   holds the app-signing key; the upload key stays replaceable), and register the SHA-1 of both
+   the upload key and the Play App Signing key in the Google Cloud Android OAuth client bound to
+   `com.carlossalazarmorales.beerapp`. A debug SHA-1 will not match store builds.
+
+Adaptive/legacy launcher icons from owner artwork are separate, later work (still listed as open
+in section 10) -- they do not block signing.
 
 ## 9. iOS: prerequisites and pre-Mac checklist (nothing here is verified; iOS was never built or run)
 
@@ -334,8 +368,9 @@ location, advertising or device identifiers, analytics events, crash reports, co
 SDK is used, by decision. Deletion cascades to every user-owned table; backup retention is undefined until backups exist; there is no
 data export.
 
-## 12. Working-name polish (Stage 1A)
+## 12. Final public name and identity (Stage 1A polish, Stage 2 decision)
 
-Android `android:label`, iOS `CFBundleDisplayName` / `CFBundleName` and the pubspec description now say "BeerApp" (previously
-`beerapp`, `Beerapp`/`beerapp`, and the template text). The identifiers and the auth scheme are unchanged. If the final public
-name differs, change these three strings with it.
+Android `android:label`, iOS `CFBundleDisplayName` / `CFBundleName` and the pubspec description say "BeerApp" (previously
+`beerapp`, `Beerapp`/`beerapp`, and the template text). **"BeerApp" is now the final public product name and
+`com.carlossalazarmorales.beerapp` the final release identifier** (owner decision, 2026-09-22, section 1/8) -- neither is a
+placeholder pending a later choice.

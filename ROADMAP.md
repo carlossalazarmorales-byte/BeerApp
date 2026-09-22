@@ -1004,8 +1004,14 @@ Goal: publish BeerApp.
 
 Android:
 
-- [ ] Production package identifier
-- [ ] Signing configuration
+- [x] Production package identifier — **DONE (Stage 2, owner decision 2026-09-22):**
+  `com.carlossalazarmorales.beerapp`, final and unchanged (Android applicationId/namespace, iOS
+  bundle id, auth/deep-link scheme).
+- [ ] Signing configuration — **PARTIAL (Stage 2a, repo-only):** Gradle wiring reads a
+  git-ignored `android/key.properties` and fails the release build closed (verified with a real
+  Gradle run, not applied to a store build) when it is missing; no silent debug-key fallback.
+  Still open: the owner has not yet created the upload keystore / `key.properties` (Stage 2b), so
+  no store-signed build exists.
 - [ ] Play Store listing
 - [ ] Screenshots
 - [ ] App icon
@@ -1040,7 +1046,9 @@ silent gap):
   comprehensive
 - [ ] Live authenticated end-to-end and live account-deletion checks, with an
   explicitly disposable account
-- [ ] Release signing (the release build still uses the debug key)
+- [ ] Release signing — **PARTIAL (Stage 2a):** the release build no longer silently uses the
+  debug key; it fails closed without `android/key.properties`, verified with a real Gradle run.
+  Still open: the owner has not created the real upload key (Stage 2b)
 - [ ] Review the **merged Android permissions** for the store privacy/data-safety
   disclosures: the release APK also requests location, WiFi/network state and
   biometric permissions that libraries add (the app's own manifest declares only
@@ -1065,6 +1073,17 @@ identity are decided; no crash-reporting or analytics SDK; the physical-device s
 for a real HTTPS backend (Stage 3); **Play and App Store Production release stay unchecked**
 until the owner gives a later explicit instruction (manual QA and beta testing come after this
 roadmap). See `docs/DECISIONS.md` (2026-09-21, Phase 15 Stage 1A) and `docs/RELEASE.md`.
+
+**Status (2026-09-22) — Stage 2 (repo-only) done.** The owner settled the final identity: the
+public product name is **"BeerApp"** and the release identifier
+**`com.carlossalazarmorales.beerapp`** is final and unchanged (no domain purchased now; not a
+blocker). Android release signing now reads a git-ignored `key.properties` and **fails closed**
+when it is absent — verified with a real Gradle run (under 5 seconds, before any compilation) —
+instead of silently using the debug key; a local, debug-signed inspection build is still possible
+only via an explicit `-PallowDebugSigningForReleaseInspection=true` opt-in, also verified for
+real (a genuinely debug-signed `.aab` was produced and confirmed with `jarsigner`). No signing key
+was generated, no store account created, nothing uploaded. See `docs/DECISIONS.md` (2026-09-22,
+Phase 15 Stage 2) and `docs/RELEASE.md` sections 1 and 8.
 
 ---
 
