@@ -2691,3 +2691,25 @@ Gradle/Flutter invocations above) was deleted afterward.
 **Not done, by design:** no signing key generated, no store account created, no AAB/APK
 uploaded, no Google OAuth client, no production Supabase, no hosting choice, no domain
 purchased. Stage 1B and Stage 3 were not started. Nothing was committed or pushed.
+
+## 2026-09-22 — Phase 15, Stage 3: deferred by owner decision
+
+**Decision.** All paid/real production infrastructure — hosting, a production Supabase
+project/plan, backups/PITR, custom SMTP, a custom domain, deployment-layer rate limiting,
+production log infrastructure — is deliberately deferred until BeerApp has completed the later
+manual QA/testing cycle and the owner explicitly says it is ready to move toward publication
+preparation. None of it is chosen, created or deployed now, and none of it should be asked about
+before then. **Stage 1B (the physical-device release smoke test) is deferred with it**, since it
+needs the real HTTPS backend Stage 3 would provide.
+
+This is a scheduling decision, not a scope change: Stage 3's content (sections 4, 5 and 7 of
+`docs/RELEASE.md`) is unchanged and remains necessary before store submission; it is simply not
+executed yet. No code, infrastructure or documentation beyond the planning/status markers below
+was touched.
+
+**Documentation updated (status/planning only, nothing implemented):** `docs/RELEASE.md` — the
+Stage 1-6 table now marks Stage 3 and Stage 1B "DEFERRED", and Sections 4, 5 and 7 each carry a
+deferred notice at their head; a stale section cross-reference in the Stage 3 table row
+(`sections 3, 4, 5`, left over from Stage 1A/2 edits that inserted new sections) was corrected to
+`sections 4, 5, 7`. `ROADMAP.md` — a status paragraph records the deferral and points at
+`docs/RELEASE.md`.

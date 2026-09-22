@@ -16,15 +16,23 @@ production credentials, uploads or public release are created or used by the ass
 2026-09-22): Android applicationId/namespace, iOS bundle id, and the auth/deep-link scheme are
 **not** renamed.
 
+**Stage 3 is DEFERRED (owner decision, 2026-09-22).** All paid/real production infrastructure
+(hosting, a production Supabase project/plan, backups/PITR, custom SMTP, a custom domain,
+deployment-layer rate limiting, production log infrastructure) is deliberately postponed until
+BeerApp has finished the later manual QA/testing cycle and the owner explicitly says it is ready
+to move toward publication. **Do not propose or ask the owner to choose any of these now.**
+Stage 1B is deferred with it, since it needs the real HTTPS backend Stage 3 would provide.
+Nothing here is a claim that Stage 3 is unnecessary -- it is necessary, just not yet.
+
 ## 1. Stage map and gates
 
-| Stage | Content | Gate (owner input needed first) |
+| Stage | Content | Gate |
 |---|---|---|
 | **1A** (done) | merged-manifest inspection, permission provenance, `.aab` compile with placeholder config, backend cleanup, reference-data and beta-catalog tooling, working-name polish, this document | none |
-| **1B** | physical-device release smoke test (section 6) | a public HTTPS backend from Stage 3, a physical Android device |
+| **1B** | physical-device release smoke test (section 6) | **DEFERRED with Stage 3** (needs its public HTTPS backend); also needs a physical Android device |
 | **2a** (done) | identity settled, release-signing Gradle wiring, fail-closed guard, identity regression tests (section 8) | none |
-| **2b** | the owner creates the upload keystore and `android/key.properties` locally | an upload key **you** create (never generated or received by the assistant) |
-| **3** | production infrastructure (sections 3, 4, 5) | hosting choice, a public domain (any suitable hosted/public URL is fine; no custom domain purchase required), production Supabase plan/region, SMTP |
+| **2b** | the owner creates the upload keystore and `android/key.properties` locally | an upload key **you** create (never generated or received by the assistant); may happen whenever the owner chooses, independent of Stage 3 |
+| **3** | production infrastructure (sections 4, 5, 7) | **DEFERRED (owner decision, 2026-09-22):** execute only when the owner explicitly says BeerApp is ready for publication preparation. When it resumes: hosting choice, a public domain (any suitable hosted/public URL is fine; no custom domain purchase required), production Supabase plan/region, SMTP |
 | **4** | store setup + Play internal/closed testing (section 10) | a Google Play Console account (owner as publisher, subject to real eligibility at that time); Stages 2b and 3 done |
 | **5** | iOS (section 9) | a Mac with Xcode 26, an Apple Developer account, the final iOS auth decision |
 | **6** | stop line: beta tracks ready, production unchecked | explicit later instruction for public release |
@@ -135,7 +143,10 @@ telemetry that **does** leave the device: Google ML Kit (bundled barcode model; 
 name/version, performance metrics, API configuration; sent over HTTPS; not shared with third parties
 per Google's ML Kit disclosure **[official]**). Section 10 lists the inputs for the disclosures.
 
-## 4. Backend for production (host not chosen)
+## 4. Backend for production (host not chosen) — DEFERRED (Stage 3)
+
+**This section is deferred (owner decision, 2026-09-22): execute only when the owner explicitly
+says BeerApp is ready for publication preparation.** Nothing here is chosen or created now.
 
 - **Files.** `backend/requirements.txt` is now **runtime only**; `backend/requirements-dev.txt`
   (`-r requirements.txt` plus `pytest`, `iniconfig`, `pluggy`, `ruff`) is for development and CI. Both are
@@ -163,7 +174,11 @@ per Google's ML Kit disclosure **[official]**). Section 10 lists the inputs for 
   has bounds but no per-time limiting and no `429`), log sink and retention, health probe wiring
   (`GET /health` does not check the database), instance count.
 
-## 5. Production Supabase (owner-operated; do not reuse `beerapp-dev`)
+## 5. Production Supabase (owner-operated; do not reuse `beerapp-dev`) — DEFERRED (Stage 3)
+
+**This section is deferred (owner decision, 2026-09-22): execute only when the owner explicitly
+says BeerApp is ready for publication preparation.** No production Supabase project, plan or
+region is chosen or created now.
 
 Only after the owner has created a **new** project (plan, region and backups are the owner's choice):
 
@@ -241,7 +256,10 @@ tests or an eligible adult tester.
 9. Location-permission removal proof: with the patch from section 3 applied, items 1-5 all pass and
    `apkanalyzer manifest permissions` no longer lists the two location permissions. Only then is the removal called verified.
 
-## 7. Supabase Auth dashboard checklist (owner; not verifiable from the repository)
+## 7. Supabase Auth dashboard checklist (owner; not verifiable from the repository) — DEFERRED (Stage 3)
+
+**This section is deferred (owner decision, 2026-09-22): execute only when the owner explicitly
+says BeerApp is ready for publication preparation.** No custom SMTP provider is chosen now.
 
 - **URL Configuration:** Site URL = the production value (not `localhost`); the Redirect URLs allow-list must contain
   the app's redirect `com.carlossalazarmorales.beerapp://login-callback` (final, unchanged -- see section 8). A `redirectTo`

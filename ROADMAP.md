@@ -1085,6 +1085,14 @@ real (a genuinely debug-signed `.aab` was produced and confirmed with `jarsigner
 was generated, no store account created, nothing uploaded. See `docs/DECISIONS.md` (2026-09-22,
 Phase 15 Stage 2) and `docs/RELEASE.md` sections 1 and 8.
 
+**Stage 3 is DEFERRED (owner decision, 2026-09-22).** All paid/real production infrastructure —
+hosting, a production Supabase project/plan, backups/PITR, custom SMTP, a custom domain,
+deployment-layer rate limiting, production log infrastructure — is deliberately postponed until
+BeerApp has completed the later manual QA/testing cycle and the owner explicitly says it is ready
+to move toward publication. None of these is chosen or created until then, and none should be
+asked about before then. **Stage 1B is deferred with it**, since it needs Stage 3's real HTTPS
+backend. See `docs/RELEASE.md` sections 1, 4, 5 and 7.
+
 ---
 
 # Post-MVP Possibilities
