@@ -1,5 +1,5 @@
 name: beerapp
-description: "A new Flutter project."
+description: "BeerApp: a beer discovery and collection app built around a world map."
 publish_to: 'none'
 version: 0.1.0+1
 

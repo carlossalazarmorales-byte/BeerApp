@@ -1044,7 +1044,27 @@ silent gap):
 - [ ] Review the **merged Android permissions** for the store privacy/data-safety
   disclosures: the release APK also requests location, WiFi/network state and
   biometric permissions that libraries add (the app's own manifest declares only
-  `INTERNET` and `CAMERA`); decide whether to remove the unused ones
+  `INTERNET` and `CAMERA`); decide whether to remove the unused ones — **PARTIAL
+  (Stage 1A):** the real merged release manifest was inspected and each permission's
+  source is proven (`docs/RELEASE.md` section 3); removal of the two location
+  permissions is approved **only after** a physical release-build test and is **not
+  applied or verified**; network-state, Wi-Fi and biometric permissions are kept this phase
+
+**Status (2026-09-21) — Stage 1A done; nothing in Phase 15 is complete.** Stage 1A is the work
+that needs no permanent identity, signing key, account, domain or production credential:
+real merged-manifest inspection, a placeholder-config release `.aab` and APK that compile
+(debug-signed, not store builds, never uploaded), backend cleanup (runtime-only
+`requirements.txt`, dead `API_BASE_URL` setting removed), draft reference data
+(`supabase/reference_data/`: all 249 ISO countries, owner review pending; a **Claude-created,
+unreviewed** beer-style draft) and beta-catalog tooling (`supabase/catalog_beta/`, no content),
+the working name "BeerApp" for the Android label / iOS display name / pubspec description, and
+`docs/RELEASE.md`. **Owner decisions in force:** Android is the first beta path; no Sign in with
+Apple now; iOS is not marked complete without a Mac and an Apple Developer setup; the
+applicationId / bundle id / auth scheme are unchanged until the final name, domain and publisher
+identity are decided; no crash-reporting or analytics SDK; the physical-device smoke test waits
+for a real HTTPS backend (Stage 3); **Play and App Store Production release stay unchecked**
+until the owner gives a later explicit instruction (manual QA and beta testing come after this
+roadmap). See `docs/DECISIONS.md` (2026-09-21, Phase 15 Stage 1A) and `docs/RELEASE.md`.
 
 ---
 

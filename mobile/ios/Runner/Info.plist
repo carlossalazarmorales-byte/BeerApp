@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Beerapp</string>
+	<string>BeerApp</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>beerapp</string>
+	<string>BeerApp</string>
 	<!-- Supabase Auth deep link (email confirmation, password reset): the same
 	     custom scheme as Env.authRedirectUrl and the Android intent-filter.
 	     A regression test pins them together.

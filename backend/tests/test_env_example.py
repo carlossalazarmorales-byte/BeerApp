@@ -39,9 +39,7 @@ def test_every_documented_variable_is_a_real_setting_or_a_known_exception():
 
 def test_every_operational_setting_is_documented_in_env_example():
     documented = _documented_variables()
-    # Settings that have no meaningful operator-facing knob.
-    internal = {"api_base_url"}
-    expected = {name.upper() for name in Settings.model_fields if name not in internal}
+    expected = {name.upper() for name in Settings.model_fields}
 
     missing = expected - documented
 

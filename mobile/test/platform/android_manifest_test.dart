@@ -19,11 +19,35 @@ String _read(String path) =>
         .readAsStringSync()
         .replaceAll(RegExp(r'<!--.*?-->', dotAll: true), '');
 
-Set<String> _permissions(String manifest) =>
-    RegExp(r'<uses-permission\s+[^>]*android:name="([^"]+)"')
-        .allMatches(manifest)
-        .map((m) => m.group(1)!)
-        .toSet();
+final _usesPermissionTag = RegExp(r'<uses-permission\b[^>]*>', dotAll: true);
+
+/// True for a `<uses-permission ... tools:node="remove"/>` entry, which asks the
+/// manifest merger to DROP a permission a library adds; it is not a request.
+bool _isRemoval(String tag) =>
+    RegExp(r'tools:node\s*=\s*"remove"').hasMatch(tag);
+
+String? _permissionName(String tag) =>
+    RegExp(r'android:name="([^"]+)"').firstMatch(tag)?.group(1);
+
+/// Permissions the manifest REQUESTS. `tools:node="remove"` entries are not
+/// counted, so a future, device-proven removal of an inherited permission (see
+/// docs/RELEASE.md) cannot be mistaken for a declaration.
+Set<String> _permissions(String manifest) => _usesPermissionTag
+    .allMatches(manifest)
+    .map((m) => m.group(0)!)
+    .where((tag) => !_isRemoval(tag))
+    .map(_permissionName)
+    .whereType<String>()
+    .toSet();
+
+/// Permissions the manifest asks the merger to remove via `tools:node="remove"`.
+Set<String> _removedPermissions(String manifest) => _usesPermissionTag
+    .allMatches(manifest)
+    .map((m) => m.group(0)!)
+    .where(_isRemoval)
+    .map(_permissionName)
+    .whereType<String>()
+    .toSet();
 
 /// The opening `<application ...>` tag (or self-closing one), attributes only.
 String _applicationTag(String manifest) {
@@ -126,6 +150,44 @@ void main() {
         );
       },
     );
+  });
+
+  group('permission helpers (prepare a future tools:node="remove")', () {
+    const sample = '''
+<manifest xmlns:android="a" xmlns:tools="t">
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission
+      android:name="android.permission.ACCESS_FINE_LOCATION"
+      tools:node="remove" />
+</manifest>''';
+
+    test(
+      'a tools:node="remove" entry is not counted as a requested permission',
+      () {
+        expect(_permissions(sample), {'android.permission.INTERNET'});
+        expect(_removedPermissions(sample), {
+          'android.permission.ACCESS_FINE_LOCATION',
+        });
+      },
+    );
+
+    test('the current source manifests remove nothing (removal is device-gated)', () {
+      // The location permissions MapLibre adds are intentionally still present:
+      // removing them waits for a physical release-build test (docs/RELEASE.md).
+      // When that change lands, update this expectation in the same commit.
+      for (final path in [_main, _debug, _profile]) {
+        expect(_removedPermissions(_read(path)), isEmpty, reason: path);
+      }
+    });
+  });
+
+  group('app name', () {
+    test('the launcher label is the working product name "BeerApp"', () {
+      expect(
+        _applicationTag(_read(_main)),
+        contains('android:label="BeerApp"'),
+      );
+    });
   });
 
   group('backup', () {

@@ -2492,3 +2492,133 @@ is not: it depends on Phase 15 and the owner-supplied prerequisites in `ROADMAP.
 - **The environment check fails closed** (see the security review).
 - **`intl` is still not declared directly** (a Category C item; `dart fix` will add
   it silently, so check `pubspec.yaml` after running it).
+
+## 2026-09-21 — Phase 15, Stage 1A: release audit outcomes and owner decisions
+
+Stage 1A is the part of Phase 15 that needs no permanent identity, signing key, account,
+domain or production credential. The full runbook is `docs/RELEASE.md`. **Nothing here makes
+BeerApp store-ready; Play and App Store "Production release" stay unchecked** until the owner
+gives a later, explicit instruction (the owner's manual QA and beta cycle comes after the
+roadmap).
+
+**Owner decisions recorded**
+- The first beta path is **Android**. Sign in with Apple is **not** added now. iOS
+  preparation stays in scope, but no iOS item is complete until a Mac/Xcode 26
+  environment and an Apple Developer setup exist; Google-iOS and Apple-login work waits for
+  the final iOS auth decision (Apple guideline 4.8 requires an equivalent login option for
+  apps that offer Google sign-in, unless they exclusively use their own accounts).
+- The **applicationId, bundle id and auth scheme are not changed** until the final public
+  name, domain/reverse-domain and publisher identity are decided. "BeerApp" is the working name.
+- **No remote crash-reporting SDK and no analytics SDK**; the stores' own tooling does not
+  justify a vendor now. The external-URL legal architecture stays; no legal text is written
+  or claimed production-ready; no mandatory Terms acceptance at sign-up unless a later
+  legal/product decision requires it.
+- **Catalog bootstrap = R1 + R2, not the import pipeline.** R1: reference countries and beer
+  styles. R2: a small owner-reviewed real beer/brewery catalog for the beta; the content is
+  owner-supplied. The dev seed is never used in production. No moderation/admin
+  infrastructure; a minimal owner SQL runbook is acceptable.
+- **Location permissions:** removal of `ACCESS_FINE_LOCATION`/`ACCESS_COARSE_LOCATION` is
+  approved **only after** a physical release-build test proves the map (load, pan/zoom,
+  clustering), the scanner and Google sign-in all work with them removed. Until then it is
+  **not applied and not verified**. `ACCESS_NETWORK_STATE`, Wi-Fi, biometric and fingerprint
+  permissions are kept this phase.
+- **Physical-device release smoke test (Stage 1B) is postponed to after Stage 3** (a real or
+  prod-like public HTTPS backend); no temporary tunnel. It is technical only and must not
+  require creating alcohol-consumption or preference data.
+- Accessibility gate: TalkBack smoke test before beta, full key-flow pass before public launch;
+  VoiceOver before any iOS public submission. Partial hardware-keyboard focus and MapLibre
+  marker accessibility stay documented limitations.
+
+**Findings (real release build, Flutter 3.47.4, placeholder config, debug-signed)**
+- `flutter build appbundle --release` (75.0 MB) and `flutter build apk --release` (100.8 MB)
+  compile; applicationId `com.carlossalazarmorales.beerapp`, minSdk 24, targetSdk 36 (meets
+  Play's API-36 rule in force since 2026-08-31).
+- The merged release manifest requests: INTERNET, CAMERA (app), ACCESS_NETWORK_STATE,
+  ACCESS_WIFI_STATE, ACCESS_COARSE_LOCATION, ACCESS_FINE_LOCATION (MapLibre
+  `android-sdk-opengl:13.5.0`; network state also from ML Kit's `datatransport`),
+  USE_BIOMETRIC and USE_FINGERPRINT (`androidx.biometric:1.1.0`, via
+  `androidx.credentials:1.6.0` from `google_sign_in_android`). The manifest-merger report and
+  `gradlew dependencyInsight` prove each source. BeerApp code has no location or biometric usage.
+- **Correction:** a Phase 15 audit note said R8 was not enabled. It is: the Flutter Gradle plugin
+  enables minification and resource shrinking for release (`mapping.txt` is produced). The
+  physical release-build test therefore matters.
+- The barcode model is bundled (`libbarhopper_v3.so` and the ML Kit models are inside the APK), so
+  decoding is on-device; ML Kit's SDK telemetry still leaves the device (device info, package name,
+  performance metrics).
+
+**Changes in Stage 1A (repository)**
+- Backend: the dead `API_BASE_URL` setting was removed (`.env.example` and its test exemption too;
+  an existing `.env` line is ignored); `requirements.txt` is now runtime-only and
+  `requirements-dev.txt` adds `pytest`, `iniconfig`, `pluggy`, `ruff`; a test guards the split and
+  UTF-8 encoding.
+- Reference data (`supabase/reference_data/`, **not migrations, applied nowhere**):
+  `countries.sql` - 249 country/territory codes exposed by OpenJDK 21.0.6 (**not verified
+  against the ISO 3166 Maintenance Agency**; OpenJDK/CLDR are documented sources, not the ISO
+  issuing authority), with CLDR 42 English names and UN-M49-derived continents, and a review list
+  (territories, transcontinental countries, names). `beer_styles_DRAFT.sql` - a **Claude-created draft** of 55 generic styles
+  (no descriptions); it is **not reviewed and not production-approved**. Both refuse to run
+  until the owner deletes a DRAFT-GUARD block. Tested against a disposable PostgreSQL 16 only.
+- Beta catalog tooling (`supabase/catalog_beta/`): an unfilled template with fake placeholders,
+  validation (including the GS1 check digit, cross-checked against the API's rule), an idempotent
+  load, and a documented owner SQL flow for approving/rejecting contributions. **No catalog
+  content was invented.** No importer, no admin code.
+- Working-name polish: Android label, iOS display/bundle name and the pubspec description now say
+  "BeerApp". Identifiers and the auth scheme are untouched.
+- Platform tests: the Android manifest test's permission helpers ignore `tools:node="remove"`
+  lines (behaviour-neutral today) and two tests pin the label and that no removal exists yet.
+
+**Not done, by design:** no location-permission removal, no signing key or signing wiring, no
+identity change, no account/project/production resource, no production credential, no upload,
+no data applied to any real database, no legal text. Stages 1B and 2-6 remain gated as described
+in `docs/RELEASE.md`.
+
+## 2026-09-22 — Phase 15, Stage 1A: closing verification (clean-environment proof; provenance wording fixed)
+
+Two checks requested before closing Stage 1A out, both run without touching the repository's
+development environment or any real credential.
+
+**1. Clean Python 3.12 install, in isolation.** Two fresh venvs (`python -m venv`, no
+`--system-site-packages`), created outside the repository:
+- `backend/requirements.txt` alone: all 42 packages installed with no resolver errors; `pip
+  check` reported no broken requirements. `import app`, `from app.config import RuntimeSettings,
+  Settings` and `from app.main import app` all succeeded. `Settings()` correctly still requires
+  `SUPABASE_URL`/`DATABASE_URL` when nothing supplies them.
+- **Startup proof, isolated from the real `.env`.** `backend/app/` was copied into a temp
+  directory with no `.env` anywhere in its ancestry, so pydantic-settings' `env_file` lookup could
+  not find (and therefore could not load) any real credential. `uvicorn app.main:app` was started
+  there with only fake env vars (`SUPABASE_URL=https://fake-project.supabase.co`,
+  `DATABASE_URL=postgresql://fake_user:fake_pass@127.0.0.1:59999/fake_db`, a 3 s connect timeout).
+  The full ASGI stack initialized (uvicorn -> Starlette -> FastAPI -> the app's lifespan chain),
+  and startup failed with `ConnectionRefusedError` at the exact expected point -
+  `app/db.py:63`'s `asyncpg.create_pool(...)` - because nothing listens on the fake port. No
+  import or dependency error anywhere: this is the strongest startup proof possible without a
+  reachable database, and it stopped exactly where external connectivity is required, nowhere
+  earlier.
+- `backend/requirements-dev.txt` alone (its own fresh venv): all 44 packages (the 42 runtime ones
+  plus `pytest`, `iniconfig`, `pluggy`, `ruff`) installed with no resolver errors; `pip check`
+  clean; `pytest --version` / `ruff --version` both ran; `pytest --collect-only` found the same
+  604 default tests as the development environment; `ruff check .` passed.
+- No package was added to either file because of this check; both were already self-contained.
+  Both temporary venvs, the copied isolated `backend/app/`, and the install logs were deleted
+  afterward.
+
+**2. Country-data provenance wording, corrected.** The Stage 1A text called the code set "the 249
+officially assigned ISO 3166-1 alpha-2 codes," which reads as a claim that the list was checked
+against the ISO 3166 Maintenance Agency. It was not: OpenJDK and Unicode CLDR are documented,
+reproducible sources, but neither is the ISO issuing authority. Scraping `iso.org`'s Online
+Browsing Platform to attempt that verification was rejected as exactly the "questionable data"
+this check exists to avoid, and no clean, freely licensed, machine-readable ISO 3166 Maintenance
+Agency dataset was found. **Wording was corrected instead (the requested fallback path):**
+`countries.sql`'s header, `countries_review.md`, `supabase/reference_data/README.md`, and the two
+references in `docs/DECISIONS.md`/`docs/DATABASE.md` now say the code set is "249
+country/territory codes exposed by OpenJDK 21.0.6, with CLDR 42 names and UN-M49-derived continent
+mapping," state plainly that this is **not verified against the ISO 3166 Maintenance Agency**, and
+no longer call it an ISO-authoritative list. No row, code, name or continent value changed - only
+the provenance claim's wording. The DRAFT-GUARD, the owner-review requirement, the
+territory/transcontinental/name review list, and "applied nowhere" all stand unchanged.
+
+**Cleanup.** `mobile/build/` (1.7 GB of reproducible release-build output, already documented in
+the Stage 1A entry above and in `docs/RELEASE.md`) was deleted. The scratch PostgreSQL 16 install
+and both temporary Python venvs used for this verification were confirmed removed, with no
+lingering `postgres` process. `git diff --check` reported no whitespace errors. Nothing new was
+committed or pushed; Stage 1B and Stage 2 were not started.

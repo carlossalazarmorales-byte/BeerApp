@@ -15,7 +15,7 @@
          restored session token could outlive the account or land on another
          device. -->
     <application
-        android:label="beerapp"
+        android:label="BeerApp"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:allowBackup="false">

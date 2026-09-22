@@ -62,8 +62,6 @@ class RuntimeSettings(BaseSettings):
 
 
 class Settings(RuntimeSettings):
-    api_base_url: str = "http://localhost:8000"
-
     supabase_url: str
     supabase_publishable_key: str = ""
 

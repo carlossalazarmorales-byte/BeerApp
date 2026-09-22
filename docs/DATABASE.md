@@ -550,6 +550,29 @@ was added purely to make seeding easier. Seeded rows are marked
 Run twice against the dev project; row counts (10 countries, 8 beer styles,
 6 breweries, 8 beers) were identical both times, confirming no duplicates.
 
+## Production reference data and beta catalog tooling (Phase 15, Stage 1A)
+
+A new project's `countries`, `beer_styles`, `breweries` and `beers` are empty: no migration
+loads them, and the dev seed above must never reach production. Phase 15 adds **files, not
+migrations, applied nowhere**:
+
+- `supabase/reference_data/countries.sql` - 249 country/territory codes exposed by OpenJDK 21.0.6
+  (**not verified against the ISO 3166 Maintenance Agency**; OpenJDK/CLDR are documented,
+  reproducible sources, not the ISO issuing authority) with CLDR 42 English names and
+  UN-M49-derived continents (mapped onto the table's 7 continent values); prepared from factual
+  sources, **owner review pending** (`countries_review.md`).
+- `supabase/reference_data/beer_styles_DRAFT.sql` - 55 generic styles proposed by the assistant;
+  **not reviewed, not production-approved**, no descriptions.
+- `supabase/catalog_beta/beta_catalog_template.sql` - an unfilled template (fake placeholders only)
+  for owner-reviewed breweries and beers, with validation (including the GS1 check digit) and an
+  idempotent load, plus a runbook for approving or rejecting contributions by hand.
+
+Each refuses to run until the owner deletes its guard block, runs in one transaction, and is
+idempotent (countries by `iso_code`, styles by `lower(name)`; breweries and beers are matched by
+name and country / brewery). They are exercised only on the disposable integration database
+(`tests/integration/test_reference_data.py`, `test_catalog_beta_tooling.py`). See
+`supabase/reference_data/README.md`, `supabase/catalog_beta/README.md` and `docs/RELEASE.md`.
+
 ## Function privileges in schema `private` (Phase 14)
 
 Three functions live in `private`, and each one's `EXECUTE` privilege is audited

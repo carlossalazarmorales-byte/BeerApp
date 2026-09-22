@@ -136,6 +136,20 @@ void main() {
     );
   });
 
+  group('working product name', () {
+    // "BeerApp" is the working name until the owner fixes the final public
+    // name; the bundle identifier and URL scheme are deliberately untouched.
+    String value(String key) =>
+        RegExp('<key>$key</key>\\s*<string>([^<]+)</string>')
+            .firstMatch(_plist())!
+            .group(1)!;
+
+    test('the home-screen name and bundle name are "BeerApp"', () {
+      expect(value('CFBundleDisplayName'), 'BeerApp');
+      expect(value('CFBundleName'), 'BeerApp');
+    });
+  });
+
   group('privacy and transport', () {
     test('the camera is the only usage description, with a clear purpose', () {
       final usage = _keys(_plist())
