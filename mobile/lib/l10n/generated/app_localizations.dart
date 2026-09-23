@@ -920,12 +920,6 @@ abstract class AppLocalizations {
   /// **'Wishlist'**
   String get mapModeWishlist;
 
-  /// Map mode selector option: breweries instead of beers.
-  ///
-  /// In en, this message translates to:
-  /// **'Breweries'**
-  String get mapModeBreweries;
-
   /// Placeholder text for the Map screen's search field.
   ///
   /// In en, this message translates to:
@@ -956,11 +950,35 @@ abstract class AppLocalizations {
   /// **'No beers match this view.'**
   String get mapBeersEmptyMessage;
 
-  /// Shown when the current search matches no breweries.
+  /// Map legend label: a country with zero catalog beers (charcoal fill).
   ///
   /// In en, this message translates to:
-  /// **'No breweries match this view.'**
-  String get mapBreweriesEmptyMessage;
+  /// **'No catalog'**
+  String get mapLegendZeroCatalog;
+
+  /// Map legend label: a country with catalog beers but no logs from the current user yet (gray fill).
+  ///
+  /// In en, this message translates to:
+  /// **'Catalog available'**
+  String get mapLegendZeroHistory;
+
+  /// Map legend label: a country where the current user has at least one log (amber/gold fill). Deliberately neutral wording -- never "complete"/"finished".
+  ///
+  /// In en, this message translates to:
+  /// **'In your history'**
+  String get mapLegendHasHistory;
+
+  /// Map legend label: a beer-origin point the current user has not logged (gray point).
+  ///
+  /// In en, this message translates to:
+  /// **'Not in history'**
+  String get mapLegendPointUntried;
+
+  /// Map legend label: a beer-origin point the current user has logged at least once (gold point).
+  ///
+  /// In en, this message translates to:
+  /// **'In history'**
+  String get mapLegendPointTried;
 
   /// Button on the Map screen's beer preview card that navigates to the full beer detail screen.
   ///

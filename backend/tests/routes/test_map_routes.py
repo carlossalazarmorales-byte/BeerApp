@@ -3,7 +3,7 @@ from uuid import UUID
 
 from app.dependencies import get_map_service
 from app.main import app
-from app.schemas.map import CappedList, MapBeerOut, MapBreweryOut
+from app.schemas.map import CappedList, MapBeerOut, MapBreweryOut, MapCountryCoverageOut
 
 _COUNTRY_ID = UUID("11111111-1111-1111-1111-111111111111")
 _BREWERY_ID = UUID("33333333-3333-3333-3333-333333333333")
@@ -40,13 +40,32 @@ def _brewery_out() -> MapBreweryOut:
     )
 
 
+def _country_coverage_out() -> MapCountryCoverageOut:
+    return MapCountryCoverageOut(
+        country_id=_COUNTRY_ID,
+        iso_code="BE",
+        catalog_beer_count=5,
+        tried_beer_count=2,
+    )
+
+
 class _FakeMapService:
-    def __init__(self, *, beers: list[MapBeerOut] | None = None, truncated: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        beers: list[MapBeerOut] | None = None,
+        truncated: bool = False,
+        country_coverage: list[MapCountryCoverageOut] | None = None,
+    ) -> None:
         self._beers = beers if beers is not None else [_beer_out()]
         self._truncated = truncated
+        self._country_coverage = (
+            country_coverage if country_coverage is not None else [_country_coverage_out()]
+        )
         self.received_state: str | None = None
         self.received_country_id: str | None = None
         self.received_q: str | None = None
+        self.received_coverage_user_id: str | None = None
 
     async def list_beers(self, *, user_id, state, country_id, q):
         self.received_state = state
@@ -58,6 +77,10 @@ class _FakeMapService:
         self.received_country_id = country_id
         self.received_q = q
         return CappedList[MapBreweryOut](items=[_brewery_out()], truncated=self._truncated)
+
+    async def list_country_coverage(self, *, user_id):
+        self.received_coverage_user_id = user_id
+        return self._country_coverage
 
 
 def _override(fake) -> None:
@@ -173,3 +196,40 @@ def test_list_map_breweries_malformed_country_id_is_422(client, authenticated):
         _clear_overrides()
 
     assert response.status_code == 422
+
+
+# -- /map/countries -------------------------------------------------------
+
+
+def test_list_map_country_coverage_without_token_is_unauthorized(client, unauthenticated):
+    response = client.get("/map/countries")
+    assert response.status_code == 401
+
+
+def test_list_map_country_coverage_returns_service_rows(client, authenticated):
+    fake = _FakeMapService()
+    _override(fake)
+    try:
+        response = client.get("/map/countries")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body[0]["iso_code"] == "BE"
+    assert body[0]["catalog_beer_count"] == 5
+    assert body[0]["tried_beer_count"] == 2
+    assert fake.received_coverage_user_id is not None
+
+
+def test_list_map_country_coverage_omits_zero_catalog_countries(client, authenticated):
+    # A country with zero catalog beers is never a row in this response --
+    # absence, not a zero-count entry, is how the client detects it.
+    _override(_FakeMapService(country_coverage=[]))
+    try:
+        response = client.get("/map/countries")
+    finally:
+        _clear_overrides()
+
+    assert response.status_code == 200
+    assert response.json() == []

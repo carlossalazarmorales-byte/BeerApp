@@ -16,8 +16,8 @@ import '../../fakes/fake_map_repository.dart';
 /// The interactive map surface itself (markers, clustering, mode
 /// switching, search-driven camera moves) is verified on a real
 /// Android device/emulator instead -- see the Phase 8 smoke-test
-/// checklist. `MapModeSelector`/`BeerPreviewCard`/`BreweryPreviewCard` are
-/// covered directly in their own widget tests.
+/// checklist. `MapModeSelector`/`BeerPreviewCard`/`MapLegend` are covered
+/// directly in their own widget tests.
 Widget _wrap(Widget child) {
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,

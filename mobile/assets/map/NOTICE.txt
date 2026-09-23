@@ -1,0 +1,52 @@
+world_countries_50m.geojson
+
+Source: Natural Earth, 1:50m Cultural Vectors, "Admin 0 - Countries"
+Mirror fetched from: https://github.com/nvkelso/natural-earth-vector
+  (raw file: geojson/ne_50m_admin_0_countries.geojson, fetched 2026-09-23)
+License: Public Domain. Natural Earth data is free of copyright restrictions
+  per <https://www.naturalearthdata.com/about/terms-of-use/> -- no permission
+  or attribution is required to use it, this notice is kept for provenance
+  only (see docs/DECISIONS.md).
+
+Revision history:
+- 2026-09-23: originally shipped at 1:110m ("small scale") -- 177 features,
+  10,654 vertices, 197 KB. Manual QA on-device found country fills visibly
+  misaligned with the basemap: coastlines not matching, several small
+  island nations entirely absent (Seychelles, Maldives, Malta, Singapore,
+  Bahrain, Comoros, Tonga, Barbados, Kiribati -- Natural Earth drops states
+  below 1:110m's area threshold, not merely simplifies them), and complex
+  coastlines (Indonesia, Philippines, Norway, Canada) visibly blocky.
+  Replaced same-day with this 1:50m release, simplified (see below) --
+  242 features (every one of the above islands present), 99,613 raw
+  vertices before simplification, 391 KB final. Property schema
+  (ISO_A2/ISO_A2_EH/NAME) is identical between releases, so no change was
+  needed to the ISO-join logic in country_boundaries.dart.
+
+Processing applied (see mobile/lib/features/map -- boundaries loading code):
+- Simplified with mapshaper (`npx mapshaper ne_50m_admin_0_countries.geojson
+  -simplify 20% keep-shapes -filter-fields ISO_A2,ISO_A2_EH,NAME -o
+  format=geojson precision=0.001`). `keep-shapes` guarantees every feature
+  survives simplification intact (no island silently dropped to zero
+  vertices, unlike naive coordinate rounding); mapshaper also auto-repaired
+  4 self-intersections introduced by the simplification pass. Verified
+  post-simplification: 242/242 features retained, 0 degenerate rings, all
+  coordinates finite.
+- Reduced to 3 properties per feature: ISO_A2, ISO_A2_EH, NAME. Every other
+  Natural Earth column (population, GDP, translated names, map-color
+  buckets, etc.) was dropped -- unused by this app.
+- Coordinates rounded to 3 decimal places (~111m precision at the
+  equator), appropriate for this app's map (country-level search zoom and
+  above) and well below any precision the country-fill layer needs.
+
+Known ISO_A2 gaps in this release (confirmed by inspection, not assumed --
+identical to the prior 1:110m release, since this is the same Natural
+Earth attribute scheme at a different scale): ISO_A2 is "-99" for Norway,
+France, Kosovo, "N. Cyprus", and Somaliland; and "CN-TW" (not a clean
+2-letter code) for Taiwan. ISO_A2_EH resolves Norway, France, Kosovo and
+Taiwan to a clean 2-letter code, but is still "-99" for "N. Cyprus" and
+Somaliland (disputed/unrecognized territories with no assigned ISO 3166-1
+code in this dataset). The app's country-boundary join logic therefore
+prefers ISO_A2_EH over ISO_A2, and treats any remaining non-2-letter value
+as unmatched -- rendered as the map's "zero catalog" neutral state, never
+a fabricated ISO mapping. See
+mobile/lib/features/map/data/country_boundaries.dart.

@@ -34,37 +34,29 @@ LatLngValue? geoJsonCoordinatesToLatLng(Object? coordinates) {
 }
 
 /// Maps a tapped cluster-related layer id to the GeoJSON source id it
-/// clusters -- explicit beer-vs-brewery cases, never an ambiguous "if not
-/// beer, assume brewery" binary guess.
+/// clusters.
 ///
-/// Each entity has *two* cluster-related layers sharing one source: the
-/// circle bubble and its point-count text label. MapLibre's native hit-test
-/// can resolve a tap to either -- on Android, confirmed live, a tap
-/// squarely on a cluster's rendered label resolves to the count label
-/// layer, not the circle beneath it, because the text glyph's bounds win
-/// hit-testing where the two overlap. Both layers render the exact same
-/// cluster features from the exact same source, so both must map to that
-/// source; treating only the circle layer as "known" (the label layer
-/// falling through to "unrecognized") silently no-ops on a real fraction of
-/// genuine cluster taps.
+/// The beer source has *two* cluster-related layers: the circle bubble and
+/// its point-count text label. MapLibre's native hit-test can resolve a tap
+/// to either -- on Android, confirmed live, a tap squarely on a cluster's
+/// rendered label resolves to the count label layer, not the circle
+/// beneath it, because the text glyph's bounds win hit-testing where the
+/// two overlap. Both layers render the exact same cluster features from the
+/// exact same source, so both must map to that source; treating only the
+/// circle layer as "known" (the label layer falling through to
+/// "unrecognized") silently no-ops on a real fraction of genuine cluster
+/// taps.
 ///
-/// Returns `null` for any layer id that isn't one of the four known
+/// Returns `null` for any layer id that isn't one of the two known
 /// cluster-related layers.
 String? clusterSourceIdForLayer(
   String layerId, {
   required String beersClusterLayerId,
   required String beersClusterCountLayerId,
-  required String breweriesClusterLayerId,
-  required String breweriesClusterCountLayerId,
   required String beersSourceId,
-  required String breweriesSourceId,
 }) {
   if (layerId == beersClusterLayerId || layerId == beersClusterCountLayerId) {
     return beersSourceId;
-  }
-  if (layerId == breweriesClusterLayerId ||
-      layerId == breweriesClusterCountLayerId) {
-    return breweriesSourceId;
   }
   return null;
 }

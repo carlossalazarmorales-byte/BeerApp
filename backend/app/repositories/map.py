@@ -59,6 +59,18 @@ _STATE_CONDITIONS = {
 }
 
 
+_MAP_COUNTRY_COVERAGE_QUERY = (
+    "select co.id as country_id, co.iso_code, "
+    "count(b.id) as catalog_beer_count, "
+    "count(b.id) filter (where exists (select 1 from public.user_beer_logs ul "
+    "where ul.beer_id = b.id and ul.user_id = $1)) as tried_beer_count "
+    "from public.beers b "
+    "join public.breweries br on br.id = b.brewery_id "
+    "join public.countries co on co.id = coalesce(b.country_id, br.country_id) "
+    "group by co.id, co.iso_code"
+)
+
+
 class MapRepository:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self._pool = pool
@@ -146,3 +158,17 @@ class MapRepository:
             rows = await conn.fetch(query, *params)
         truncated = len(rows) > MAP_BREWERIES_CAP
         return rows[:MAP_BREWERIES_CAP], truncated
+
+    async def list_country_coverage(self, *, user_id: str) -> list[asyncpg.Record]:
+        """Per-country catalog/tried counts for the country-fill map layer.
+        Groups over the exact same beer population and country-resolution
+        fallback (coalesce(b.country_id, br.country_id)) as list_beers'
+        _MAP_BEER_FROM_JOIN, so a beer always aggregates into the same
+        country it's displayed under on the map -- this is not a second,
+        inconsistent definition of "catalog beer" or "beer's country".
+        RLS-scoped like list_beers (reads user_beer_logs). A country with
+        zero catalog beers has no row here at all -- the "zero catalog"
+        map state is absence from this result, never a zero-count row.
+        """
+        async with self._scoped(user_id) as conn:
+            return await conn.fetch(_MAP_COUNTRY_COVERAGE_QUERY, user_id)

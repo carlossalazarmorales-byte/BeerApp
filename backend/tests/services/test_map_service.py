@@ -52,13 +52,16 @@ class _FakeMapRepository:
         beers_truncated: bool = False,
         brewery_rows: list[dict] | None = None,
         breweries_truncated: bool = False,
+        country_coverage_rows: list[dict] | None = None,
     ) -> None:
         self._beer_rows = beer_rows or []
         self._beers_truncated = beers_truncated
         self._brewery_rows = brewery_rows or []
         self._breweries_truncated = breweries_truncated
+        self._country_coverage_rows = country_coverage_rows or []
         self.last_beers_call: dict | None = None
         self.last_breweries_call: dict | None = None
+        self.last_country_coverage_call: dict | None = None
 
     async def list_beers(self, *, user_id, state, country_id, q):
         self.last_beers_call = {
@@ -72,6 +75,10 @@ class _FakeMapRepository:
     async def list_breweries(self, *, country_id, q):
         self.last_breweries_call = {"country_id": country_id, "q": q}
         return self._brewery_rows, self._breweries_truncated
+
+    async def list_country_coverage(self, *, user_id):
+        self.last_country_coverage_call = {"user_id": user_id}
+        return self._country_coverage_rows
 
 
 def test_list_beers_builds_dto_list_from_repository_rows():
@@ -146,3 +153,35 @@ def test_list_breweries_propagates_truncated_flag():
     result = asyncio.run(service.list_breweries(country_id=None, q=None))
 
     assert result.truncated is True
+
+
+def _country_coverage_row(**overrides) -> dict:
+    row = {
+        "country_id": UUID("55555555-5555-5555-5555-555555555555"),
+        "iso_code": "BE",
+        "catalog_beer_count": 5,
+        "tried_beer_count": 2,
+    }
+    row.update(overrides)
+    return row
+
+
+def test_list_country_coverage_builds_dto_list_from_repository_rows():
+    repository = _FakeMapRepository(country_coverage_rows=[_country_coverage_row()])
+    service = MapService(repository)
+
+    result = asyncio.run(service.list_country_coverage(user_id="user-a"))
+
+    assert len(result) == 1
+    assert result[0].iso_code == "BE"
+    assert result[0].catalog_beer_count == 5
+    assert result[0].tried_beer_count == 2
+
+
+def test_list_country_coverage_passes_user_id_through():
+    repository = _FakeMapRepository()
+    service = MapService(repository)
+
+    asyncio.run(service.list_country_coverage(user_id="user-a"))
+
+    assert repository.last_country_coverage_call == {"user_id": "user-a"}

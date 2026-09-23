@@ -1,7 +1,7 @@
 import 'package:beerapp/features/catalog/domain/models/country.dart';
 import 'package:beerapp/features/map/domain/map_mode.dart';
 import 'package:beerapp/features/map/domain/models/map_beer.dart';
-import 'package:beerapp/features/map/domain/models/map_brewery.dart';
+import 'package:beerapp/features/map/domain/models/map_country.dart';
 import 'package:beerapp/features/map/domain/models/map_result.dart';
 import 'package:beerapp/features/map/presentation/map_controller.dart';
 import 'package:beerapp/shared/collection_refresh_signal.dart';
@@ -26,12 +26,15 @@ MapBeer _beer(
   isWishlist: wishlist,
 );
 
-MapBrewery _brewery(String id) => MapBrewery(
-  breweryId: id,
-  name: 'Brewery $id',
-  latitude: 50.0,
-  longitude: 5.0,
-  verified: false,
+MapCountry _countryCoverage(
+  String isoCode, {
+  int catalogBeerCount = 1,
+  int triedBeerCount = 0,
+}) => MapCountry(
+  countryId: 'country-$isoCode',
+  isoCode: isoCode,
+  catalogBeerCount: catalogBeerCount,
+  triedBeerCount: triedBeerCount,
 );
 
 MapController _controller({
@@ -58,7 +61,6 @@ void main() {
     await controller.loadInitial();
 
     expect(controller.beers, hasLength(2));
-    expect(controller.breweries, isEmpty);
     expect(controller.mode, MapMode.all);
     expect(controller.error, isNull);
     expect(controller.truncated, isFalse);
@@ -97,35 +99,6 @@ void main() {
     await controller.setMode(MapMode.all);
 
     expect(repository.callLog, isEmpty);
-  });
-
-  test('switching to Breweries mode clears beers and populates breweries; switching back clears breweries', () async {
-    final repository = FakeMapRepository()
-      ..beersByRequest['all||'] = MapResult(
-        items: [_beer('1')],
-        truncated: false,
-      )
-      ..breweriesByRequest['|'] = MapResult(
-        items: [_brewery('b1')],
-        truncated: false,
-      );
-    final controller = _controller(repository: repository);
-    await controller.loadInitial();
-    expect(controller.beers, hasLength(1));
-
-    await controller.setMode(MapMode.breweries);
-
-    expect(controller.breweries, hasLength(1));
-    expect(
-      controller.beers,
-      isEmpty,
-      reason: 'never both layers populated at once (single-select mode)',
-    );
-
-    await controller.setMode(MapMode.all);
-
-    expect(controller.beers, hasLength(1));
-    expect(controller.breweries, isEmpty);
   });
 
   test(
@@ -458,5 +431,83 @@ void main() {
 
     expect(controller.appliedCountryId, isNull);
     expect(controller.beers.map((b) => b.beerId), ['2']);
+  });
+
+  test('loadInitial populates countryCoverage independent of the mode/search-scoped beers load', () async {
+    final repository = FakeMapRepository()
+      ..beersByRequest['all||'] = MapResult(
+        items: [_beer('1')],
+        truncated: false,
+      )
+      ..countryCoverage = [_countryCoverage('BE'), _countryCoverage('FR')];
+    final controller = _controller(repository: repository);
+
+    await controller.loadInitial();
+
+    expect(controller.countryCoverage.map((c) => c.isoCode), ['BE', 'FR']);
+  });
+
+  test('setMode never re-fetches countryCoverage (it does not depend on mode/search)', () async {
+    final repository = FakeMapRepository()
+      ..beersByRequest['all||'] = MapResult(
+        items: [_beer('1')],
+        truncated: false,
+      )
+      ..beersByRequest['tried||'] = MapResult(
+        items: [_beer('2', tried: true)],
+        truncated: false,
+      )
+      ..countryCoverage = [_countryCoverage('BE')];
+    final controller = _controller(repository: repository);
+    await controller.loadInitial();
+    repository.callLog.clear();
+
+    await controller.setMode(MapMode.tried);
+
+    expect(repository.callLog.where((c) => c == 'getCountryCoverage'), isEmpty);
+  });
+
+  test('refresh reloads countryCoverage alongside beers', () async {
+    final repository = FakeMapRepository()
+      ..beersByRequest['all||'] = MapResult(
+        items: [_beer('1')],
+        truncated: false,
+      )
+      ..countryCoverage = [_countryCoverage('BE', triedBeerCount: 0)];
+    final controller = _controller(repository: repository);
+    await controller.loadInitial();
+    expect(controller.countryCoverage.single.triedBeerCount, 0);
+
+    repository.countryCoverage = [_countryCoverage('BE', triedBeerCount: 1)];
+    await controller.refresh();
+
+    expect(controller.countryCoverage.single.triedBeerCount, 1);
+  });
+
+  test('a countryCoverage load failure never blocks beers and preserves the last-known coverage', () async {
+    final repository = FakeMapRepository()
+      ..beersByRequest['all||'] = MapResult(
+        items: [_beer('1')],
+        truncated: false,
+      )
+      ..countryCoverage = [_countryCoverage('BE')];
+    final controller = _controller(repository: repository);
+    await controller.loadInitial();
+    expect(controller.countryCoverage, hasLength(1));
+
+    repository.getCountryCoverageError = Exception('coverage endpoint down');
+    await controller.refresh();
+
+    expect(controller.beers, hasLength(1));
+    expect(
+      controller.error,
+      isNull,
+      reason: 'coverage failures are decorative-overlay-only',
+    );
+    expect(
+      controller.countryCoverage,
+      hasLength(1),
+      reason: 'preserves stale coverage on failure',
+    );
   });
 }

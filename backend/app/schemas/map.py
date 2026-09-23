@@ -45,6 +45,25 @@ class MapBreweryOut(BaseModel):
     verified: bool
 
 
+class MapCountryCoverageOut(BaseModel):
+    """Per-country catalog/tried counts backing the map's country-fill
+    layer. Only countries with at least one catalog beer are returned --
+    a country absent from the response is the "zero catalog" map state,
+    never a zero-count row (see MapRepository.list_country_coverage).
+    Both counts are legitimate derived data (e.g. future neutral
+    analytics), but the client must render only three flat fill states
+    (zero catalog / no personal history / some personal history) and must
+    never turn `tried_beer_count / catalog_beer_count` into a completion
+    percentage, gradient, or "full coverage" tier -- see
+    docs/QA_ROUND_1.md Block 2 and the Responsible Product Design section
+    of CLAUDE.md."""
+
+    country_id: UUID
+    iso_code: str
+    catalog_beer_count: int
+    tried_beer_count: int
+
+
 class CappedList[T](BaseModel):
     """Wraps an unpaginated-but-safety-capped map response. `truncated=True`
     means the server-side cap was hit and `items` is not the complete result

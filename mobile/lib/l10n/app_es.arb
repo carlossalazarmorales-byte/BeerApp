@@ -170,7 +170,6 @@
   "mapModeNotTried": "No probadas",
   "mapModeFavorites": "Favoritas",
   "mapModeWishlist": "Lista de deseos",
-  "mapModeBreweries": "Cervecerías",
 
   "mapSearchHint": "Busca un país o región",
 
@@ -180,7 +179,12 @@
   "mapTruncatedMessage": "Se muestra un conjunto parcial de resultados: no todo lo que coincide está visible.",
 
   "mapBeersEmptyMessage": "Ninguna cerveza coincide con esta vista.",
-  "mapBreweriesEmptyMessage": "Ninguna cervecería coincide con esta vista.",
+
+  "mapLegendZeroCatalog": "Sin catálogo",
+  "mapLegendZeroHistory": "Catálogo disponible",
+  "mapLegendHasHistory": "En tu historial",
+  "mapLegendPointUntried": "No está en tu historial",
+  "mapLegendPointTried": "En tu historial",
 
   "mapBeerPreviewViewDetailsAction": "Ver detalles",
 

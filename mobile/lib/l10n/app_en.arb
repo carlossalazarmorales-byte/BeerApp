@@ -383,8 +383,6 @@
   "@mapModeFavorites": {"description": "Map mode selector option: only the current user's favorited beers."},
   "mapModeWishlist": "Wishlist",
   "@mapModeWishlist": {"description": "Map mode selector option: only the current user's wishlist beers."},
-  "mapModeBreweries": "Breweries",
-  "@mapModeBreweries": {"description": "Map mode selector option: breweries instead of beers."},
 
   "mapSearchHint": "Search a country or region",
   "@mapSearchHint": {"description": "Placeholder text for the Map screen's search field."},
@@ -399,8 +397,17 @@
 
   "mapBeersEmptyMessage": "No beers match this view.",
   "@mapBeersEmptyMessage": {"description": "Shown when the current mode/search combination matches no beers."},
-  "mapBreweriesEmptyMessage": "No breweries match this view.",
-  "@mapBreweriesEmptyMessage": {"description": "Shown when the current search matches no breweries."},
+
+  "mapLegendZeroCatalog": "No catalog",
+  "@mapLegendZeroCatalog": {"description": "Map legend label: a country with zero catalog beers (charcoal fill)."},
+  "mapLegendZeroHistory": "Catalog available",
+  "@mapLegendZeroHistory": {"description": "Map legend label: a country with catalog beers but no logs from the current user yet (gray fill)."},
+  "mapLegendHasHistory": "In your history",
+  "@mapLegendHasHistory": {"description": "Map legend label: a country where the current user has at least one log (amber/gold fill). Deliberately neutral wording -- never \"complete\"/\"finished\"."},
+  "mapLegendPointUntried": "Not in history",
+  "@mapLegendPointUntried": {"description": "Map legend label: a beer-origin point the current user has not logged (gray point)."},
+  "mapLegendPointTried": "In history",
+  "@mapLegendPointTried": {"description": "Map legend label: a beer-origin point the current user has logged at least once (gold point)."},
 
   "mapBeerPreviewViewDetailsAction": "View details",
   "@mapBeerPreviewViewDetailsAction": {"description": "Button on the Map screen's beer preview card that navigates to the full beer detail screen."},

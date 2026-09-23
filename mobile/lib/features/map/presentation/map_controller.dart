@@ -8,7 +8,7 @@ import '../../catalog/domain/models/country.dart';
 import '../domain/map_mode.dart';
 import '../domain/map_repository.dart';
 import '../domain/models/map_beer.dart';
-import '../domain/models/map_brewery.dart';
+import '../domain/models/map_country.dart';
 import 'map_debug_log.dart';
 
 /// Drives the Map screen: the single-select mode, country/region search,
@@ -18,8 +18,9 @@ import 'map_debug_log.dart';
 ///
 /// Also listens to [CollectionRefreshSignal]: any successful beer-log or
 /// favorite/wishlist mutation elsewhere calls [refresh] here, so the Tried/
-/// Not tried/Favorites/Wishlist modes stay fresh even while the Map tab
-/// isn't the visible one -- see the signal's own doc comment for why no
+/// Not tried/Favorites/Wishlist modes -- and the country-fill layer's
+/// per-country tried counts -- stay fresh even while the Map tab isn't the
+/// visible one -- see the signal's own doc comment for why no
 /// navigation-aware mechanism is needed for that.
 class MapController extends ChangeNotifier {
   MapController({
@@ -38,8 +39,14 @@ class MapController extends ChangeNotifier {
 
   MapMode mode = MapMode.all;
   List<MapBeer> beers = [];
-  List<MapBrewery> breweries = [];
   bool truncated = false;
+
+  /// Per-country catalog/tried counts for the country-fill layer. Unlike
+  /// [beers], this is independent of [mode]/[query] -- it always reflects
+  /// the full catalog's per-country coverage for the current user, so it is
+  /// loaded once and refreshed only on [loadInitial]/[refresh]/an external
+  /// mutation signal, never on a mode switch or search.
+  List<MapCountry> countryCoverage = [];
 
   /// The applied search text (trimmed). Distinct from whatever's currently
   /// typed in the search field between keystrokes and the debounce firing.
@@ -56,7 +63,10 @@ class MapController extends ChangeNotifier {
 
   /// Full-screen error. There is no separate "load more" error state --
   /// unlike Discover/Collection, the map is unpaginated (see
-  /// docs/DECISIONS.md), so every load is a first/only load.
+  /// docs/DECISIONS.md), so every load is a first/only load. Covers only
+  /// the mode/search-scoped beer load, not [countryCoverage] -- a coverage
+  /// fetch failure is decorative-overlay-only (see [_loadCountryCoverage])
+  /// and never blocks or errors the map itself.
   Object? error;
 
   List<Country> _countries = [];
@@ -65,7 +75,7 @@ class MapController extends ChangeNotifier {
   Timer? _debounceTimer;
 
   Future<void> loadInitial() {
-    return Future.wait([_load(), _loadCountries()]);
+    return Future.wait([_load(), _loadCountries(), _loadCountryCoverage()]);
   }
 
   Future<void> setMode(MapMode newMode) {
@@ -108,7 +118,8 @@ class MapController extends ChangeNotifier {
   // A plain pull-to-refresh (or an external mutation signal) re-fetches the
   // *same* mode/search, so a transient failure preserves the still-valid
   // existing markers rather than replacing them with a full-screen error.
-  Future<void> refresh() => _load(preserveOnError: true);
+  Future<void> refresh() =>
+      Future.wait([_load(preserveOnError: true), _loadCountryCoverage()]);
 
   Future<void> _load({bool preserveOnError = false}) async {
     final generation = ++_requestId;
@@ -122,32 +133,19 @@ class MapController extends ChangeNotifier {
     error = null;
     notifyListeners();
     try {
-      if (requestMode == MapMode.breweries) {
-        final result = await _repository.getMapBreweries(
-          countryId: requestCountryId,
-          q: requestQ,
-        );
-        if (generation != _requestId) return;
-        breweries = result.items;
-        beers = [];
-        truncated = result.truncated;
-      } else {
-        final result = await _repository.getMapBeers(
-          state: requestMode.beerState!,
-          countryId: requestCountryId,
-          q: requestQ,
-        );
-        if (generation != _requestId) return;
-        beers = result.items;
-        breweries = [];
-        truncated = result.truncated;
-      }
+      final result = await _repository.getMapBeers(
+        state: requestMode.beerState,
+        countryId: requestCountryId,
+        q: requestQ,
+      );
+      if (generation != _requestId) return;
+      beers = result.items;
+      truncated = result.truncated;
     } catch (e, st) {
       if (generation != _requestId) return;
       error = e;
       if (!preserveOnError) {
         beers = [];
-        breweries = [];
       }
       logMapError('MapController.load', e, st);
     } finally {
@@ -167,6 +165,20 @@ class MapController extends ChangeNotifier {
       // free-text q search instead (see _resolveCountryId), never blocking
       // the map itself.
       logMapError('MapController.loadCountries', e, st);
+    }
+  }
+
+  Future<void> _loadCountryCoverage() async {
+    try {
+      final coverage = await _repository.getCountryCoverage();
+      countryCoverage = coverage;
+      notifyListeners();
+    } catch (e, st) {
+      // The country-fill layer is a decorative overlay, not the map's
+      // primary content -- a failure here leaves whatever coverage was
+      // last loaded (or empty, on a first-load failure) rather than
+      // surfacing a full-screen error or blocking beer markers.
+      logMapError('MapController.loadCountryCoverage', e, st);
     }
   }
 

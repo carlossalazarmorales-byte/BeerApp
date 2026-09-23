@@ -2713,3 +2713,149 @@ deferred notice at their head; a stale section cross-reference in the Stage 3 ta
 (`sections 3, 4, 5`, left over from Stage 1A/2 edits that inserted new sections) was corrected to
 `sections 4, 5, 7`. `ROADMAP.md` — a status paragraph records the deferral and points at
 `docs/RELEASE.md`.
+
+## 2026-09-23 — QA Round 1, Block 2: map becomes beer-origin-first, country-fill layer, brewery mode removed
+
+**Decision.** The map is now primarily a beer-**origin** map. Three changes, all owner-approved
+during audit before implementation: (1) a new country-fill layer shows this user's per-country
+catalog coverage as exactly **three flat, non-gradient states** (zero catalog / catalog with no
+personal history / catalog with some personal history) — never a completion percentage, gradient,
+or a stronger "100%" tier, per CLAUDE.md's Responsible Product Design section; (2) beer-origin
+points are now colored by `is_tried` (gray untried, gold tried) instead of one flat color; (3) the
+earlier brewery map mode was removed from the main map entirely (chip, GeoJSON source/layers,
+`MapBrewery`/`BreweryPreviewCard`), since a brewery's location is not necessarily where a beer is
+actually sold/available and implied otherwise.
+
+**Backend.** New `GET /map/countries` (`MapCountryCoverageOut`: `country_id`, `iso_code`,
+`catalog_beer_count`, `tried_beer_count`), RLS-scoped like `GET /map/beers`. The aggregation was
+explicitly verified — not assumed — to use the exact same catalog-visible population every other
+beer-listing query uses: `public.beers` has no status/visibility/soft-delete column at all, and
+neither `GET /beers` nor the existing `GET /map/beers` filter on one; draft/pending rows live only
+in `beer_contributions`/`brewery_contributions` (Phase 13), which are never joined into any
+beer-listing query, so a pending contribution cannot appear in this aggregation — proven with a
+new integration test that seeds a pending contribution and asserts it doesn't affect coverage. The
+query reuses the identical `coalesce(b.country_id, br.country_id)` country-resolution fallback
+`GET /map/beers` already uses, so a beer never aggregates under a different country than the one
+its own map point displays. Only countries with ≥1 catalog beer are returned; a country's absence
+*is* the "zero catalog" signal — never a stored flag or a zero-count row. No migration: the
+aggregation runs against existing tables/indexes.
+
+**Country boundary source.** No country-boundary polygon existed anywhere in the app (backend or
+client) before this — the base MapTiler style has no fillable per-country layer. Chose to bundle a
+static, simplified Natural Earth 1:110m Admin 0 "Countries" GeoJSON
+(`mobile/assets/map/world_countries_110m.geojson`, fetched from the official
+`nvkelso/natural-earth-vector` mirror, public domain) rather than store polygon geometry in the
+database or depend on an uncertain vector-tile layer in the base style. The bundled file was
+stripped from 838 KB to 197 KB: only `ISO_A2`/`ISO_A2_EH`/`NAME` properties kept (everything
+else — population, GDP, per-language name translations, map-color buckets — was Natural-Earth
+columns unused by this app), coordinates rounded to 3 decimal places (~111 m precision, more than
+sufficient at this map's zoom levels). Provenance, license and known data gaps are documented in
+`mobile/assets/map/NOTICE.txt`, not just this entry, since that file ships with the asset.
+
+**ISO-code join safety.** Natural Earth's plain `ISO_A2` column is confirmed (not assumed) `"-99"`
+for Norway, France, Kosovo and "N. Cyprus", and the non-standard `"CN-TW"` for Taiwan, in this
+release — verified by inspecting the actual downloaded file before writing any join logic. The
+client (`CountryBoundaries._resolveIsoCode`) prefers `ISO_A2_EH` (Natural Earth's column added
+specifically for this problem) over `ISO_A2`, and requires a clean 2-letter match either way. "N.
+Cyprus" and Somaliland still have no clean code in either column — those (and any future
+similarly-unresolved feature) get a `null` `isoCode` and always render as the "zero catalog"
+fallback state. No ISO code is ever invented to force a color; this is covered by a dedicated
+integration-style test against the real bundled asset (`country_boundaries_test.dart`), not just a
+synthetic fixture.
+
+**Beer-origin point precision.** Audited the existing beer→brewery coordinate fallback
+(`repositories/map.py`'s CASE expression, unchanged by this work — it was already correct and
+already documented at the SQL level). The only gap was product-facing: `PRODUCT.md` previously
+implied a flat "beer origin marker," without noting that a beer without its own coordinates falls
+back to its *brewery's* location, which is an approximation, not that beer's verified origin.
+`PRODUCT.md §8` now states this explicitly. No schema/API change — adding an explicit
+precision/approximation flag to the payload was considered and deliberately deferred as unnecessary
+scope for this pass.
+
+**Design tokens.** Three new tokens in `mobile/lib/design_system/tokens/app_colors.dart`:
+`mapZeroCatalog` (dark charcoal, `#221E1A`), `mapZeroHistory` (true neutral gray, `#9C9890` —
+deliberately not warm, unlike this app's cream `surfaceContainer*` family), `mapHasHistory` (=
+`primary`, reused rather than a new hue). Exactly three, matching the three-state design — no
+low/mid/high gradient steps were added. `mapZeroHistory`'s hex is also reused as the beer points
+layer's untried-point color, so the app has exactly one canonical "map gray."
+
+**Legend.** `MapLegend` (new) labels all five states in neutral wording ("in your history", never
+"complete"/"unlocked all"/"finished") — color alone (a gray-vs-charcoal or gray-vs-gold distinction)
+must not be the only way a user can tell the states apart.
+
+**Verification.** Backend: `ruff check` clean; new schema/service/route/integration tests added
+(25 existing map tests plus new ones, all passing against the local test DB — see
+`backend/tests/{schemas,services,routes,integration}/test_map_*`). Flutter: `flutter analyze`
+clean; `dart format` clean; full `flutter test` suite (774 tests) passes, including new coverage
+for `countryFillFeatureCollection`'s three-state logic (explicitly asserting a 1%, 99% and 100%
+"tried" country render identically — proving no gradient exists), the ISO join's case-insensitivity
+and unmatched-feature fallback, `CountryBoundaries` against the real bundled asset (not a synthetic
+fixture), `MapController`'s new independent `countryCoverage` load/refresh/failure-isolation
+behavior, and `MapLegend`'s neutral wording (a test asserts none of "complete", "completion",
+"finish", "100%", "unlock all" appear).
+
+**Documentation.** `docs/QA_ROUND_1.md` — Block 1 marked closed after the owner's manual retest
+confirmation; Block 2's four entries expanded with root-cause/architecture notes and the
+owner-approved 3-state (non-gradient) design, retagged `triaged`. `PRODUCT.md §8` rewritten:
+beer-origin-first framing, brewery mode removed from the map states list, beer-origin point
+precision stated accurately, country-fill states described without percentage/completion language.
+`docs/DESIGN_SYSTEM.md` — the three new map tokens added to the color table. `docs/ARCHITECTURE.md`
+— the "World map" section rewritten for the removed brewery mode, the simplified single-method
+`MapSurface`, and the new country-fill/boundaries/coverage pipeline.
+
+**Not done, by design:** the 249-row full ISO-3166 country reference dataset
+(`supabase/reference_data/countries.sql`) was not applied — the country-fill layer's "zero catalog"
+detection works by ISO-code absence against the bundled boundaries file, independent of how many
+countries exist in `public.countries`, so expanding that table was never a dependency of this work.
+No migration. No explicit origin-precision field was added to the beer map payload. Block 3-5 were
+untouched.
+
+## 2026-09-23 — QA Round 1, Block 2 follow-up: country boundaries upgraded from Natural Earth 1:110m to 1:50m
+
+**Problem, confirmed by inspection.** After the Block 2 implementation above shipped and was
+manually tested on-device, country fill polygons were visibly misaligned with the basemap:
+coastlines not matching, several small island nations entirely missing, and complex coastlines
+(archipelagos, fjords) looking blocky. Root cause was confirmed by directly comparing the bundled
+1:110m file against Natural Earth's own 1:50m release, not assumed: 1:110m has 177 features and
+10,654 vertices total; Seychelles, Maldives, Malta, Singapore, Bahrain, Comoros, Tonga, Barbados
+and Kiribati are not present *at all* (Natural Earth drops states below its 1:110m area threshold
+entirely — this is a small-scale "world thumbnail" product, not simplified detail loss), and
+complex-coastline countries have roughly a third the vertex density of the 1:50m release (e.g.
+Norway 88 vs. 251 vertices, Indonesia 250 vs. 946, Canada 794 vs. 1,730, all at 1:50m's own
+20%-simplified count below). This was a dataset-resolution problem, not a MapLibre rendering,
+projection, or fill-expression bug — nothing in `map_screen.dart`'s styling or
+`map_data_synchronizer.dart`'s join logic was at fault.
+
+**Fix.** Replaced the bundled asset with Natural Earth's 1:50m "Admin 0 — Countries" release,
+simplified with `mapshaper` (`-simplify 20% keep-shapes`) rather than left at full detail or
+naively coordinate-rounded: `keep-shapes` is topology-preserving and guarantees every feature
+survives simplification intact, so no small island silently vanishes to zero vertices the way a
+naive per-ring point-reduction could produce. mapshaper also auto-repaired 4 self-intersections
+introduced by the simplification pass — verified afterward that all 242 features are geometrically
+valid (0 degenerate rings, every coordinate finite). Final asset: 242/242 features (every
+previously-missing island present), 391 KB (up from 197 KB) — a deliberately modest size increase
+for a meaningful accuracy gain, not the unsimplified 1:50m source's 3.08 MB raw / ~1.68 MB
+property-stripped-but-unsimplified size, which would have been disproportionate for this app's
+country-fill use case. Property schema (`ISO_A2`, `ISO_A2_EH`, `NAME`) is byte-for-byte identical
+to the prior release, so `country_boundaries.dart`'s ISO-join logic (preferring `ISO_A2_EH`,
+rejecting non-2-letter codes) needed **zero changes** — confirmed the same known gaps exist
+identically at 1:50m (Norway/France/Kosovo/Taiwan resolve via `ISO_A2_EH`; "N. Cyprus"/Somaliland
+remain genuinely unresolved in both columns, correctly falling back to the zero-catalog state).
+
+**Explicitly not touched, per the request that triggered this fix:** country aggregation query/
+endpoint, ISO-matching logic itself, design tokens/colors, the three-state (non-gradient) country
+fill model, and no backend geometry storage was added — this was a client-side asset swap only.
+
+**Verification.** New Flutter test
+(`country_boundaries_test.dart`, "small island nations dropped by the earlier 1:110m release are
+present") asserts SC/MV/MT/SG/BH/KM all resolve from the bundled asset — a regression guard against
+ever silently reverting to a release that drops them. Feature-count assertion tightened from
+`greaterThan(150)` to `greaterThan(230)` to match the richer dataset. Full `flutter test` suite and
+`flutter analyze` re-run clean after the swap (see the parent Block 2 entry's verification section
+for the full baseline this follow-up sits on top of).
+
+**Documentation.** `mobile/assets/map/NOTICE.txt` rewritten with the new release, the mapshaper
+pipeline (exact command), and a revision-history note explaining why the earlier 1:110m file was
+replaced. `docs/ARCHITECTURE.md` and `docs/QA_ROUND_1.md` updated to reference 1:50m instead of
+1:110m; `QA_ROUND_1.md`'s Block 2 also marked implemented/closed following the owner's manual
+verification.

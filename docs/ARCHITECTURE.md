@@ -154,29 +154,69 @@ and responsive even while a different tab is showing, so a hidden
 `CollectionController` still processes the notification and has fresh data
 ready by the time the user switches to that tab. See `docs/DECISIONS.md`.
 
-## World map (Phase 8)
+## World map (Phase 8, revised QA Round 1 Block 2)
 
 `features/map/` follows the same repository/controller pattern as every
 other feature — no new state-management framework:
 
 ```
 features/map/
-  domain/          # MapRepository interface, MapMode/BeerMapState, MapBeer/MapBrewery/MapResult
-  data/            # ApiMapRepository (backed by GET /map/beers, /map/breweries), MapConfig
-  presentation/    # MapController, MapScreen, mode selector, beer/brewery preview cards
+  domain/          # MapRepository interface, MapMode/BeerMapState, MapBeer/MapCountry/MapResult
+  data/            # ApiMapRepository (GET /map/beers, /map/countries), MapConfig, CountryBoundaries
+  presentation/    # MapController, MapScreen, mode selector, beer preview card, MapLegend
 ```
+
+**QA Round 1 Block 2** turned the map into a primarily beer-**origin** map
+and removed the earlier brewery map mode: `MapMode` no longer has a
+`breweries` value, `MapRepository`/`ApiMapRepository` no longer expose
+`getMapBreweries`, and `MapBrewery`/`BreweryPreviewCard` were deleted as
+dead code. The backend's brewery endpoints (`GET /map/breweries`,
+`GET /breweries*`) are untouched and still used elsewhere (contributions,
+catalog filtering by `brewery_id`) — only this feature's UI path to them
+was removed.
 
 `MapController` reuses `CollectionRefreshSignal` (see above) exactly as
 `CollectionController` does: it listens for the same beer-log/favorite/
 wishlist mutation notifications, since the Tried/Not tried/Favorites/
-Wishlist map modes depend on the identical personal-state tables Collection
-does. No new signal was introduced for this.
+Wishlist map modes — and the country-fill layer's per-country tried counts
+— depend on the identical personal-state tables Collection does. No new
+signal was introduced for this.
 
 `GET /map/beers` reads `user_beer_logs`/`user_beer_collection` the same way
 `/collection/*` does: inside `scoped_connection` (see "Global catalog vs.
 personal data" above), never a plain pooled query, since those tables are
-RLS-protected on the transaction-local `app.user_id` setting. `GET
-/map/breweries` reads only catalog tables and needs no such scoping.
+RLS-protected on the transaction-local `app.user_id` setting.
+
+**Country-fill layer.** `GET /map/countries` (`MapRepository.list_country_coverage`,
+backend) aggregates `public.beers` joined to `public.countries` (via the
+same `coalesce(b.country_id, br.country_id)` fallback `GET /map/beers`
+uses, so a beer is never counted under a different country than it's
+displayed under) with a `user_beer_logs` `EXISTS` for the tried count —
+RLS-scoped like `GET /map/beers`. Only countries with at least one catalog
+beer are returned; a country's absence from the response *is* the "zero
+catalog" state, never a stored flag or a zero-count row. On the client,
+`CountryBoundaries` (`data/country_boundaries.dart`) loads a bundled
+Natural Earth 1:50m world-boundaries GeoJSON asset, simplified with
+mapshaper's topology-preserving `keep-shapes` mode (`assets/map/`, see its
+`NOTICE.txt` for the exact release/license, the simplification pipeline,
+and known ISO-code gaps — revised from an initial 1:110m release after
+on-device manual QA found it too coarse: several small island nations were
+entirely absent, not merely simplified) and resolves each polygon's
+ISO-3166-1 alpha-2 code (preferring Natural
+Earth's `ISO_A2_EH` column over the plain `ISO_A2`, which is `"-99"` for
+several sovereign/disputed entities in this release); a polygon with no
+clean code, or whose code has no matching coverage row, always renders in
+the "zero catalog" state — never a fabricated ISO mapping. `MapDataSynchronizer`
+joins boundaries × coverage into exactly **three flat fill states**
+(`CountryFillState`: zero catalog / zero history / has history) — this is
+a closed, non-gradient enum by design: CLAUDE.md's Responsible Product
+Design section forbids a completion/reward framing, so there is no
+continuous ratio, no 4th "full coverage" tier, and no percentage shown
+anywhere in the UI, even though the backend does return both counts (kept
+as legitimate derived data for possible future neutral analytics).
+`MapLegend` (`presentation/map_legend.dart`) gives these states — and the
+beer-point tried/untried states — a text label, since color alone must not
+carry all the meaning.
 
 **`MapConfig`** (`features/map/data/map_config.dart`) is the single place
 that knows the tile/style provider is MapTiler — `MapController`/`MapScreen`
@@ -191,21 +231,31 @@ itself and renders a localized "unavailable" state instead of building a
 MapTiler key is a client-visible, quota-limited credential, not a
 `service_role`-style secret.
 
-**Map data synchronization (Phase 14).** `MapScreen` no longer pushes data to the
-map itself. `MapDataSynchronizer` (`presentation/map_data_synchronizer.dart`) talks
-to a two-method `MapSurface` interface (`setGeoJsonSource`, `setLayerVisibility`;
-`MapScreen` supplies a thin MapLibre adapter), so the logic is testable without a
-platform view. It uploads a source only when that source's content fingerprint
-(ids and coordinates) changed, sets layer visibility only when the beers/breweries
-mode flips, coalesces overlapping syncs (re-reading the latest state), never throws,
-and leaves a failed piece unsynced so the next notification retries it. The
-style-load path calls `invalidate()` because the sources are recreated empty. See
-`docs/DECISIONS.md` (performance review) for the measured effect.
+**Map data synchronization (Phase 14, simplified in QA Round 1 Block 2).**
+`MapScreen` no longer pushes data to the map itself. `MapDataSynchronizer`
+(`presentation/map_data_synchronizer.dart`) talks to a one-method
+`MapSurface` interface (`setGeoJsonSource`; `MapScreen` supplies a thin
+MapLibre adapter), so the logic is testable without a platform view. It
+uploads a source only when that source's content fingerprint changed
+(beer ids/coordinates/tried-state for the beers source; boundary count and
+per-country tried-state for the countries source), coalesces overlapping
+syncs (re-reading the latest state), never throws, and leaves a failed
+piece unsynced so the next notification retries it. The style-load path
+calls `invalidate()` because the sources are recreated empty. Brewery
+mode's layer-visibility toggling (`setLayerVisibility`, a second source, a
+second layer group) was removed along with brewery mode itself — every
+layer the map has left is always visible, so there is nothing left to
+toggle. See `docs/DECISIONS.md` (performance review) for the Phase 14
+measurement this synchronizer was originally built to address.
 
-Clustering is client-side only, via `maplibre_gl`'s built-in GeoJSON-source
-`cluster` support — no backend aggregation/viewport query exists. See
-`docs/DECISIONS.md` for why, and Phase 14 as the place real geo-scale work
-(if it's ever needed) belongs.
+Beer-marker clustering is client-side only, via `maplibre_gl`'s built-in
+GeoJSON-source `cluster` support — no backend aggregation/viewport query
+exists for it. See `docs/DECISIONS.md` for why, and Phase 14 as the place
+real geo-scale work (if it's ever needed) belongs. This is distinct from
+the country-fill layer's `GET /map/countries` aggregation above, which is a
+plain `GROUP BY` over the country/beer catalog, not a clustering/viewport
+concern, and needs no comparable scale caveat at any realistic country
+count (~250 max).
 
 ## Production hardening (Phase 14)
 

@@ -58,19 +58,13 @@ void main() {
   group('clusterSourceIdForLayer', () {
     const beersClusterLayerId = 'map-beers-clusters';
     const beersClusterCountLayerId = 'map-beers-cluster-count';
-    const breweriesClusterLayerId = 'map-breweries-clusters';
-    const breweriesClusterCountLayerId = 'map-breweries-cluster-count';
     const beersSourceId = 'map-beers-source';
-    const breweriesSourceId = 'map-breweries-source';
 
     String? resolve(String layerId) => clusterSourceIdForLayer(
       layerId,
       beersClusterLayerId: beersClusterLayerId,
       beersClusterCountLayerId: beersClusterCountLayerId,
-      breweriesClusterLayerId: breweriesClusterLayerId,
-      breweriesClusterCountLayerId: breweriesClusterCountLayerId,
       beersSourceId: beersSourceId,
-      breweriesSourceId: breweriesSourceId,
     );
 
     test('maps the beer cluster (circle) layer to the beer source', () {
@@ -85,21 +79,13 @@ void main() {
       },
     );
 
-    test('maps the brewery cluster (circle) layer to the brewery source', () {
-      expect(resolve(breweriesClusterLayerId), breweriesSourceId);
-    });
-
     test(
-      'maps the brewery cluster count label layer to the brewery source',
+      'returns null for any other layer id, never guessing as a fallback',
       () {
-        expect(resolve(breweriesClusterCountLayerId), breweriesSourceId);
+        expect(resolve('map-beers-points'), isNull);
+        expect(resolve('map-countries-fill'), isNull);
+        expect(resolve('unknown-layer'), isNull);
       },
     );
-
-    test('returns null for any other layer id, never guessing brewery as a fallback', () {
-      expect(resolve('map-beers-points'), isNull);
-      expect(resolve('map-breweries-points'), isNull);
-      expect(resolve('unknown-layer'), isNull);
-    });
   });
 }

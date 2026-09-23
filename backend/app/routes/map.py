@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from app.auth.dependencies import get_current_user
 from app.dependencies import get_map_service
 from app.schemas.common import NO_NUL_PATTERN
-from app.schemas.map import CappedList, MapBeerOut, MapBreweryOut
+from app.schemas.map import CappedList, MapBeerOut, MapBreweryOut, MapCountryCoverageOut
 from app.services.map import MapService
 
 _MapState = Literal["all", "tried", "not_tried", "favorites", "wishlist"]
@@ -44,3 +44,11 @@ async def list_map_breweries(
         country_id=str(country_id) if country_id is not None else None,
         q=q,
     )
+
+
+@router.get("/countries", response_model=list[MapCountryCoverageOut])
+async def list_map_country_coverage(
+    user_id: str = Depends(get_current_user),
+    service: MapService = Depends(get_map_service),
+) -> list[MapCountryCoverageOut]:
+    return await service.list_country_coverage(user_id=user_id)

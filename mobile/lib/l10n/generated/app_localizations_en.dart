@@ -456,9 +456,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapModeWishlist => 'Wishlist';
 
   @override
-  String get mapModeBreweries => 'Breweries';
-
-  @override
   String get mapSearchHint => 'Search a country or region';
 
   @override
@@ -476,7 +473,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapBeersEmptyMessage => 'No beers match this view.';
 
   @override
-  String get mapBreweriesEmptyMessage => 'No breweries match this view.';
+  String get mapLegendZeroCatalog => 'No catalog';
+
+  @override
+  String get mapLegendZeroHistory => 'Catalog available';
+
+  @override
+  String get mapLegendHasHistory => 'In your history';
+
+  @override
+  String get mapLegendPointUntried => 'Not in history';
+
+  @override
+  String get mapLegendPointTried => 'In history';
 
   @override
   String get mapBeerPreviewViewDetailsAction => 'View details';

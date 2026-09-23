@@ -1,6 +1,5 @@
-/// Server-side filter for `GET /map/beers`. Never includes a "breweries"
-/// value -- that's a separate endpoint (`GET /map/breweries`), never a
-/// `state` value of this one. Mirrors the backend's `_MapState` literal.
+/// Server-side filter for `GET /map/beers`. Mirrors the backend's
+/// `_MapState` literal.
 enum BeerMapState {
   all,
   tried,
@@ -26,21 +25,20 @@ enum BeerMapState {
 }
 
 /// The map's single-select display mode -- PRODUCT.md's "possible map
-/// states" (All beers / Tried / Not tried / Favorites / Wishlist /
-/// Breweries). Exactly one is active at a time; these are not independently
-/// combinable filters (see docs/DECISIONS.md).
+/// states" (All beers / Tried / Not tried / Favorites / Wishlist). Exactly
+/// one is active at a time; these are not independently combinable filters
+/// (see docs/DECISIONS.md). There is no "Breweries" mode -- QA Round 1
+/// Block 2 removed it from the main map, which is beer-origin-first; the
+/// backend's brewery endpoints remain for other features.
 enum MapMode {
   all,
   tried,
   notTried,
   favorites,
-  wishlist,
-  breweries;
+  wishlist;
 
-  /// The beer-state filter this mode maps to, or `null` for [breweries] --
-  /// that mode calls `MapRepository.getMapBreweries` instead, never
-  /// `getMapBeers`.
-  BeerMapState? get beerState {
+  /// The beer-state filter this mode maps to.
+  BeerMapState get beerState {
     switch (this) {
       case MapMode.all:
         return BeerMapState.all;
@@ -52,8 +50,6 @@ enum MapMode {
         return BeerMapState.favorites;
       case MapMode.wishlist:
         return BeerMapState.wishlist;
-      case MapMode.breweries:
-        return null;
     }
   }
 }

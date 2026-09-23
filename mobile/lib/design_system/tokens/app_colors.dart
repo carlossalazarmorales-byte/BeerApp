@@ -49,6 +49,27 @@ abstract final class AppColors {
   static const Color error = Color(0xFFBA1A1A);
   static const Color errorContainer = Color(0xFFFFDAD6);
 
+  /// The map's country-fill layer (QA Round 1 Block 2): exactly three
+  /// flat, non-gradient states -- a country's fill must never read as a
+  /// completion/reward gradient (CLAUDE.md's Responsible Product Design
+  /// section). None of the existing surface/outline tones work here: the
+  /// `surfaceContainer*` family is warm cream, not neutral gray, and
+  /// [onSecondaryFixed] is reserved for text-on-fixed-surface use.
+  ///
+  /// No catalog beers in that country at all.
+  static const Color mapZeroCatalog = Color(0xFF221E1A);
+
+  /// Catalog exists, current user has zero logs against it. A true neutral
+  /// gray, deliberately not warm, so it reads as clearly distinct from the
+  /// cream `surfaceContainer*` family.
+  static const Color mapZeroHistory = Color(0xFF9C9890);
+
+  /// Catalog exists, current user has at least one log against it -- one
+  /// restrained state regardless of how much of the catalog that log
+  /// represents (never a stronger/"complete" tier). Reuses [primary]
+  /// directly rather than a new hue.
+  static const Color mapHasHistory = primary;
+
   static const ColorScheme lightScheme = ColorScheme(
     brightness: Brightness.light,
     surface: surface,

@@ -25,7 +25,6 @@ void main() {
       expect(find.text('Not tried'), findsOneWidget);
       expect(find.text('Favorites'), findsOneWidget);
       expect(find.text('Wishlist'), findsOneWidget);
-      expect(find.text('Breweries'), findsOneWidget);
 
       final chip = tester.widget<FilterChip>(
         find.ancestor(

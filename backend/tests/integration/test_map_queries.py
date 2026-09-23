@@ -411,6 +411,145 @@ def test_breweries_without_coordinates_are_excluded(integration_dsn):
     _run(integration_dsn, body)
 
 
+# -- country coverage aggregation (/map/countries) ------------------------
+
+
+def test_country_with_no_catalog_beers_is_absent_from_coverage(integration_dsn):
+    async def body(conn: asyncpg.Connection, repository: MapRepository) -> None:
+        await conn.execute(
+            "insert into public.countries (iso_code, name, continent) "
+            "values ('ZZ', 'Test Land', 'Europe')"
+        )
+
+        rows = await repository.list_country_coverage(user_id=_USER_A)
+
+        assert rows == []
+
+    _run(integration_dsn, body)
+
+
+def test_country_with_catalog_and_zero_tried(integration_dsn):
+    async def body(conn: asyncpg.Connection, repository: MapRepository) -> None:
+        ids = await _seed_country_and_brewery(conn, brewery_lat="10.0", brewery_lng="20.0")
+        await _insert_beer(conn, brewery_id=ids["brewery_id"])
+
+        rows = await repository.list_country_coverage(user_id=_USER_A)
+
+        assert len(rows) == 1
+        assert str(rows[0]["country_id"]) == ids["country_id"]
+        assert rows[0]["iso_code"] == "ZZ"
+        assert rows[0]["catalog_beer_count"] == 1
+        assert rows[0]["tried_beer_count"] == 0
+
+    _run(integration_dsn, body)
+
+
+def test_country_with_some_tried_beers(integration_dsn):
+    async def body(conn: asyncpg.Connection, repository: MapRepository) -> None:
+        ids = await _seed_country_and_brewery(conn, brewery_lat="10.0", brewery_lng="20.0")
+        tried_beer_id = await _insert_beer(conn, brewery_id=ids["brewery_id"], name="Tried Beer")
+        await _insert_beer(conn, brewery_id=ids["brewery_id"], name="Not Tried Beer")
+
+        async with repository._scoped(_USER_A) as scoped_conn:
+            await scoped_conn.execute(
+                "insert into public.user_beer_logs (user_id, beer_id) values ($1, $2)",
+                _USER_A,
+                tried_beer_id,
+            )
+
+        rows = await repository.list_country_coverage(user_id=_USER_A)
+
+        assert len(rows) == 1
+        assert rows[0]["catalog_beer_count"] == 2
+        assert rows[0]["tried_beer_count"] == 1
+
+    _run(integration_dsn, body)
+
+
+def test_country_with_all_beers_tried(integration_dsn):
+    async def body(conn: asyncpg.Connection, repository: MapRepository) -> None:
+        ids = await _seed_country_and_brewery(conn, brewery_lat="10.0", brewery_lng="20.0")
+        beer_id = await _insert_beer(conn, brewery_id=ids["brewery_id"])
+
+        async with repository._scoped(_USER_A) as scoped_conn:
+            await scoped_conn.execute(
+                "insert into public.user_beer_logs (user_id, beer_id) values ($1, $2)",
+                _USER_A,
+                beer_id,
+            )
+
+        rows = await repository.list_country_coverage(user_id=_USER_A)
+
+        assert rows[0]["catalog_beer_count"] == rows[0]["tried_beer_count"] == 1
+
+    _run(integration_dsn, body)
+
+
+def test_other_users_logs_do_not_affect_country_coverage(integration_dsn):
+    async def body(conn: asyncpg.Connection, repository: MapRepository) -> None:
+        ids = await _seed_country_and_brewery(conn, brewery_lat="10.0", brewery_lng="20.0")
+        beer_id = await _insert_beer(conn, brewery_id=ids["brewery_id"])
+
+        async with repository._scoped(_USER_A) as scoped_conn:
+            await scoped_conn.execute(
+                "insert into public.user_beer_logs (user_id, beer_id) values ($1, $2)",
+                _USER_A,
+                beer_id,
+            )
+
+        rows = await repository.list_country_coverage(user_id=_USER_B)
+
+        assert rows[0]["catalog_beer_count"] == 1
+        assert rows[0]["tried_beer_count"] == 0
+
+    _run(integration_dsn, body)
+
+
+def test_country_coverage_uses_the_same_country_fallback_as_beer_listing(integration_dsn):
+    """A beer with no country_id of its own aggregates under its brewery's
+    country, exactly like list_beers' coalesce(b.country_id, br.country_id)
+    -- proves the aggregation can't silently disagree with what the map's
+    beer points display as that beer's country."""
+
+    async def body(conn: asyncpg.Connection, repository: MapRepository) -> None:
+        ids = await _seed_country_and_brewery(conn, brewery_lat="10.0", brewery_lng="20.0")
+        await conn.execute(
+            "insert into public.beers (official_name, brewery_id, latitude, longitude) "
+            "values ('Fallback Beer', $1, 1.0, 2.0)",
+            ids["brewery_id"],
+        )
+
+        rows = await repository.list_country_coverage(user_id=_USER_A)
+
+        assert len(rows) == 1
+        assert str(rows[0]["country_id"]) == ids["country_id"]
+        assert rows[0]["catalog_beer_count"] == 1
+
+    _run(integration_dsn, body)
+
+
+def test_pending_contribution_never_affects_country_coverage(integration_dsn):
+    """Regression: a pending public.beer_contributions row is not a catalog
+    row (see that table's own migration comment) and must never make a
+    country appear in /map/countries or inflate its counts -- proves this
+    against the real table, not just by construction of the query."""
+
+    async def body(conn: asyncpg.Connection, repository: MapRepository) -> None:
+        ids = await _seed_country_and_brewery(conn, brewery_lat="10.0", brewery_lng="20.0")
+        await conn.execute(
+            "insert into public.beer_contributions (user_id, official_name, brewery_id) "
+            "values ($1, 'Proposed Beer', $2)",
+            _USER_A,
+            ids["brewery_id"],
+        )
+
+        rows = await repository.list_country_coverage(user_id=_USER_A)
+
+        assert rows == []
+
+    _run(integration_dsn, body)
+
+
 def test_country_filter_narrows_beer_results(integration_dsn):
     async def body(conn: asyncpg.Connection, repository: MapRepository) -> None:
         ids = await _seed_country_and_brewery(conn, brewery_lat="10.0", brewery_lng="20.0")

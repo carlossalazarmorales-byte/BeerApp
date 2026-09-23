@@ -262,20 +262,24 @@ The system must distinguish between:
 
 ## 8. Map Experience
 
-The world map is one of BeerApp's central features.
-
-It should not be treated as a secondary page.
+The world map is one of BeerApp's central features, and is primarily a
+**beer-origin** map (QA Round 1 Block 2). It should not be treated as a
+secondary page.
 
 Users should be able to:
 
 - Explore beer by country
 - Explore beer by region
-- Explore breweries
-- See beers geographically
-- See personal discovery progress
+- See beers geographically, plotted at their origin
+- See a country-level view of their own catalog coverage
 - Filter the map
 - Open beer details from the map
-- Open brewery details from the map
+
+There is no brewery-browsing mode on the main map: a brewery is not
+necessarily where a given beer is sold, brewed for that market, or
+available, so treating brewery location as "where to get this beer" would
+be misleading. Brewery data (location, detail) remains available to other
+features; it is just not a main-map mode.
 
 Possible map states:
 
@@ -284,16 +288,22 @@ Possible map states:
 - Beers not tried
 - Favorites
 - Wishlist
-- Breweries
 
-Possible progress visualizations:
+Beer-origin points: a beer's own origin coordinates when the catalog has
+them, approximated by its brewery's location otherwise (never a fabricated
+or invented coordinate, and never the point of sale/consumption). Point
+color distinguishes only two states -- not yet in the current user's
+history, or in it.
 
-- Countries discovered
-- Regions discovered
-- Number of beers tried by country
-- Percentage of catalog explored
+Country fill: three flat, informational states per country -- no catalog
+beers, catalog beers but none in the current user's history yet, or at
+least one in their history. This is informational map coverage, not a
+completion/progress mechanic: there is no percentage shown, no "complete
+this country" state, and no stronger/celebratory visual at 100% -- see
+Section 3's Responsible Product Design constraints, which this map must
+never violate no matter how the coverage math is later extended.
 
-The map should eventually support clustering and smooth zoom transitions.
+The map supports clustering and smooth zoom transitions.
 
 Preferred map technology: MapLibre.
 

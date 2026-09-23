@@ -462,9 +462,6 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mapModeWishlist => 'Lista de deseos';
 
   @override
-  String get mapModeBreweries => 'Cervecerías';
-
-  @override
   String get mapSearchHint => 'Busca un país o región';
 
   @override
@@ -482,8 +479,19 @@ class AppLocalizationsEs extends AppLocalizations {
   String get mapBeersEmptyMessage => 'Ninguna cerveza coincide con esta vista.';
 
   @override
-  String get mapBreweriesEmptyMessage =>
-      'Ninguna cervecería coincide con esta vista.';
+  String get mapLegendZeroCatalog => 'Sin catálogo';
+
+  @override
+  String get mapLegendZeroHistory => 'Catálogo disponible';
+
+  @override
+  String get mapLegendHasHistory => 'En tu historial';
+
+  @override
+  String get mapLegendPointUntried => 'No está en tu historial';
+
+  @override
+  String get mapLegendPointTried => 'En tu historial';
 
   @override
   String get mapBeerPreviewViewDetailsAction => 'Ver detalles';

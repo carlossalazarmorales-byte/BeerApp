@@ -5,10 +5,9 @@ import '../../../design_system/tokens/app_spacing.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../domain/map_mode.dart';
 
-/// Single-select mode row (All / Tried / Not tried / Favorites / Wishlist /
-/// Breweries) -- exactly one chip selected at a time, matching
-/// `MapController.mode`'s single-select semantics (never independently
-/// combinable filters).
+/// Single-select mode row (All / Tried / Not tried / Favorites / Wishlist)
+/// -- exactly one chip selected at a time, matching `MapController.mode`'s
+/// single-select semantics (never independently combinable filters).
 class MapModeSelector extends StatelessWidget {
   const MapModeSelector({
     required this.selected,
@@ -31,8 +30,6 @@ class MapModeSelector extends StatelessWidget {
         return l10n.mapModeFavorites;
       case MapMode.wishlist:
         return l10n.mapModeWishlist;
-      case MapMode.breweries:
-        return l10n.mapModeBreweries;
     }
   }
 

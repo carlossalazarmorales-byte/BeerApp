@@ -1,10 +1,11 @@
 from decimal import Decimal
 from uuid import uuid4
 
-from app.schemas.map import CappedList, MapBeerOut, MapBreweryOut
+from app.schemas.map import CappedList, MapBeerOut, MapBreweryOut, MapCountryCoverageOut
 
 _BEER_ID = uuid4()
 _BREWERY_ID = uuid4()
+_COUNTRY_ID = uuid4()
 
 
 def _beer_out(**overrides) -> MapBeerOut:
@@ -61,3 +62,14 @@ def test_capped_list_carries_truncated_flag_through():
 
     not_truncated = CappedList[MapBeerOut](items=[], truncated=False)
     assert not_truncated.truncated is False
+
+
+def test_country_coverage_holds_both_counts():
+    coverage = MapCountryCoverageOut(
+        country_id=_COUNTRY_ID,
+        iso_code="BE",
+        catalog_beer_count=5,
+        tried_beer_count=2,
+    )
+    assert coverage.catalog_beer_count == 5
+    assert coverage.tried_beer_count == 2

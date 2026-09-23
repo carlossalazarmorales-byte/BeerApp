@@ -16,24 +16,27 @@ import '../../../design_system/tokens/app_typography.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../shared/collection_refresh_signal.dart';
 import '../../catalog/domain/catalog_repository.dart';
+import '../data/country_boundaries.dart';
 import '../data/map_config.dart';
-import '../domain/map_mode.dart';
 import '../domain/map_repository.dart';
 import '../domain/models/map_beer.dart';
-import '../domain/models/map_brewery.dart';
 import 'beer_preview_card.dart';
-import 'brewery_preview_card.dart';
 import 'map_camera_fit.dart';
 import 'map_cluster_utils.dart';
 import 'map_controller.dart';
 import 'map_data_synchronizer.dart';
 import 'map_debug_log.dart';
 import 'map_error_text.dart';
+import 'map_legend.dart';
 import 'map_mode_selector.dart';
 
-/// The Map destination: a MapLibre world map of beer/brewery markers,
-/// filtered by [MapController]'s single-select mode, with country/region
-/// search and clustering. Replaces the Phase 1-7 placeholder.
+/// The Map destination: a MapLibre world map, primarily a beer-**origin**
+/// map -- a country-fill layer showing this user's catalog coverage below
+/// clustered beer-origin points, filtered by [MapController]'s single-select
+/// mode, with country/region search. Replaces the Phase 1-7 placeholder.
+/// QA Round 1 Block 2 removed the earlier brewery map mode from this screen
+/// -- the backend's brewery endpoints remain for other features, just not
+/// this one.
 class MapScreen extends StatefulWidget {
   const MapScreen({
     required this.repository,
@@ -51,14 +54,12 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
+  static const _countriesSourceId = 'map-countries-source';
+  static const _countriesFillLayerId = 'map-countries-fill';
   static const _beersSourceId = 'map-beers-source';
-  static const _breweriesSourceId = 'map-breweries-source';
   static const _beersClusterLayerId = 'map-beers-clusters';
   static const _beersClusterCountLayerId = 'map-beers-cluster-count';
   static const _beersPointsLayerId = 'map-beers-points';
-  static const _breweriesClusterLayerId = 'map-breweries-clusters';
-  static const _breweriesClusterCountLayerId = 'map-breweries-cluster-count';
-  static const _breweriesPointsLayerId = 'map-breweries-points';
 
   static const List<Object> _hasPointCountFilter = ['has', 'point_count'];
   static const List<Object> _missingPointCountFilter = [
@@ -73,6 +74,30 @@ class _MapScreenState extends State<MapScreen> {
     20,
     50,
     26,
+  ];
+
+  /// `case` (not `match`): the input is a boolean, not a label to compare
+  /// against a fixed set -- gray when untried, gold when tried.
+  static const List<Object> _beerPointColorExpression = [
+    'case',
+    ['get', 'is_tried'],
+    _AppMapColors.primaryContainerHex,
+    _AppMapColors.mapZeroHistoryHex,
+  ];
+
+  /// `match` on the string `fill_state` MapDataSynchronizer's
+  /// `countryFillFeatureCollection` assigns each country polygon -- exactly
+  /// three flat states, no interpolation/gradient (QA Round 1 Block 2). The
+  /// trailing value is the fallback for any unrecognized state, which in
+  /// practice never occurs since `CountryFillState` is a closed enum.
+  static const List<Object> _countryFillColorExpression = [
+    'match',
+    ['get', 'fill_state'],
+    'has_history',
+    _AppMapColors.mapHasHistoryHex,
+    'zero_history',
+    _AppMapColors.mapZeroHistoryHex,
+    _AppMapColors.mapZeroCatalogHex,
   ];
 
   static const double _clusterMaxZoom = 13;
@@ -93,22 +118,13 @@ class _MapScreenState extends State<MapScreen> {
 
   MapLibreMapController? _mapLibreController;
   bool _sourcesReady = false;
+  List<CountryBoundary> _countryBoundaries = [];
 
   /// Pushes controller data to the map, doing no work when nothing changed.
   late final MapDataSynchronizer _synchronizer = MapDataSynchronizer(
     surface: _MapLibreSurface(() => _mapLibreController),
     beersSourceId: _beersSourceId,
-    breweriesSourceId: _breweriesSourceId,
-    beerLayerIds: const [
-      _beersClusterLayerId,
-      _beersClusterCountLayerId,
-      _beersPointsLayerId,
-    ],
-    breweryLayerIds: const [
-      _breweriesClusterLayerId,
-      _breweriesClusterCountLayerId,
-      _breweriesPointsLayerId,
-    ],
+    countriesSourceId: _countriesSourceId,
   );
   String? _lastFitSignature;
 
@@ -117,6 +133,7 @@ class _MapScreenState extends State<MapScreen> {
     super.initState();
     _controller.addListener(_onControllerChanged);
     _controller.loadInitial();
+    unawaited(_loadCountryBoundaries());
   }
 
   @override
@@ -125,6 +142,19 @@ class _MapScreenState extends State<MapScreen> {
     _controller.dispose();
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCountryBoundaries() async {
+    try {
+      final boundaries = await CountryBoundaries.load();
+      if (!mounted) return;
+      _countryBoundaries = boundaries;
+      unawaited(_syncMapData());
+    } catch (e, st) {
+      // The country-fill layer is decorative -- a failed/missing asset load
+      // never blocks beer markers or the rest of the map.
+      logMapError('MapScreen.loadCountryBoundaries', e, st);
+    }
   }
 
   void _onControllerChanged() {
@@ -156,6 +186,22 @@ class _MapScreenState extends State<MapScreen> {
     if (map == null || _sourcesReady) return;
     _sourcesReady = true;
 
+    // Added first so it renders BELOW the beer marker layers added next --
+    // MapLibre stacks layers in add order.
+    await map.addSource(
+      _countriesSourceId,
+      GeojsonSourceProperties(data: _emptyFeatureCollection),
+    );
+    await map.addFillLayer(
+      _countriesSourceId,
+      _countriesFillLayerId,
+      const FillLayerProperties(
+        fillColor: _countryFillColorExpression,
+        fillOpacity: 0.55,
+      ),
+      enableInteraction: false,
+    );
+
     await map.addSource(
       _beersSourceId,
       GeojsonSourceProperties(
@@ -164,52 +210,9 @@ class _MapScreenState extends State<MapScreen> {
         clusterMaxZoom: _clusterMaxZoom,
       ),
     );
-    await map.addSource(
-      _breweriesSourceId,
-      GeojsonSourceProperties(
-        data: _emptyFeatureCollection,
-        cluster: true,
-        clusterMaxZoom: _clusterMaxZoom,
-      ),
-    );
-
-    await _addMarkerLayers(
-      map,
-      sourceId: _beersSourceId,
-      clusterLayerId: _beersClusterLayerId,
-      clusterCountLayerId: _beersClusterCountLayerId,
-      pointsLayerId: _beersPointsLayerId,
-    );
-    await _addMarkerLayers(
-      map,
-      sourceId: _breweriesSourceId,
-      clusterLayerId: _breweriesClusterLayerId,
-      clusterCountLayerId: _breweriesClusterCountLayerId,
-      pointsLayerId: _breweriesPointsLayerId,
-    );
-
-    // Breweries mode isn't the default -- start with its layers hidden so
-    // beer and brewery markers are never both visible at once.
-    await map.setLayerVisibility(_breweriesClusterLayerId, false);
-    await map.setLayerVisibility(_breweriesClusterCountLayerId, false);
-    await map.setLayerVisibility(_breweriesPointsLayerId, false);
-
-    // The sources were just created EMPTY: whatever the synchronizer last sent
-    // (for a previous map instance/style) is gone, so the next sync must
-    // upload everything again.
-    _synchronizer.invalidate();
-  }
-
-  Future<void> _addMarkerLayers(
-    MapLibreMapController map, {
-    required String sourceId,
-    required String clusterLayerId,
-    required String clusterCountLayerId,
-    required String pointsLayerId,
-  }) async {
     await map.addCircleLayer(
-      sourceId,
-      clusterLayerId,
+      _beersSourceId,
+      _beersClusterLayerId,
       const CircleLayerProperties(
         circleColor: _AppMapColors.primaryHex,
         circleRadius: _clusterRadiusExpression,
@@ -219,8 +222,8 @@ class _MapScreenState extends State<MapScreen> {
       filter: _hasPointCountFilter,
     );
     await map.addSymbolLayer(
-      sourceId,
-      clusterCountLayerId,
+      _beersSourceId,
+      _beersClusterCountLayerId,
       const SymbolLayerProperties(
         textField: ['get', 'point_count_abbreviated'],
         textSize: 12,
@@ -231,28 +234,33 @@ class _MapScreenState extends State<MapScreen> {
       filter: _hasPointCountFilter,
     );
     await map.addCircleLayer(
-      sourceId,
-      pointsLayerId,
+      _beersSourceId,
+      _beersPointsLayerId,
       const CircleLayerProperties(
-        circleColor: _AppMapColors.primaryContainerHex,
+        circleColor: _beerPointColorExpression,
         circleRadius: 8,
         circleStrokeWidth: 2,
         circleStrokeColor: _AppMapColors.primaryHex,
       ),
       filter: _missingPointCountFilter,
     );
+
+    // The sources were just created EMPTY: whatever the synchronizer last sent
+    // (for a previous map instance/style) is gone, so the next sync must
+    // upload everything again.
+    _synchronizer.invalidate();
   }
 
   Future<void> _syncMapData() async {
     if (_mapLibreController == null || !_sourcesReady) return;
 
-    // Reads the LATEST controller state when it runs, and skips whatever the
-    // map already has -- see MapDataSynchronizer.
+    // Reads the LATEST controller/boundaries state when it runs, and skips
+    // whatever the map already has -- see MapDataSynchronizer.
     await _synchronizer.sync(
       () => MapSnapshot(
         beers: _controller.beers,
-        breweries: _controller.breweries,
-        mode: _controller.mode,
+        countryCoverage: _controller.countryCoverage,
+        countryBoundaries: _countryBoundaries,
       ),
     );
   }
@@ -284,9 +292,6 @@ class _MapScreenState extends State<MapScreen> {
     if (layerId == _beersPointsLayerId) {
       final beer = _findBeer(properties['beer_id'] as String?);
       if (beer != null) _showBeerPreview(beer);
-    } else if (layerId == _breweriesPointsLayerId) {
-      final brewery = _findBrewery(properties['brewery_id'] as String?);
-      if (brewery != null) _showBreweryPreview(brewery);
     }
   }
 
@@ -319,10 +324,7 @@ class _MapScreenState extends State<MapScreen> {
       layerId,
       beersClusterLayerId: _beersClusterLayerId,
       beersClusterCountLayerId: _beersClusterCountLayerId,
-      breweriesClusterLayerId: _breweriesClusterLayerId,
-      breweriesClusterCountLayerId: _breweriesClusterCountLayerId,
       beersSourceId: _beersSourceId,
-      breweriesSourceId: _breweriesSourceId,
     );
     if (sourceId == null) {
       _logClusterIssue('layer $layerId is not a known cluster layer');
@@ -382,27 +384,11 @@ class _MapScreenState extends State<MapScreen> {
     return null;
   }
 
-  MapBrewery? _findBrewery(String? breweryId) {
-    if (breweryId == null) return null;
-    for (final brewery in _controller.breweries) {
-      if (brewery.breweryId == breweryId) return brewery;
-    }
-    return null;
-  }
-
   void _showBeerPreview(MapBeer beer) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (_) => BeerPreviewCard(beer: beer),
-    );
-  }
-
-  void _showBreweryPreview(MapBrewery brewery) {
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => BreweryPreviewCard(brewery: brewery),
     );
   }
 
@@ -420,8 +406,8 @@ class _MapScreenState extends State<MapScreen> {
         '${_controller.mode}|${_controller.appliedCountryId}|${_controller.query}';
     // Notably: this must never accept (and must never record
     // _lastFitSignature for) the loading-start notification of a new
-    // search -- at that point the controller's beers/breweries still hold
-    // the *previous* result, and fitting to it (then marking the signature
+    // search -- at that point the controller's beers still hold the
+    // *previous* result, and fitting to it (then marking the signature
     // "already fitted") would silently skip the real fit once the actual
     // filtered result arrives a moment later.
     final signatureToRecord = cameraFitSignatureToRecord(
@@ -437,13 +423,9 @@ class _MapScreenState extends State<MapScreen> {
     // cameraFitSignatureToRecord's doc comment).
     _lastFitSignature = signatureToRecord;
 
-    final points = _controller.mode == MapMode.breweries
-        ? _controller.breweries
-              .map((b) => (lat: b.latitude, lng: b.longitude))
-              .toList()
-        : _controller.beers
-              .map((b) => (lat: b.latitude, lng: b.longitude))
-              .toList();
+    final points = _controller.beers
+        .map((b) => (lat: b.latitude, lng: b.longitude))
+        .toList();
     if (points.isEmpty) return;
 
     var minLat = double.infinity;
@@ -486,15 +468,6 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
   }
-
-  String _emptyMessage(AppLocalizations l10n) =>
-      _controller.mode == MapMode.breweries
-      ? l10n.mapBreweriesEmptyMessage
-      : l10n.mapBeersEmptyMessage;
-
-  bool get _currentItemsEmpty => _controller.mode == MapMode.breweries
-      ? _controller.breweries.isEmpty
-      : _controller.beers.isEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -548,17 +521,22 @@ class _MapScreenState extends State<MapScreen> {
                 onChanged: _controller.setMode,
               ),
             ),
-            if (_controller.isLoading && _currentItemsEmpty)
+            if (_controller.isLoading && _controller.beers.isEmpty)
               const LoadingState(),
-            if (_controller.error != null && _currentItemsEmpty)
+            if (_controller.error != null && _controller.beers.isEmpty)
               ErrorState(
                 message: mapErrorText(context, _controller.error!),
                 onRetry: _controller.refresh,
               ),
             if (!_controller.isLoading &&
                 _controller.error == null &&
-                _currentItemsEmpty)
-              EmptyState(message: _emptyMessage(l10n)),
+                _controller.beers.isEmpty)
+              EmptyState(message: l10n.mapBeersEmptyMessage),
+            const Positioned(
+              bottom: AppSpacing.lg,
+              left: AppSpacing.lg,
+              child: MapLegend(),
+            ),
             if (_controller.truncated)
               Positioned(
                 bottom: AppSpacing.lg,
@@ -588,11 +566,6 @@ class _MapLibreSurface implements MapSurface {
     Map<String, dynamic> data,
   ) async {
     await _controller()?.setGeoJsonSource(sourceId, data);
-  }
-
-  @override
-  Future<void> setLayerVisibility(String layerId, bool visible) async {
-    await _controller()?.setLayerVisibility(layerId, visible);
   }
 }
 
@@ -625,9 +598,20 @@ class _TruncatedBanner extends StatelessWidget {
 
 /// Hex string constants for MapLibre style-spec `dynamic` color properties,
 /// which take CSS color strings, not Flutter [Color] objects. Kept in sync
-/// with `AppColors.primary`/`primaryContainer` by hand -- MapLibre's layer
+/// with the matching `AppColors` token by hand -- MapLibre's layer
 /// properties don't accept a Flutter [Color] directly.
 abstract final class _AppMapColors {
   static const String primaryHex = '#795900';
   static const String primaryContainerHex = '#FFBF00';
+
+  /// = `AppColors.mapZeroCatalog`.
+  static const String mapZeroCatalogHex = '#221E1A';
+
+  /// = `AppColors.mapZeroHistory`. Also reused as the beer points layer's
+  /// untried-point color, so there is exactly one canonical "map gray" in
+  /// the app.
+  static const String mapZeroHistoryHex = '#9C9890';
+
+  /// = `AppColors.mapHasHistory` (= `AppColors.primary`).
+  static const String mapHasHistoryHex = '#795900';
 }

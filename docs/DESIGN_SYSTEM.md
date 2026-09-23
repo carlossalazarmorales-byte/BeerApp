@@ -19,6 +19,9 @@ the Stitch value, the row says so.
 | on-primary-gradient | `#1b1c1a` (= on-surface) | label/icon colour on the CTA gradient (`AppColors.onPrimaryGradient`), 4.90:1 worst case, 10.3:1 at the bright end |
 | on-secondary-fixed | `#29180a` | deep dark text — never pure black |
 | outline-variant | `#d4c5ab` | borders, at 15% opacity only, accessibility fallback |
+| map-zero-catalog | `#221e1a` | map country-fill: no catalog beers in that country (dark charcoal, distinct from on-secondary-fixed) |
+| map-zero-history | `#9c9890` | map country-fill: catalog exists, current user has 0 logs (true neutral gray, deliberately not warm); reused verbatim for a beer point's untried state |
+| map-has-history | `#795900` (= primary) | map country-fill: catalog exists, current user has ≥1 log — one flat state, never a gradient/completion tier (QA Round 1 Block 2) |
 
 ## Typography
 

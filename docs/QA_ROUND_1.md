@@ -148,7 +148,7 @@ feature itself ships as designed — the current real catalog (~8 beers) is
 far below where this becomes observable, and Block 4 (Catalog Expansion) has
 not started.
 
-### 2026-09-23 — Manual QA regression: locked/unlocked visual was inverted in Discover and Add Beer — implemented (fix applied 2026-09-23), pending owner retest
+### 2026-09-23 — Manual QA regression: locked/unlocked visual was inverted in Discover and Add Beer — implemented, manually verified (2026-09-23)
 Owner manual verification of the implemented Block 1 work found two real bugs
 in the just-shipped locked/unlocked wiring (the underlying `is_tried` data
 and the `LockableBeerImage` widget itself were correct — only the two screen
@@ -190,9 +190,13 @@ Manual QA also found two related freshness bugs, fixed in the same pass:
   second signal or renaming the class (smaller diff, no behavior change for
   existing Collection call sites).
 
-**Not yet manually retested by the owner** — do not treat Block 1 as
-manually verified until this fix is retested. See the manual-retest list at
-the end of this entry's corresponding implementation report.
+**Manually retested and confirmed by the owner on 2026-09-23.** All three
+fixes in this entry (the inverted locked/unlocked expression in Discover and
+Add Beer, the Add Beer post-save freshness fix, and the Discover
+cross-screen refresh fix) are confirmed working. **Block 1 is closed** —
+every entry in this block is now `implemented`, except the separate scaling
+escalation below, which was always tracked as its own open item, not a
+Block 1 blocker.
 
 ### 2026-09-23 — Escalation: Discover search/deep-pagination will need a scaling fix before Block 4's catalog growth — open
 Evidence (see the performance entry above): at ~50,000 beers, `untried_only`
@@ -211,23 +215,81 @@ case. Owner decision needed on which to pursue once Block 4 is scheduled.
 
 ## Block 2 — Map
 
-### 2026-09-22 — Country fill by unlocked percentage — open (not yet triaged)
-Countries colored by the percentage of that country's catalog the user has
-unlocked: gray when the catalog has beers but 0% unlocked, progressively more
-amber/gold as completion rises, full gold at 100%.
+Audited and triaged 2026-09-23, implemented and manually verified by the
+owner the same day. **Block 2 is closed.** **Country fill is a flat
+3-state informational treatment, not a completion gradient** — an earlier
+draft of the plan proposed a 4-bucket gray→gold gradient with a "100%
+complete" tier and was rejected by the owner as reading like a
+consumption-progress mechanic. Do not reintroduce interpolation,
+completion percentages, or a strongest/full-coverage tier.
 
-### 2026-09-22 — Zero-catalog countries need an explicit visual treatment — open (not yet triaged)
-Countries with zero catalog beers need a separate, explicit visual treatment,
-to be designed later — must not be conflated with the 0%-unlocked-but-has-beers
-gray state above.
+**Post-implementation manual QA fix (2026-09-23):** on-device testing found
+the country fill polygons visibly misaligned with the basemap — the
+bundled boundary asset was Natural Earth's coarsest resolution (1:110m),
+which entirely omits several small island nations (Seychelles, Maldives,
+Malta, Singapore, Bahrain, Comoros, Tonga, Barbados, Kiribati) rather than
+merely simplifying them, and under-details complex coastlines (Indonesia,
+Philippines, Norway, Canada). Replaced with Natural Earth 1:50m,
+topology-simplified via mapshaper's `keep-shapes` (242/242 features
+retained, all previously-missing islands present, 2-4x more coastline
+detail, same `ISO_A2`/`ISO_A2_EH` schema so no join-logic change was
+needed). See `mobile/assets/map/NOTICE.txt` for the full before/after and
+`docs/DECISIONS.md` for the verification trail. Country aggregation,
+colors, the three-state model, and ISO-matching logic were not touched.
 
-### 2026-09-22 — Beer-origin points, locked gray / unlocked gold — open (not yet triaged)
-Map points represent beer origin (not where a beer is sold), styled gray when
-locked and gold when unlocked, consistent with the Block 1 locked/unlocked
-visual language.
+### 2026-09-22 — Country fill by unlocked percentage — implemented (2026-09-23)
+Revised design (owner-approved 2026-09-23): exactly three flat states, no
+gradient —
+(A) zero catalog beers in that country → dark/charcoal,
+(B) catalog exists, current user has 0 logs against it → neutral gray,
+(C) catalog exists, current user has ≥1 log against it → one restrained
+amber/gold state, same regardless of how much of the catalog is logged.
+Requires a new backend aggregation endpoint (`GET /map/countries`,
+per-country `catalog_beer_count`/`tried_beer_count`, RLS-scoped, no stored
+`is_tried` column — derived the same way `GET /map/beers` already derives
+it) and a new country-boundary polygon layer on the client (none exists
+today — no fill/polygon layer of any kind currently renders on the map).
+Verified the aggregation's `catalog_beer_count` denominator is exactly the
+same catalog-visible population `GET /beers`/`GET /map/beers` already use
+(`public.beers` has no visibility/status column; draft/pending contribution
+rows live entirely in separate `beer_contributions`/`brewery_contributions`
+tables that are never joined into any beer-listing query) — no second,
+inconsistent definition of "catalog beer" is being introduced.
 
-### 2026-09-22 — Brewery map mode should be reconsidered — open (not yet triaged)
-Probably removed or separated from the main map mode; needs a decision.
+### 2026-09-22 — Zero-catalog countries need an explicit visual treatment — implemented (2026-09-23)
+Resolved as part of the same 3-state design above: zero-catalog is its own
+dark/charcoal state, clearly distinct from the neutral-gray
+"catalog-exists-but-0-logged" state. Boundary polygons come from a bundled
+Natural Earth world-boundaries GeoJSON (1:50m as of the post-implementation
+fix above; see NOTICE.txt), joined client-side to the aggregation response
+by ISO-3166-1 alpha-2 code; a country whose ISO code has no matching
+aggregation row (including one whose ISO property is missing/`-99`/
+ambiguous in the source data) renders as zero-catalog by the same fallback
+path — never a fabricated ISO mapping.
+
+### 2026-09-22 — Beer-origin points, locked gray / unlocked gold — implemented (2026-09-23)
+Confirmed: point coordinates already represent beer/brewery origin, never a
+sale/log location (`repositories/map.py`'s coordinate CASE expression —
+beer's own lat/lng if set, else its brewery's, else no marker; a real
+no-invented-coordinates design already in place). The one real gap is that
+point color is currently a hardcoded flat hex per layer, not yet
+data-driven by `properties.is_tried` — `MapBeerOut.is_tried` is already in
+the API payload. Fix is a MapLibre expression change only. Separately
+flagged during triage: the brewery-coordinate fallback is an *approximate*
+origin (a brewery's registered location, not necessarily where that
+specific beer was brewed), which the backend/SQL layer already documents
+correctly but `PRODUCT.md` does not yet — product copy will be corrected to
+say "origin where known, approximated by brewery location otherwise"
+rather than implying a guaranteed exact origin.
+
+### 2026-09-22 — Brewery map mode should be reconsidered — implemented (2026-09-23)
+Decided (owner-approved 2026-09-23) and done: removed `MapMode.breweries`
+from the main map — its chip, its GeoJSON source/layers, and its
+preview-card wiring (`MapBrewery`/`BreweryPreviewCard` deleted as dead
+code). Backend brewery endpoints (`GET /map/breweries`, `GET /breweries`,
+`GET /breweries/{id}`) are unaffected and stay — they're independent and
+reused elsewhere (contributions flow, catalog filtering by `brewery_id`).
+`PRODUCT.md §8` updated to match.
 
 ---
 

@@ -1,5 +1,5 @@
 from app.repositories.map import MapRepository
-from app.schemas.map import CappedList, MapBeerOut, MapBreweryOut
+from app.schemas.map import CappedList, MapBeerOut, MapBreweryOut, MapCountryCoverageOut
 
 
 class MapService:
@@ -27,6 +27,10 @@ class MapService:
             items=[MapBreweryOut.model_validate(dict(row)) for row in rows],
             truncated=truncated,
         )
+
+    async def list_country_coverage(self, *, user_id: str) -> list[MapCountryCoverageOut]:
+        rows = await self._repository.list_country_coverage(user_id=user_id)
+        return [MapCountryCoverageOut.model_validate(dict(row)) for row in rows]
 
 
 def _normalize_q(q: str | None) -> str | None:

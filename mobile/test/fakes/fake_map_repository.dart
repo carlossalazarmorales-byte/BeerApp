@@ -1,7 +1,7 @@
 import 'package:beerapp/features/map/domain/map_mode.dart';
 import 'package:beerapp/features/map/domain/map_repository.dart';
 import 'package:beerapp/features/map/domain/models/map_beer.dart';
-import 'package:beerapp/features/map/domain/models/map_brewery.dart';
+import 'package:beerapp/features/map/domain/models/map_country.dart';
 import 'package:beerapp/features/map/domain/models/map_result.dart';
 
 class FakeMapRepository implements MapRepository {
@@ -20,11 +20,10 @@ class FakeMapRepository implements MapRepository {
   /// Keyed by `'state|countryId|q'`.
   Map<String, MapResult<MapBeer>> beersByRequest = {};
 
-  /// Keyed by `'countryId|q'`.
-  Map<String, MapResult<MapBrewery>> breweriesByRequest = {};
+  List<MapCountry> countryCoverage = [];
 
   Object? getMapBeersError;
-  Object? getMapBreweriesError;
+  Object? getCountryCoverageError;
 
   /// Records call order/keys -- used to assert e.g. that exactly one
   /// request was made for a given mode/search.
@@ -39,9 +38,6 @@ class FakeMapRepository implements MapRepository {
 
   static String _beersKey(BeerMapState state, String? countryId, String? q) =>
       '${state.queryValue}|${countryId ?? ''}|${q ?? ''}';
-
-  static String _breweriesKey(String? countryId, String? q) =>
-      '${countryId ?? ''}|${q ?? ''}';
 
   @override
   Future<MapResult<MapBeer>> getMapBeers({
@@ -58,16 +54,11 @@ class FakeMapRepository implements MapRepository {
   }
 
   @override
-  Future<MapResult<MapBrewery>> getMapBreweries({
-    String? countryId,
-    String? q,
-  }) async {
-    final key = _breweriesKey(countryId, q);
-    callLog.add('getMapBreweries:$key');
-    await _maybeDelay('getMapBreweries:$key');
-    final error = getMapBreweriesError;
+  Future<List<MapCountry>> getCountryCoverage() async {
+    callLog.add('getCountryCoverage');
+    await _maybeDelay('getCountryCoverage');
+    final error = getCountryCoverageError;
     if (error != null) throw error;
-    return breweriesByRequest[key] ??
-        const MapResult(items: [], truncated: false);
+    return countryCoverage;
   }
 }

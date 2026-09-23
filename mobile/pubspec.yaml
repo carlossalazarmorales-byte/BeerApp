@@ -55,6 +55,13 @@ flutter:
   uses-material-design: true
   generate: true
 
+  assets:
+    # Bundled Natural Earth 1:50m world-country boundaries (simplified,
+    # keep-shapes) for the map's country-fill layer -- see
+    # assets/map/NOTICE.txt for the exact source release, the
+    # simplification pipeline, its license, and its known ISO-code gaps.
+    - assets/map/world_countries_50m.geojson
+
   fonts:
     - family: Plus Jakarta Sans
       fonts:
