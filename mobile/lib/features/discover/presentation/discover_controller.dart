@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../../shared/collection_refresh_signal.dart';
 import '../../catalog/domain/catalog_filter_options.dart';
 import '../../catalog/domain/catalog_repository.dart';
 import '../../catalog/domain/models/brewery.dart';
@@ -12,12 +13,26 @@ import '../../catalog/presentation/catalog_debug_log.dart';
 /// first-page load, pull-to-refresh, and infinite-scroll pagination -- with
 /// explicit guards so concurrent, redundant, or stale (superseded by a newer
 /// query/filter) loads can't duplicate/interleave/overwrite results.
+///
+/// Also listens to [CollectionRefreshSignal]: since Discover is
+/// untried-only, a beer logged from *anywhere* (Add Beer today) must stop
+/// appearing here the next time the user looks, without requiring a manual
+/// search/filter change -- same mutation-driven, navigation-independent
+/// mechanism `CollectionController` already uses, and for the same reason
+/// (this screen's `StatefulShellBranch` stays mounted while another tab is
+/// visible). See the signal's own doc comment.
 class DiscoverController extends ChangeNotifier {
-  DiscoverController({required this._repository});
+  DiscoverController({
+    required this._repository,
+    required this._refreshSignal,
+  }) {
+    _refreshSignal.addListener(_onExternalChange);
+  }
 
   static const Duration searchDebounce = Duration(milliseconds: 350);
 
   final CatalogRepository _repository;
+  final CollectionRefreshSignal _refreshSignal;
 
   List<DiscoverBeer> items = [];
   Map<String, String> styleNames = {};
@@ -223,8 +238,13 @@ class DiscoverController extends ChangeNotifier {
     }
   }
 
+  void _onExternalChange() {
+    refresh();
+  }
+
   @override
   void dispose() {
+    _refreshSignal.removeListener(_onExternalChange);
     _debounceTimer?.cancel();
     super.dispose();
   }

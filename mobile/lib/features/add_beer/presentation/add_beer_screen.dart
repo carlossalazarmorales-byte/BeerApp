@@ -90,7 +90,11 @@ class _AddBeerScreenState extends State<AddBeerScreen> {
     );
     final saved = await LogFormSheet.show(context, controller: logController);
     logController.dispose();
-    if (saved == true && mounted) {
+    if (saved != true) return;
+    // Only after the save is confirmed -- flips this beer's tile to
+    // unlocked immediately, without requiring another search/reload.
+    _controller.markTried(beer.id);
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(AppLocalizations.of(context).beerLogSavedConfirmation),
@@ -197,7 +201,10 @@ class _AddBeerScreenState extends State<AddBeerScreen> {
                 final beer = item.beer;
                 return BeerListTile(
                   beer: beer,
-                  isUnlocked: !item.isTried,
+                  // Unlocked == tried (has at least one log already) --
+                  // Add Beer shows the full catalog, so both states occur
+                  // here, unlike Discover.
+                  isUnlocked: item.isTried,
                   onTap: () => _openLogForm(beer),
                 );
               }

@@ -129,6 +129,32 @@ void main() {
   });
 
   testWidgets(
+    'a tried beer shows unlocked and an untried beer shows locked -- QA '
+    'Round 1 Block 1 follow-up: this was previously inverted '
+    '(isUnlocked: !item.isTried)',
+    (tester) async {
+      final repository = FakeCatalogRepository()
+        ..triedBeerIds = {'tried-1'}
+        ..beersByPage[1] = PagedResult(
+          items: [
+            _beer('tried-1', 'Tried Stout'),
+            _beer('new-1', 'New Pale Ale'),
+          ],
+          page: 1,
+          pageSize: 20,
+          total: 2,
+        );
+      final harness = _Harness(catalogRepository: repository);
+
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      // Only the untried beer's tile shows the lock badge.
+      expect(find.byIcon(Icons.lock), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'selecting a beer (tried or untried) opens the existing log form, and '
     'saving shows a confirmation',
     (tester) async {
@@ -154,6 +180,43 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Log saved.'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'saving a NEW log for a previously-untried beer immediately flips its '
+    'tile to unlocked, without another search -- QA Round 1 Block 1 '
+    'follow-up',
+    (tester) async {
+      final repository = FakeCatalogRepository()
+        ..beersByPage[1] = PagedResult(
+          items: [_beer('new-1', 'New Pale Ale')],
+          page: 1,
+          pageSize: 20,
+          total: 1,
+        );
+      final harness = _Harness(catalogRepository: repository);
+
+      await tester.pumpWidget(harness.app);
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.lock), findsOneWidget);
+      final callsBeforeSave = repository.callLog
+          .where((c) => c.startsWith('getBeers'))
+          .length;
+
+      await tester.tap(find.text('New Pale Ale'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Save'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Log saved.'), findsOneWidget);
+      expect(find.byIcon(Icons.lock), findsNothing);
+      expect(
+        repository.callLog.where((c) => c.startsWith('getBeers')).length,
+        callsBeforeSave,
+        reason: 'the tile updates in place -- no new search/reload call',
+      );
     },
   );
 

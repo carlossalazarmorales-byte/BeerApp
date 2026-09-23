@@ -262,8 +262,10 @@ GoRouter createRouter({
             routes: [
               GoRoute(
                 path: AppRoutes.discover,
-                builder: (context, state) =>
-                    DiscoverScreen(repository: catalogRepository),
+                builder: (context, state) => DiscoverScreen(
+                  repository: catalogRepository,
+                  refreshSignal: refreshSignal,
+                ),
               ),
             ],
           ),

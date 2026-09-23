@@ -2,6 +2,7 @@ import 'package:beerapp/features/catalog/domain/models/beer.dart';
 import 'package:beerapp/features/catalog/domain/models/brewery.dart';
 import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
 import 'package:beerapp/features/discover/presentation/discover_controller.dart';
+import 'package:beerapp/shared/collection_refresh_signal.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../fakes/fake_catalog_repository.dart';
@@ -34,13 +35,70 @@ void main() {
         pageSize: 20,
         total: 1,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
 
     await controller.loadInitial();
     expect(repository.receivedUntriedOnly, isTrue);
 
     await controller.applyFilters(styleId: 'style-1');
     expect(repository.receivedUntriedOnly, isTrue);
+  });
+
+  test('a CollectionRefreshSignal notification triggers a silent refresh, '
+      'so a beer logged elsewhere (e.g. Add Beer) drops out without a new '
+      'search/filter change -- QA Round 1 Block 1 follow-up', () async {
+    final repository = FakeCatalogRepository()
+      ..beersByPage[1] = PagedResult(
+        items: [_beer('1'), _beer('2')],
+        page: 1,
+        pageSize: 20,
+        total: 2,
+      );
+    final refreshSignal = CollectionRefreshSignal();
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: refreshSignal,
+    );
+    await controller.loadInitial();
+    expect(controller.items.map((b) => b.beer.id), ['1', '2']);
+
+    repository.beersByPage[1] = PagedResult(
+      items: [_beer('2')],
+      page: 1,
+      pageSize: 20,
+      total: 1,
+    );
+    refreshSignal.notifyChanged();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(controller.items.map((b) => b.beer.id), ['2']);
+  });
+
+  test('the refresh-signal listener is removed on dispose (no leak / no '
+      'reload attempt on an already-disposed controller)', () async {
+    final repository = FakeCatalogRepository()
+      ..beersByPage[1] = PagedResult(
+        items: [_beer('1')],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      );
+    final refreshSignal = CollectionRefreshSignal();
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: refreshSignal,
+    );
+    await controller.loadInitial();
+    controller.dispose();
+
+    repository.callLog.clear();
+    refreshSignal.notifyChanged();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(repository.callLog, isEmpty);
   });
 
   test('excludes a beer the backend marks as already tried', () async {
@@ -52,7 +110,10 @@ void main() {
         pageSize: 20,
         total: 2,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
 
     await controller.loadInitial();
 
@@ -73,7 +134,10 @@ void main() {
         pageSize: 20,
         total: 2,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
 
     await controller.loadInitial();
 
@@ -88,7 +152,10 @@ void main() {
     () async {
       final repository = FakeCatalogRepository()
         ..getBeersError = Exception('boom');
-      final controller = DiscoverController(repository: repository);
+      final controller = DiscoverController(
+        repository: repository,
+        refreshSignal: CollectionRefreshSignal(),
+      );
 
       await controller.loadInitial();
 
@@ -107,7 +174,10 @@ void main() {
           pageSize: 20,
           total: 0,
         );
-      final controller = DiscoverController(repository: repository);
+      final controller = DiscoverController(
+        repository: repository,
+        refreshSignal: CollectionRefreshSignal(),
+      );
 
       await controller.loadInitial();
 
@@ -139,7 +209,10 @@ void main() {
           pageSize: 1,
           total: 3,
         );
-      final controller = DiscoverController(repository: repository);
+      final controller = DiscoverController(
+        repository: repository,
+        refreshSignal: CollectionRefreshSignal(),
+      );
 
       await controller.loadInitial();
       expect(controller.hasMore, isTrue);
@@ -162,7 +235,10 @@ void main() {
         pageSize: 20,
         total: 1,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
     expect(controller.hasMore, isFalse);
 
@@ -190,7 +266,10 @@ void main() {
           pageSize: 1,
           total: 3,
         );
-      final controller = DiscoverController(repository: repository);
+      final controller = DiscoverController(
+        repository: repository,
+        refreshSignal: CollectionRefreshSignal(),
+      );
       await controller.loadInitial();
 
       final f1 = controller.loadMore();
@@ -210,7 +289,10 @@ void main() {
         pageSize: 1,
         total: 3,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
 
     repository.getBeersError = Exception('page 2 failed');
@@ -231,7 +313,10 @@ void main() {
           pageSize: 1,
           total: 2,
         );
-      final controller = DiscoverController(repository: repository);
+      final controller = DiscoverController(
+        repository: repository,
+        refreshSignal: CollectionRefreshSignal(),
+      );
       await controller.loadInitial();
 
       repository.getBeersError = Exception('transient');
@@ -260,7 +345,10 @@ void main() {
         pageSize: 1,
         total: 2,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
     repository.getBeersError = Exception('page 2 failed');
     await controller.loadMore();
@@ -289,7 +377,10 @@ void main() {
         pageSize: 20,
         total: 1,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
 
     repository.getBeersError = Exception('network blip');
@@ -313,7 +404,10 @@ void main() {
         pageSize: 20,
         total: 1,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
     repository.callLog.clear();
 
@@ -344,7 +438,10 @@ void main() {
         pageSize: 20,
         total: 1,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
 
     controller.setQuery('stout');
@@ -378,7 +475,10 @@ void main() {
       ..extraDelayByCallKey['getBeers:1|first|||'] = const Duration(
         milliseconds: 100,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
 
     controller.setQuery('first');
@@ -420,7 +520,10 @@ void main() {
       // loadMore's page-2 request resolves well after the filter change's
       // fast (no extra delay) request already applied its own result.
       ..extraDelayByCallKey['getBeers:2'] = const Duration(milliseconds: 100);
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
 
     final loadMoreFuture = controller.loadMore();
@@ -451,7 +554,10 @@ void main() {
           pageSize: 20,
           total: 1,
         );
-      final controller = DiscoverController(repository: repository);
+      final controller = DiscoverController(
+        repository: repository,
+        refreshSignal: CollectionRefreshSignal(),
+      );
       await controller.loadInitial();
       repository.callLog.clear();
 
@@ -487,7 +593,10 @@ void main() {
         pageSize: 20,
         total: 1,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
     await controller.applyFilters(breweryId: 'brewery-1');
     expect(controller.items.map((b) => b.beer.id), ['filtered']);
@@ -512,7 +621,10 @@ void main() {
         pageSize: 1,
         total: 2,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
     await controller.applyFilters(breweryId: 'brewery-1');
     controller.setQuery('stout');
@@ -534,7 +646,10 @@ void main() {
           pageSize: 20,
           total: 0,
         );
-      final controller = DiscoverController(repository: repository);
+      final controller = DiscoverController(
+        repository: repository,
+        refreshSignal: CollectionRefreshSignal(),
+      );
       await controller.loadInitial();
 
       controller.setQuery('nomatch');
@@ -553,7 +668,10 @@ void main() {
         pageSize: 20,
         total: 1,
       );
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
     await controller.loadInitial();
 
     controller.setQuery('stout');
@@ -574,7 +692,10 @@ void main() {
           pageSize: 100,
           total: 2,
         );
-      final controller = DiscoverController(repository: repository);
+      final controller = DiscoverController(
+        repository: repository,
+        refreshSignal: CollectionRefreshSignal(),
+      );
 
       await controller.loadInitial();
 
@@ -602,7 +723,10 @@ void main() {
           pageSize: 100,
           total: 150,
         );
-      final controller = DiscoverController(repository: repository);
+      final controller = DiscoverController(
+        repository: repository,
+        refreshSignal: CollectionRefreshSignal(),
+      );
 
       await controller.loadInitial();
 
@@ -624,7 +748,10 @@ void main() {
         total: 600,
       );
     }
-    final controller = DiscoverController(repository: repository);
+    final controller = DiscoverController(
+      repository: repository,
+      refreshSignal: CollectionRefreshSignal(),
+    );
 
     await controller.loadInitial();
 

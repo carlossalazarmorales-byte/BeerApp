@@ -10,6 +10,7 @@ import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
 import 'package:beerapp/features/discover/presentation/discover_controller.dart';
 import 'package:beerapp/features/discover/presentation/discover_screen.dart';
 import 'package:beerapp/l10n/generated/app_localizations.dart';
+import 'package:beerapp/shared/collection_refresh_signal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -49,7 +50,14 @@ void main() {
             total: 3,
           );
 
-    await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+    await tester.pumpWidget(
+      _wrap(
+        DiscoverScreen(
+          repository: repository,
+          refreshSignal: CollectionRefreshSignal(),
+        ),
+      ),
+    );
     await tester.pump();
 
     expect(find.byType(LoadingState), findsOneWidget);
@@ -62,11 +70,84 @@ void main() {
   });
 
   testWidgets(
+    'every beer shown is untried, so every tile uses the locked visual -- '
+    'QA Round 1 Block 1 follow-up: this was previously inverted '
+    '(isUnlocked: !item.isTried)',
+    (tester) async {
+      final repository = FakeCatalogRepository()
+        ..beersByPage[1] = PagedResult(
+          items: _beers(2),
+          page: 1,
+          pageSize: 20,
+          total: 2,
+        );
+
+      await tester.pumpWidget(
+        _wrap(
+          DiscoverScreen(
+            repository: repository,
+            refreshSignal: CollectionRefreshSignal(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(Icons.lock), findsNWidgets(2));
+    },
+  );
+
+  testWidgets(
+    'a beer logged elsewhere (e.g. from Add Beer) disappears from Discover '
+    'once the shared refresh signal fires, with no new search/filter change',
+    (tester) async {
+      final repository = FakeCatalogRepository()
+        ..beersByPage[1] = PagedResult(
+          items: _beers(2),
+          page: 1,
+          pageSize: 20,
+          total: 2,
+        );
+      final refreshSignal = CollectionRefreshSignal();
+
+      await tester.pumpWidget(
+        _wrap(
+          DiscoverScreen(repository: repository, refreshSignal: refreshSignal),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Beer 0'), findsOneWidget);
+      expect(find.text('Beer 1'), findsOneWidget);
+
+      // Simulates the server now excluding beer 0 (it was just logged
+      // elsewhere) -- the untried_only filter would no longer return it.
+      repository.beersByPage[1] = PagedResult(
+        items: _beers(1, offset: 1),
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      );
+      refreshSignal.notifyChanged();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Beer 0'), findsNothing);
+      expect(find.text('Beer 1'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'shows an error state with retry on first-load failure, and retry recovers',
     (tester) async {
       final repository = FakeCatalogRepository()
         ..getBeersError = Exception('boom');
-      await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+      await tester.pumpWidget(
+        _wrap(
+          DiscoverScreen(
+            repository: repository,
+            refreshSignal: CollectionRefreshSignal(),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       expect(find.byType(ErrorState), findsOneWidget);
@@ -96,7 +177,14 @@ void main() {
         pageSize: 20,
         total: 0,
       );
-    await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+    await tester.pumpWidget(
+      _wrap(
+        DiscoverScreen(
+          repository: repository,
+          refreshSignal: CollectionRefreshSignal(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(EmptyState), findsOneWidget);
@@ -119,7 +207,14 @@ void main() {
         total: 31,
       );
 
-    await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+    await tester.pumpWidget(
+      _wrap(
+        DiscoverScreen(
+          repository: repository,
+          refreshSignal: CollectionRefreshSignal(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Beer 30'), findsNothing);
@@ -154,7 +249,14 @@ void main() {
         total: 1,
       );
 
-    await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+    await tester.pumpWidget(
+      _wrap(
+        DiscoverScreen(
+          repository: repository,
+          refreshSignal: CollectionRefreshSignal(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Beer 0'), findsOneWidget);
 
@@ -194,7 +296,14 @@ void main() {
         total: 1,
       );
 
-    await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+    await tester.pumpWidget(
+      _wrap(
+        DiscoverScreen(
+          repository: repository,
+          refreshSignal: CollectionRefreshSignal(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'stout');
@@ -226,7 +335,14 @@ void main() {
         total: 0,
       );
 
-    await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+    await tester.pumpWidget(
+      _wrap(
+        DiscoverScreen(
+          repository: repository,
+          refreshSignal: CollectionRefreshSignal(),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'nomatch');
@@ -288,7 +404,14 @@ void main() {
       'selecting chips does not call the controller until Show results is tapped',
       (tester) async {
         final repository = seededRepository();
-        await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+        await tester.pumpWidget(
+          _wrap(
+            DiscoverScreen(
+              repository: repository,
+              refreshSignal: CollectionRefreshSignal(),
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
 
         await tester.tap(find.text('Filters'));
@@ -324,7 +447,14 @@ void main() {
       tester,
     ) async {
       final repository = seededRepository();
-      await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+      await tester.pumpWidget(
+        _wrap(
+          DiscoverScreen(
+            repository: repository,
+            refreshSignal: CollectionRefreshSignal(),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Filters'));
@@ -348,7 +478,14 @@ void main() {
       'Clear all inside the sheet only clears the draft until confirmed',
       (tester) async {
         final repository = seededRepository();
-        await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+        await tester.pumpWidget(
+          _wrap(
+            DiscoverScreen(
+              repository: repository,
+              refreshSignal: CollectionRefreshSignal(),
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
 
         await tester.tap(find.text('Filters'));
@@ -371,7 +508,14 @@ void main() {
       'removing an active filter chip on the main screen applies immediately',
       (tester) async {
         final repository = seededRepository();
-        await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+        await tester.pumpWidget(
+          _wrap(
+            DiscoverScreen(
+              repository: repository,
+              refreshSignal: CollectionRefreshSignal(),
+            ),
+          ),
+        );
         await tester.pumpAndSettle();
 
         await tester.tap(find.text('Filters'));
@@ -453,7 +597,14 @@ void main() {
           total: 60,
         );
 
-      await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+      await tester.pumpWidget(
+        _wrap(
+          DiscoverScreen(
+            repository: repository,
+            refreshSignal: CollectionRefreshSignal(),
+          ),
+        ),
+      );
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Filters'));
@@ -499,7 +650,10 @@ void main() {
         routes: [
           GoRoute(
             path: '/discover',
-            builder: (context, state) => DiscoverScreen(repository: repository),
+            builder: (context, state) => DiscoverScreen(
+              repository: repository,
+              refreshSignal: CollectionRefreshSignal(),
+            ),
           ),
           GoRoute(
             path: '/detail',
@@ -573,7 +727,10 @@ void main() {
         routes: [
           GoRoute(
             path: '/discover',
-            builder: (context, state) => DiscoverScreen(repository: repository),
+            builder: (context, state) => DiscoverScreen(
+              repository: repository,
+              refreshSignal: CollectionRefreshSignal(),
+            ),
           ),
           GoRoute(
             path: AppRoutes.suggestBeer,

@@ -148,6 +148,52 @@ feature itself ships as designed — the current real catalog (~8 beers) is
 far below where this becomes observable, and Block 4 (Catalog Expansion) has
 not started.
 
+### 2026-09-23 — Manual QA regression: locked/unlocked visual was inverted in Discover and Add Beer — implemented (fix applied 2026-09-23), pending owner retest
+Owner manual verification of the implemented Block 1 work found two real bugs
+in the just-shipped locked/unlocked wiring (the underlying `is_tried` data
+and the `LockableBeerImage` widget itself were correct — only the two screen
+call sites were wrong):
+
+- **Discover** (`discover_screen.dart`): every beer shown is untried by
+  construction (server-side `untried_only`), so every tile must use the
+  *locked* visual — but the call site passed `isUnlocked: !item.isTried`,
+  which (since `isTried` is always `false` there) evaluated to `true`,
+  showing every Discover beer as unlocked. The invariant is
+  `isUnlocked == isTried`, not its negation.
+- **Add Beer** (`add_beer_screen.dart`): same inverted expression
+  (`isUnlocked: !item.isTried`) — a beer the user had already logged showed
+  locked/gray, and a never-logged beer showed normal/unlocked, backwards
+  from intent.
+
+**Fix:** both call sites changed to `isUnlocked: item.isTried`. Collection
+(`collection_tile.dart`) and Beer Detail
+(`beer_detail_screen.dart`) were already correct and are unchanged.
+Regression tests added asserting the lock icon's presence/absence per state
+in Discover, Add Beer, and (net-new coverage) Collection
+(`collection_tile_test.dart`).
+
+Manual QA also found two related freshness bugs, fixed in the same pass:
+
+- **Add Beer didn't update immediately after saving a new log.** Fixed with
+  `AddBeerController.markTried(beerId)`, called only after
+  `LogFormSheet.show` confirms a save succeeded — flips that one item's
+  `isTried` in place (no re-search, no fake/optimistic pre-save state).
+- **Discover didn't reflect a log created elsewhere (e.g. Add Beer).**
+  `DiscoverController` now also listens to `CollectionRefreshSignal` (the
+  same mutation-driven, navigation-independent signal
+  `BeerLogController.submitCreate/submitUpdate/submitDelete` already fires,
+  and `CollectionController` already listened to) and calls its existing
+  `refresh()` on notification. Reused rather than replaced: the signal's
+  actual trigger conditions were already generic ("any beer-log mutation
+  anywhere"), only its name/doc comment were Collection-specific — the doc
+  comment was broadened to name both consumers rather than introducing a
+  second signal or renaming the class (smaller diff, no behavior change for
+  existing Collection call sites).
+
+**Not yet manually retested by the owner** — do not treat Block 1 as
+manually verified until this fix is retested. See the manual-retest list at
+the end of this entry's corresponding implementation report.
+
 ### 2026-09-23 — Escalation: Discover search/deep-pagination will need a scaling fix before Block 4's catalog growth — open
 Evidence (see the performance entry above): at ~50,000 beers, `untried_only`
 combined with text search takes ~230–290ms, and deep pagination for a user

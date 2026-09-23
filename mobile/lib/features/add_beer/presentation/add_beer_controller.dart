@@ -41,6 +41,26 @@ class AddBeerController extends ChangeNotifier {
 
   Future<void> loadInitial() => _loadFirstPage();
 
+  /// Called only after a new log for [beerId] has actually been saved
+  /// (never before/optimistically) -- flips that beer's already-loaded
+  /// item to `isTried: true` in place, so its tile's locked treatment
+  /// disappears immediately without waiting for another search or a
+  /// page-1 reload. A no-op if the beer isn't in the current result set
+  /// (e.g. it scrolled out of a since-changed search) or was already
+  /// marked tried.
+  void markTried(String beerId) {
+    final index = items.indexWhere((item) => item.beer.id == beerId);
+    if (index == -1 || items[index].isTried) return;
+    items = [
+      for (var i = 0; i < items.length; i++)
+        if (i == index)
+          DiscoverBeer(beer: items[i].beer, isTried: true)
+        else
+          items[i],
+    ];
+    notifyListeners();
+  }
+
   /// Re-runs the current query/page-1 request -- used by the error state's
   /// retry action. Distinct from [setQuery], which no-ops when the trimmed
   /// value already equals the applied [query].

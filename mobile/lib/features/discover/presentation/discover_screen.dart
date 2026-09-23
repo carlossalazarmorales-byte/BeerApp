@@ -14,6 +14,7 @@ import '../../../design_system/tokens/app_radii.dart';
 import '../../../design_system/tokens/app_spacing.dart';
 import '../../../design_system/tokens/app_typography.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../../shared/collection_refresh_signal.dart';
 import '../../catalog/domain/catalog_repository.dart';
 import '../../catalog/presentation/beer_list/beer_list_tile.dart';
 import '../../catalog/presentation/catalog_error_text.dart';
@@ -25,9 +26,14 @@ import 'discover_controller.dart';
 /// (query, filters, scroll position) survives a push to `BeerDetailScreen`
 /// and back.
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({required this.repository, super.key});
+  const DiscoverScreen({
+    required this.repository,
+    required this.refreshSignal,
+    super.key,
+  });
 
   final CatalogRepository repository;
+  final CollectionRefreshSignal refreshSignal;
 
   @override
   State<DiscoverScreen> createState() => _DiscoverScreenState();
@@ -38,6 +44,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   late final DiscoverController _controller = DiscoverController(
     repository: widget.repository,
+    refreshSignal: widget.refreshSignal,
   );
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
@@ -210,7 +217,16 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     countryName: beer.countryId == null
                         ? null
                         : _controller.countryNames[beer.countryId],
-                    isUnlocked: !item.isTried,
+                    // Unlocked == tried (has at least one log), not the
+                    // other way round. Every beer Discover shows is
+                    // untried by construction (server-side untried_only),
+                    // so in practice this is always false here -- kept as
+                    // isTried rather than hardcoding false so the tile
+                    // still reflects reality if that server-side guarantee
+                    // is ever wrong (a regression QA already caught once
+                    // via the inverted !item.isTried -- see
+                    // docs/QA_ROUND_1.md).
+                    isUnlocked: item.isTried,
                     onTap: () =>
                         context.push(AppRoutes.beerDetailPath(beer.id)),
                   );
