@@ -8,10 +8,11 @@ import '../../tokens/app_spacing.dart';
 import '../../tokens/app_typography.dart';
 import 'scan_nav_button.dart';
 
-/// The 5-destination bottom navigation bar: Map, Discover, Scan,
+/// The 5-destination bottom navigation bar: Map, Discover, Add Beer,
 /// Collection, Profile — matching the tab order used by [AppShell]'s
-/// `IndexedStack`. Scan (index 2) always renders as the emphasized
-/// [ScanNavButton] rather than a plain nav item.
+/// `IndexedStack`. Add Beer (index 2, formerly Scan -- QA Round 1 Block 1)
+/// always renders as the emphasized [ScanNavButton] rather than a plain nav
+/// item.
 class BottomNavBar extends StatelessWidget {
   const BottomNavBar({
     required this.selectedIndex,
@@ -19,7 +20,7 @@ class BottomNavBar extends StatelessWidget {
     super.key,
   });
 
-  static const int scanIndex = 2;
+  static const int addIndex = 2;
 
   final int selectedIndex;
   final ValueChanged<int> onSelect;
@@ -65,8 +66,9 @@ class BottomNavBar extends StatelessWidget {
                 ),
               ),
               ScanNavButton(
-                semanticLabel: l10n.navScan,
-                onTap: () => onSelect(scanIndex),
+                semanticLabel: l10n.navAdd,
+                icon: Icons.add,
+                onTap: () => onSelect(addIndex),
               ),
               Flexible(
                 child: _NavBarItem(

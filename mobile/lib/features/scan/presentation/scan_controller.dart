@@ -20,10 +20,11 @@ import '../domain/scan_state.dart';
 ///  - [stopScanner] is the *only* method that ever calls
 ///    `MobileScannerController.stop()`.
 ///
-/// The camera must never keep running behind the beer detail screen,
-/// another tab, or a backgrounded app -- see [stopScanner] call sites in
+/// The camera must never keep running once a beer is found (the screen
+/// pops immediately, tearing this controller down with it), behind another
+/// tab, or behind a backgrounded app -- see [stopScanner] call sites in
 /// `ScanScreen`, and the `_navigationInProgress` guard below, which ensures
-/// one decoded barcode causes at most one navigation.
+/// one decoded barcode causes at most one pop.
 class ScanController extends ChangeNotifier {
   /// [barcodeStream] defaults to `cameraController.barcodes` -- overridable
   /// only so tests can feed synthetic [BarcodeCapture]s and exercise the
@@ -212,17 +213,6 @@ class ScanController extends ChangeNotifier {
       logCatalogError('ScanController._resolve', error, stackTrace);
       _setState(_state.copyWith(status: ScanStatus.error, error: error));
     }
-  }
-
-  /// Called by the screen once it has returned from the beer detail
-  /// screen it pushed after a [ScanStatus.found] result. Clears the
-  /// navigation guard and resets to scanning -- the screen is responsible
-  /// for then calling [startIfEligible] (via its usual post-frame
-  /// activation sequence), only if the tab is still active and the app is
-  /// still resumed.
-  void onReturnedFromDetail() {
-    _navigationInProgress = false;
-    resetForScanning();
   }
 
   @override

@@ -10,6 +10,7 @@ import 'package:beerapp/features/catalog/domain/models/beer_style.dart';
 import 'package:beerapp/features/catalog/domain/models/brewery.dart';
 import 'package:beerapp/features/catalog/domain/models/country.dart';
 import 'package:beerapp/features/catalog/presentation/beer_detail/beer_detail_screen.dart';
+import 'package:beerapp/features/logging/domain/models/beer_log.dart';
 import 'package:beerapp/l10n/generated/app_localizations.dart';
 import 'package:beerapp/shared/collection_refresh_signal.dart';
 import 'package:flutter/material.dart';
@@ -208,9 +209,9 @@ void main() {
     },
   );
 
-  testWidgets('shows a "Log this beer" button and an empty log-list message', (
-    tester,
-  ) async {
+  testWidgets('shows no log-creation action (QA Round 1 Block 1: new logs are '
+      'created only through Add Beer) and an empty log-list message, with '
+      'the locked image treatment for a never-logged beer', (tester) async {
     await tester.pumpWidget(
       _wrap(
         BeerDetailScreen(
@@ -224,18 +225,46 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Log this beer'), findsOneWidget);
+    expect(
+      find.text('Log this beer'),
+      findsNothing,
+      reason:
+          'Beer Detail no longer offers new-log creation -- see '
+          'docs/QA_ROUND_1.md',
+    );
     expect(find.text('You haven\'t logged this beer yet.'), findsOneWidget);
+    expect(
+      find.byIcon(Icons.lock),
+      findsOneWidget,
+      reason: 'a beer with zero logs shows the locked hero treatment',
+    );
   });
 
   testWidgets(
-    'tapping the log button opens the form, and a quick-log submission shows the new entry and a confirmation',
+    'shows the unlocked (normal) hero image once the beer has a log',
     (tester) async {
+      final logRepository = FakeLogRepository()
+        ..logsById['log-1'] = BeerLog(
+          id: 'log-1',
+          userId: 'user-1',
+          beerId: 'beer-1',
+          rating: 4,
+          review: null,
+          consumedAt: DateTime.utc(2026, 1, 1),
+          servingNote: null,
+          price: null,
+          currency: null,
+          venueName: null,
+          servingVolumeMl: null,
+          createdAt: DateTime.utc(2026, 1, 1),
+          updatedAt: DateTime.utc(2026, 1, 1),
+        );
+
       await tester.pumpWidget(
         _wrap(
           BeerDetailScreen(
             repository: _seededRepository(),
-            logRepository: FakeLogRepository(),
+            logRepository: logRepository,
             collectionRepository: FakeCollectionRepository(),
             refreshSignal: CollectionRefreshSignal(),
             beerId: 'beer-1',
@@ -244,17 +273,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.ensureVisible(find.text('Log this beer'));
-      await tester.tap(find.text('Log this beer'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Save'), findsOneWidget);
-
-      await tester.tap(find.text('Save'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Log saved.'), findsOneWidget);
-      expect(find.text('You haven\'t logged this beer yet.'), findsNothing);
+      expect(find.byIcon(Icons.lock), findsNothing);
     },
   );
 

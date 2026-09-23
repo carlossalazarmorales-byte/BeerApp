@@ -5,12 +5,12 @@ import '../../../../design_system/tokens/app_colors.dart';
 import '../../../../design_system/tokens/app_radii.dart';
 import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../design_system/tokens/app_typography.dart';
-import '../../../../shared/widgets/beer_image.dart';
+import '../../../../shared/widgets/lockable_beer_image.dart';
 import '../../domain/models/beer.dart';
 
-/// A single row in the Discover beer list: image (with a fallback icon when
-/// `imageUrl` is null or fails to load -- most seed rows have no image
-/// today), name, resolved style/country, and an ABV badge when known.
+/// A single row in a beer list (Discover, Add Beer): image (with a fallback
+/// icon when `imageUrl` is null or fails to load -- most seed rows have no
+/// image today), name, resolved style/country, and an ABV badge when known.
 class BeerListTile extends StatelessWidget {
   const BeerListTile({
     required this.beer,
@@ -18,12 +18,19 @@ class BeerListTile extends StatelessWidget {
     super.key,
     this.styleName,
     this.countryName,
+    this.isUnlocked = true,
   });
 
   final Beer beer;
   final String? styleName;
   final String? countryName;
   final VoidCallback onTap;
+
+  /// Whether the current user has already tried this beer. Defaults to
+  /// `true` (normal presentation) -- Add Beer's full-catalog results don't
+  /// need to pass this, while Discover (untried-only) always shows
+  /// `false` anyway. See `LockableBeerImage`.
+  final bool isUnlocked;
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +52,10 @@ class BeerListTile extends StatelessWidget {
                   child: SizedBox(
                     width: 56,
                     height: 56,
-                    child: BeerImage(imageUrl: beer.imageUrl),
+                    child: LockableBeerImage(
+                      imageUrl: beer.imageUrl,
+                      isUnlocked: isUnlocked,
+                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),

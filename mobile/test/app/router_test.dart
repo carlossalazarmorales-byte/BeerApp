@@ -4,6 +4,7 @@ import 'package:beerapp/app/router.dart';
 import 'package:beerapp/core/locale/locale_controller.dart';
 import 'package:beerapp/core/onboarding/age_gate_controller.dart';
 import 'package:beerapp/design_system/components/navigation/bottom_nav_bar.dart';
+import 'package:beerapp/features/add_beer/presentation/add_beer_screen.dart';
 import 'package:beerapp/features/auth/domain/auth_models.dart';
 import 'package:beerapp/features/auth/domain/profile.dart';
 import 'package:beerapp/features/auth/presentation/auth_controller.dart';
@@ -19,7 +20,6 @@ import 'package:beerapp/features/contributions/presentation/contributions_screen
 import 'package:beerapp/features/contributions/presentation/suggest_beer_screen.dart';
 import 'package:beerapp/features/contributions/presentation/suggest_brewery_screen.dart';
 import 'package:beerapp/features/map/presentation/map_screen.dart';
-import 'package:beerapp/features/discover/presentation/discover_screen.dart';
 import 'package:beerapp/features/profile/presentation/edit_profile_screen.dart';
 import 'package:beerapp/features/profile/presentation/profile_screen.dart';
 import 'package:beerapp/features/profile/presentation/settings_screen.dart';
@@ -470,7 +470,7 @@ void main() {
     expect(find.byType(CompleteProfileScreen), findsOneWidget);
   });
 
-  testWidgets('the /scan branch builds without throwing', (tester) async {
+  testWidgets('the /add branch builds without throwing', (tester) async {
     final harness = _Harness(
       ageAcknowledged: true,
       initialUser: const AppUser(id: 'email-user-id'),
@@ -479,75 +479,70 @@ void main() {
     await tester.pumpWidget(harness.app);
     await tester.pumpAndSettle();
 
-    harness.router.go('/scan');
+    harness.router.go(AppRoutes.add);
     await tester.pumpAndSettle();
 
-    expect(find.byType(ScanScreen), findsOneWidget);
+    expect(find.byType(AddBeerScreen), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-    'Scan\'s "Search manually" destination (context.go to Discover) reuses '
-    'the Discover branch\'s existing state rather than reloading it -- '
-    'recorded here as an actual finding, not assumed',
-    (tester) async {
-      final harness = _Harness(
-        ageAcknowledged: true,
-        initialUser: const AppUser(id: 'email-user-id'),
-        initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
-      );
-      harness.catalogRepository.beersByPage[1] = const PagedResult(
-        items: [
-          Beer(
-            id: 'beer-1',
-            officialName: 'Test Pale Ale',
-            breweryId: 'brewery-1',
-            verified: false,
-          ),
-        ],
-        page: 1,
-        pageSize: 20,
-        total: 1,
-      );
+  testWidgets('tapping the center "+" nav item opens Add Beer', (tester) async {
+    final harness = _Harness(
+      ageAcknowledged: true,
+      initialUser: const AppUser(id: 'email-user-id'),
+      initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
+    );
+    await tester.pumpWidget(harness.app);
+    await tester.pumpAndSettle();
 
-      await tester.pumpWidget(harness.app);
-      await tester.pumpAndSettle();
+    // The center nav button (unlike the other four) has no visible label
+    // text, only an icon and a screen-reader Semantics label -- see
+    // ScanNavButton.
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BottomNavBar),
+        matching: find.byIcon(Icons.add),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      harness.router.go('/discover');
-      await tester.pumpAndSettle();
-      expect(find.text('Test Pale Ale'), findsOneWidget);
-      final discoverScreenBefore = tester.widget(find.byType(DiscoverScreen));
-      final loadCallsBefore = harness.catalogRepository.callLog
-          .where((c) => c.startsWith('getBeers'))
-          .length;
+    expect(find.byType(AddBeerScreen), findsOneWidget);
+    expect(
+      find.byType(ScanScreen),
+      findsNothing,
+      reason: 'Scan is no longer a primary bottom-nav destination',
+    );
+  });
 
-      // The exact navigation ScanScreen's "Search manually" action performs
-      // (see scan_screen.dart's `_goToDiscover`) -- a single-route branch,
-      // so `context.go` is expected to resolve the same way `goBranch`
-      // would, per app_routes.dart's `discover` doc comment.
-      harness.router.go('/scan');
-      await tester.pumpAndSettle();
-      harness.router.go(AppRoutes.discover);
-      await tester.pumpAndSettle();
+  testWidgets('/scan is reached only by pushing (e.g. from Add Beer), not as a '
+      'bottom-nav branch, and pops back to its caller', (tester) async {
+    final harness = _Harness(
+      ageAcknowledged: true,
+      initialUser: const AppUser(id: 'email-user-id'),
+      initialProfile: const Profile(id: 'email-user-id', username: 'hoppy'),
+    );
+    await tester.pumpWidget(harness.app);
+    await tester.pumpAndSettle();
 
-      expect(find.text('Test Pale Ale'), findsOneWidget);
-      final discoverScreenAfter = tester.widget(find.byType(DiscoverScreen));
-      final loadCallsAfter = harness.catalogRepository.callLog
-          .where((c) => c.startsWith('getBeers'))
-          .length;
+    harness.router.go(AppRoutes.add);
+    await tester.pumpAndSettle();
+    expect(find.byType(BottomNavBar), findsOneWidget);
 
-      expect(
-        identical(discoverScreenBefore, discoverScreenAfter),
-        isTrue,
-        reason:
-            'context.go(AppRoutes.discover) reuses the existing Discover '
-            'branch, confirmed here rather than assumed',
-      );
-      expect(
-        loadCallsAfter,
-        loadCallsBefore,
-        reason: 'no reload happened -- the previously-loaded list is reused',
-      );
-    },
-  );
+    harness.router.push(AppRoutes.scan);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ScanScreen), findsOneWidget);
+    expect(
+      find.byType(BottomNavBar),
+      findsNothing,
+      reason: 'the scanner is a full-screen route above the shell',
+    );
+    expect(tester.takeException(), isNull);
+
+    harness.router.pop();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ScanScreen), findsNothing);
+    expect(find.byType(AddBeerScreen), findsOneWidget);
+  });
 }

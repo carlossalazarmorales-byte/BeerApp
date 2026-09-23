@@ -6,6 +6,7 @@
   "navMap": "Mapa",
   "navDiscover": "Descubrir",
   "navScan": "Escanear",
+  "navAdd": "Añadir",
   "navCollection": "Colección",
   "navProfile": "Perfil",
 
@@ -93,6 +94,12 @@
   "discoverShowResultsAction": "Mostrar resultados",
   "discoverNoResultsMessage": "Ninguna cerveza coincide con tu búsqueda.",
 
+  "addBeerScreenTitle": "Añadir una cerveza",
+  "addBeerSearchHint": "Busca cervezas, cervecerías, estilos, países",
+  "addBeerNoResultsMessage": "Ninguna cerveza coincide con tu búsqueda.",
+  "addBeerScanAction": "Escanear código de barras",
+  "beerLockedSemanticLabel": "Bloqueada. Aún no has registrado esta cerveza.",
+
   "beerDetailBreweryLabel": "Cervecería",
   "beerDetailStyleLabel": "Estilo",
   "beerDetailAbvLabel": "ABV",
@@ -102,7 +109,6 @@
 
   "cancelAction": "Cancelar",
 
-  "beerDetailLogAction": "Registrar esta cerveza",
   "beerLogSectionTitle": "Tus registros",
   "beerLogEmptyMessage": "Todavía no has registrado esta cerveza.",
   "beerLogLoadMoreAction": "Cargar más",

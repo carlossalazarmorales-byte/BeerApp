@@ -1,6 +1,6 @@
 from app.errors import NotFoundError
 from app.repositories.beers import BeerRepository
-from app.schemas.beers import BeerOut
+from app.schemas.beers import BeerCatalogOut, BeerOut
 from app.schemas.common import Page
 
 
@@ -11,13 +11,15 @@ class BeerService:
     async def list_beers(
         self,
         *,
+        user_id: str,
         country_id: str | None,
         style_id: str | None,
         brewery_id: str | None,
         q: str | None = None,
+        untried_only: bool = False,
         page: int,
         page_size: int,
-    ) -> Page[BeerOut]:
+    ) -> Page[BeerCatalogOut]:
         # Normalized here, not trusted from the caller: surrounding whitespace
         # is stripped and a whitespace-only query is treated as "no search"
         # rather than reaching the repository as an empty/blank ILIKE term.
@@ -26,15 +28,17 @@ class BeerService:
             normalized_q = None
 
         rows, total = await self._repository.list_paginated(
+            user_id=user_id,
             country_id=country_id,
             style_id=style_id,
             brewery_id=brewery_id,
             q=normalized_q,
+            untried_only=untried_only,
             page=page,
             page_size=page_size,
         )
-        return Page[BeerOut](
-            items=[BeerOut.model_validate(dict(row)) for row in rows],
+        return Page[BeerCatalogOut](
+            items=[BeerCatalogOut.model_validate(dict(row)) for row in rows],
             page=page,
             page_size=page_size,
             total=total,

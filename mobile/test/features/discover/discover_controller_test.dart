@@ -25,6 +25,46 @@ Future<void> _awaitDebounce() => Future<void>.delayed(
 );
 
 void main() {
+  test('always requests untried_only=true, with no user-facing toggle to '
+      'turn it off -- QA Round 1 Block 1\'s fixed product rule', () async {
+    final repository = FakeCatalogRepository()
+      ..beersByPage[1] = PagedResult(
+        items: [_beer('1')],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      );
+    final controller = DiscoverController(repository: repository);
+
+    await controller.loadInitial();
+    expect(repository.receivedUntriedOnly, isTrue);
+
+    await controller.applyFilters(styleId: 'style-1');
+    expect(repository.receivedUntriedOnly, isTrue);
+  });
+
+  test('excludes a beer the backend marks as already tried', () async {
+    final repository = FakeCatalogRepository()
+      ..triedBeerIds = {'1'}
+      ..beersByPage[1] = PagedResult(
+        items: [_beer('1'), _beer('2')],
+        page: 1,
+        pageSize: 20,
+        total: 2,
+      );
+    final controller = DiscoverController(repository: repository);
+
+    await controller.loadInitial();
+
+    // The fake still returns both rows (it doesn't simulate server-side
+    // filtering), but Discover's contract is that isTried is always
+    // threaded through per item for the tile to act on.
+    expect(controller.items.map((b) => (b.beer.id, b.isTried)), [
+      ('1', true),
+      ('2', false),
+    ]);
+  });
+
   test('loadInitial populates items on success', () async {
     final repository = FakeCatalogRepository()
       ..beersByPage[1] = PagedResult(
@@ -105,11 +145,11 @@ void main() {
       expect(controller.hasMore, isTrue);
 
       await controller.loadMore();
-      expect(controller.items.map((b) => b.id), ['1', '2']);
+      expect(controller.items.map((b) => b.beer.id), ['1', '2']);
       expect(controller.hasMore, isTrue);
 
       await controller.loadMore();
-      expect(controller.items.map((b) => b.id), ['1', '2', '3']);
+      expect(controller.items.map((b) => b.beer.id), ['1', '2', '3']);
       expect(controller.hasMore, isFalse);
     },
   );
@@ -157,7 +197,7 @@ void main() {
       final f2 = controller.loadMore();
       await Future.wait([f1, f2]);
 
-      expect(controller.items.map((b) => b.id), ['1', '2']);
+      expect(controller.items.map((b) => b.beer.id), ['1', '2']);
       expect(repository.callLog.where((c) => c == 'getBeers:2'), hasLength(1));
     },
   );
@@ -176,7 +216,7 @@ void main() {
     repository.getBeersError = Exception('page 2 failed');
     await controller.loadMore();
 
-    expect(controller.items.map((b) => b.id), ['1']);
+    expect(controller.items.map((b) => b.beer.id), ['1']);
     expect(controller.loadMoreError, isNotNull);
     expect(controller.error, isNull);
   });
@@ -207,7 +247,7 @@ void main() {
       );
       await controller.loadMore();
 
-      expect(controller.items.map((b) => b.id), ['1', '2']);
+      expect(controller.items.map((b) => b.beer.id), ['1', '2']);
       expect(controller.loadMoreError, isNull);
     },
   );
@@ -235,7 +275,7 @@ void main() {
     );
     await controller.refresh();
 
-    expect(controller.items.map((b) => b.id), ['9']);
+    expect(controller.items.map((b) => b.beer.id), ['9']);
     expect(controller.error, isNull);
     expect(controller.loadMoreError, isNull);
     expect(controller.hasMore, isFalse);
@@ -255,7 +295,7 @@ void main() {
     repository.getBeersError = Exception('network blip');
     await controller.refresh();
 
-    expect(controller.items.map((b) => b.id), ['1']);
+    expect(controller.items.map((b) => b.beer.id), ['1']);
     expect(controller.error, isNotNull);
   });
 
@@ -286,7 +326,7 @@ void main() {
       repository.callLog.where((c) => c.startsWith('getBeers')),
       hasLength(1),
     );
-    expect(controller.items.map((b) => b.id), ['stout-1']);
+    expect(controller.items.map((b) => b.beer.id), ['stout-1']);
     expect(controller.query, 'stout');
   });
 
@@ -309,13 +349,13 @@ void main() {
 
     controller.setQuery('stout');
     await _awaitDebounce();
-    expect(controller.items.map((b) => b.id), ['stout-1']);
+    expect(controller.items.map((b) => b.beer.id), ['stout-1']);
 
     controller.setQuery('');
     await Future<void>.delayed(Duration.zero);
 
     expect(controller.query, isEmpty);
-    expect(controller.items.map((b) => b.id), ['all-1']);
+    expect(controller.items.map((b) => b.beer.id), ['all-1']);
   });
 
   test('stale first-page response protection: a slower search does not overwrite a faster later one', () async {
@@ -349,12 +389,12 @@ void main() {
     controller.setQuery('second');
     await _awaitDebounce();
     // By now "second" (no extra delay) has already resolved and applied.
-    expect(controller.items.map((b) => b.id), ['second-result']);
+    expect(controller.items.map((b) => b.beer.id), ['second-result']);
 
     // Let "first"'s slow, now-stale response resolve and confirm it does
     // not clobber "second"'s already-applied result.
     await firstRequestFuture;
-    expect(controller.items.map((b) => b.id), ['second-result']);
+    expect(controller.items.map((b) => b.beer.id), ['second-result']);
   });
 
   test('stale loadMore response protection: a filter change invalidates an in-flight loadMore', () async {
@@ -387,12 +427,12 @@ void main() {
     // Fire a filter change (reloads immediately, no debounce) while
     // loadMore's slower request is still in flight.
     await controller.applyFilters(breweryId: 'brewery-1');
-    expect(controller.items.map((b) => b.id), ['filtered-1']);
+    expect(controller.items.map((b) => b.beer.id), ['filtered-1']);
 
     // loadMore's page-2 response must not be appended once it resolves
     // after the filter change already superseded it.
     await loadMoreFuture;
-    expect(controller.items.map((b) => b.id), ['filtered-1']);
+    expect(controller.items.map((b) => b.beer.id), ['filtered-1']);
   });
 
   test(
@@ -425,7 +465,7 @@ void main() {
         repository.callLog.where((c) => c.startsWith('getBeers')),
         hasLength(1),
       );
-      expect(controller.items.map((b) => b.id), ['filtered']);
+      expect(controller.items.map((b) => b.beer.id), ['filtered']);
       expect(controller.appliedStyleId, 'style-1');
       expect(controller.appliedCountryId, 'country-1');
       expect(controller.appliedBreweryId, 'brewery-1');
@@ -450,12 +490,12 @@ void main() {
     final controller = DiscoverController(repository: repository);
     await controller.loadInitial();
     await controller.applyFilters(breweryId: 'brewery-1');
-    expect(controller.items.map((b) => b.id), ['filtered']);
+    expect(controller.items.map((b) => b.beer.id), ['filtered']);
 
     await controller.clearFilters();
 
     expect(controller.hasActiveFilters, isFalse);
-    expect(controller.items.map((b) => b.id), ['all-1']);
+    expect(controller.items.map((b) => b.beer.id), ['all-1']);
   });
 
   test('loadMore carries the current query and filters', () async {
@@ -477,11 +517,11 @@ void main() {
     await controller.applyFilters(breweryId: 'brewery-1');
     controller.setQuery('stout');
     await _awaitDebounce();
-    expect(controller.items.map((b) => b.id), ['1']);
+    expect(controller.items.map((b) => b.beer.id), ['1']);
 
     await controller.loadMore();
 
-    expect(controller.items.map((b) => b.id), ['1', '2']);
+    expect(controller.items.map((b) => b.beer.id), ['1', '2']);
   });
 
   test(

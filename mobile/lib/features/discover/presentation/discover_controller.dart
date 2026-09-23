@@ -4,8 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../catalog/domain/catalog_filter_options.dart';
 import '../../catalog/domain/catalog_repository.dart';
-import '../../catalog/domain/models/beer.dart';
 import '../../catalog/domain/models/brewery.dart';
+import '../../catalog/domain/models/discover_beer.dart';
 import '../../catalog/presentation/catalog_debug_log.dart';
 
 /// Drives the Discover tab: text search, style/country/brewery filters,
@@ -19,7 +19,7 @@ class DiscoverController extends ChangeNotifier {
 
   final CatalogRepository _repository;
 
-  List<Beer> items = [];
+  List<DiscoverBeer> items = [];
   Map<String, String> styleNames = {};
   Map<String, String> countryNames = {};
   List<Brewery> breweryOptions = [];
@@ -134,6 +134,10 @@ class DiscoverController extends ChangeNotifier {
         styleId: requestStyleId,
         countryId: requestCountryId,
         breweryId: requestBreweryId,
+        // Discover's fixed product rule: only beers the current user has
+        // not yet tried, with no user-facing toggle -- see
+        // docs/QA_ROUND_1.md.
+        untriedOnly: true,
       );
       if (generation != _requestId) return;
 
@@ -172,6 +176,7 @@ class DiscoverController extends ChangeNotifier {
         styleId: requestStyleId,
         countryId: requestCountryId,
         breweryId: requestBreweryId,
+        untriedOnly: true,
       );
       // A query/filter change (or a concurrent refresh) started a new
       // generation while this page was in flight -- its result no longer

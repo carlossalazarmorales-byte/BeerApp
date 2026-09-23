@@ -16,7 +16,11 @@
   },
   "navScan": "Scan",
   "@navScan": {
-    "description": "Bottom navigation label for the Scan destination."
+    "description": "Bottom navigation label for the Scan screen's app bar title. Scan is no longer a bottom-nav destination itself -- it is reached only from the Add Beer screen -- but keeps this title since it still accurately describes the screen."
+  },
+  "navAdd": "Add",
+  "@navAdd": {
+    "description": "Bottom navigation label for the Add Beer destination (center nav action)."
   },
   "navCollection": "Collection",
   "@navCollection": {
@@ -192,7 +196,7 @@
 
   "scanSearchManuallyAction": "Search manually",
   "@scanSearchManuallyAction": {
-    "description": "Button label, shown on every non-scanning Scan screen state, to fall back to the normal Discover search screen."
+    "description": "Button label, shown on every non-scanning Scan screen state, to fall back to the Add Beer screen's manual search (Scan is reached only by pushing from Add Beer, so this pops back to it)."
   },
   "scanPermissionDeniedMessage": "Camera access is needed only for scanning barcodes. If \"Try camera again\" doesn't prompt you, enable camera access for BeerApp in your device's system settings. You can still search for beers manually in the meantime.",
   "@scanPermissionDeniedMessage": {
@@ -236,6 +240,17 @@
   "discoverNoResultsMessage": "No beers match your search.",
   "@discoverNoResultsMessage": {"description": "Shown when a Discover search/filter combination matches no beers."},
 
+  "addBeerScreenTitle": "Add a beer",
+  "@addBeerScreenTitle": {"description": "App bar title for the Add Beer screen, opened from the center bottom-nav action."},
+  "addBeerSearchHint": "Search beers, breweries, styles, countries",
+  "@addBeerSearchHint": {"description": "Placeholder text for the Add Beer screen's search field. Searches the full catalog, including beers the user has already tried."},
+  "addBeerNoResultsMessage": "No beers match your search.",
+  "@addBeerNoResultsMessage": {"description": "Shown when an Add Beer search matches no beers."},
+  "addBeerScanAction": "Scan barcode",
+  "@addBeerScanAction": {"description": "Secondary action on the Add Beer screen that opens the barcode scanner as a shortcut to identify a beer, instead of searching manually."},
+  "beerLockedSemanticLabel": "Locked. You haven't logged this beer yet.",
+  "@beerLockedSemanticLabel": {"description": "Accessible label announced for a beer shown with the locked (not-yet-tried) visual treatment, in addition to its name."},
+
   "beerDetailBreweryLabel": "Brewery",
   "@beerDetailBreweryLabel": {"description": "Label for the brewery field on the beer detail screen."},
   "beerDetailStyleLabel": "Style",
@@ -252,8 +267,6 @@
   "cancelAction": "Cancel",
   "@cancelAction": {"description": "Generic label for a dialog's cancel action."},
 
-  "beerDetailLogAction": "Log this beer",
-  "@beerDetailLogAction": {"description": "Button on the beer detail screen that opens the log-entry form."},
   "beerLogSectionTitle": "Your logs",
   "@beerLogSectionTitle": {"description": "Heading for the list of the current user's own logs for a beer, on the beer detail screen."},
   "beerLogEmptyMessage": "You haven't logged this beer yet.",

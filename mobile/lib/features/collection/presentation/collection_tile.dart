@@ -6,15 +6,15 @@ import '../../../design_system/tokens/app_radii.dart';
 import '../../../design_system/tokens/app_spacing.dart';
 import '../../../design_system/tokens/app_typography.dart';
 import '../../../l10n/generated/app_localizations.dart';
-import '../../../shared/widgets/beer_image.dart';
+import '../../../shared/widgets/lockable_beer_image.dart';
 import '../domain/models/collection_beer.dart';
 
-/// A single row in a Collection list: image, name, brewery/style/country
-/// subtitle, and a favorite-star/wishlist-bookmark/rating badge -- the
-/// affordances `BeerListTile` has no room for (and doesn't need, since
-/// Discover never shows personal state). Kept feature-local since
-/// Collection is its only consumer, rather than extending the shared
-/// `BeerListTile`.
+/// A single row in a Collection list: image (with the shared locked/unlocked
+/// treatment, via `LockableBeerImage`, same as `BeerListTile`), name,
+/// brewery/style/country subtitle, and a favorite-star/wishlist-bookmark/
+/// rating badge -- affordances `BeerListTile` has no room for. Kept
+/// feature-local since Collection is its only consumer, rather than
+/// extending the shared `BeerListTile`.
 class CollectionTile extends StatelessWidget {
   const CollectionTile({required this.beer, required this.onTap, super.key});
 
@@ -46,7 +46,10 @@ class CollectionTile extends StatelessWidget {
                   child: SizedBox(
                     width: 56,
                     height: 56,
-                    child: BeerImage(imageUrl: beer.imageUrl),
+                    child: LockableBeerImage(
+                      imageUrl: beer.imageUrl,
+                      isUnlocked: beer.isTried,
+                    ),
                   ),
                 ),
                 const SizedBox(width: AppSpacing.md),

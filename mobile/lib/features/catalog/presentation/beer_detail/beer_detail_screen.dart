@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../design_system/components/buttons/primary_button.dart';
 import '../../../../design_system/components/cards/app_card.dart';
 import '../../../../design_system/components/states/error_state.dart';
 import '../../../../design_system/components/states/loading_state.dart';
@@ -10,12 +9,11 @@ import '../../../../design_system/tokens/app_spacing.dart';
 import '../../../../design_system/tokens/app_typography.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../shared/collection_refresh_signal.dart';
-import '../../../../shared/widgets/beer_image.dart';
+import '../../../../shared/widgets/lockable_beer_image.dart';
 import '../../../collection/domain/collection_repository.dart';
 import '../../../collection/presentation/collection_state_controller.dart';
 import '../../../logging/domain/log_repository.dart';
 import '../../../logging/presentation/beer_log/beer_log_controller.dart';
-import '../../../logging/presentation/beer_log/log_form_sheet.dart';
 import '../../../logging/presentation/beer_log/log_list_section.dart';
 import '../../domain/catalog_repository.dart';
 import '../catalog_error_text.dart';
@@ -74,17 +72,6 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
     _logController.dispose();
     _collectionController.dispose();
     super.dispose();
-  }
-
-  Future<void> _openLogForm() async {
-    final saved = await LogFormSheet.show(context, controller: _logController);
-    if (saved == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppLocalizations.of(context).beerLogSavedConfirmation),
-        ),
-      );
-    }
   }
 
   @override
@@ -180,6 +167,12 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
 
     final l10n = AppLocalizations.of(context);
     final brewery = _controller.brewery;
+    // While the user's logs for this beer are still loading, show the
+    // normal (unlocked-looking) image rather than flashing locked-then-
+    // unlocked once they arrive -- only a confirmed-empty log list shows
+    // the locked treatment.
+    final isUnlocked =
+        _logController.isLoading || _logController.logs.isNotEmpty;
 
     return SingleChildScrollView(
       child: Column(
@@ -187,7 +180,11 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
         children: [
           AspectRatio(
             aspectRatio: 16 / 9,
-            child: BeerImage(imageUrl: beer.imageUrl, fallbackIconSize: 48),
+            child: LockableBeerImage(
+              imageUrl: beer.imageUrl,
+              fallbackIconSize: 48,
+              isUnlocked: isUnlocked,
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(AppSpacing.lg),
@@ -260,14 +257,6 @@ class _BeerDetailScreenState extends State<BeerDetailScreen> {
                   Text(beer.description!, style: AppTypography.bodyMedium),
                 ],
                 const SizedBox(height: AppSpacing.xl),
-                SizedBox(
-                  width: double.infinity,
-                  child: PrimaryButton(
-                    label: l10n.beerDetailLogAction,
-                    onPressed: _openLogForm,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.lg),
                 LogListSection(controller: _logController),
               ],
             ),

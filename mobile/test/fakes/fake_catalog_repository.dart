@@ -3,6 +3,7 @@ import 'package:beerapp/features/catalog/domain/models/beer.dart';
 import 'package:beerapp/features/catalog/domain/models/beer_style.dart';
 import 'package:beerapp/features/catalog/domain/models/brewery.dart';
 import 'package:beerapp/features/catalog/domain/models/country.dart';
+import 'package:beerapp/features/catalog/domain/models/discover_beer.dart';
 import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
 
 class FakeCatalogRepository implements CatalogRepository {
@@ -33,6 +34,15 @@ class FakeCatalogRepository implements CatalogRepository {
   /// the same page number can return different results for different
   /// searches/filters within one test.
   Map<String, PagedResult<Beer>> beersByRequest = {};
+
+  /// Beer ids that should come back with `isTried: true` in [getBeers]'
+  /// `DiscoverBeer` wrapping -- empty by default, so existing tests that
+  /// never touch this keep seeing every beer as untried/unlocked.
+  Set<String> triedBeerIds = {};
+
+  /// Set by a test to assert [getBeers] received a given `untriedOnly`
+  /// value on its most recent call -- null until the first call.
+  bool? receivedUntriedOnly;
 
   Map<String, Beer> beersById = {};
   Map<String, Beer> beersByBarcode = {};
@@ -80,14 +90,16 @@ class FakeCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<PagedResult<Beer>> getBeers({
+  Future<PagedResult<DiscoverBeer>> getBeers({
     int page = 1,
     int pageSize = 20,
     String? countryId,
     String? styleId,
     String? breweryId,
     String? q,
+    bool untriedOnly = false,
   }) async {
+    receivedUntriedOnly = untriedOnly;
     final hasSearchOrFilter =
         q != null || countryId != null || styleId != null || breweryId != null;
     final callKey = hasSearchOrFilter
@@ -97,18 +109,26 @@ class FakeCatalogRepository implements CatalogRepository {
     await _maybeDelay(callKey);
     final error = getBeersError;
     if (error != null) throw error;
-    if (hasSearchOrFilter) {
-      return beersByRequest[_beersRequestKey(
-            page,
-            q,
-            countryId,
-            styleId,
-            breweryId,
-          )] ??
-          const PagedResult(items: [], page: 1, pageSize: 20, total: 0);
-    }
-    return beersByPage[page] ??
-        const PagedResult(items: [], page: 1, pageSize: 20, total: 0);
+    final result = hasSearchOrFilter
+        ? beersByRequest[_beersRequestKey(
+                page,
+                q,
+                countryId,
+                styleId,
+                breweryId,
+              )] ??
+              const PagedResult(items: [], page: 1, pageSize: 20, total: 0)
+        : beersByPage[page] ??
+              const PagedResult(items: [], page: 1, pageSize: 20, total: 0);
+    return PagedResult(
+      items: [
+        for (final beer in result.items)
+          DiscoverBeer(beer: beer, isTried: triedBeerIds.contains(beer.id)),
+      ],
+      page: result.page,
+      pageSize: result.pageSize,
+      total: result.total,
+    );
   }
 
   static String _beersRequestKey(

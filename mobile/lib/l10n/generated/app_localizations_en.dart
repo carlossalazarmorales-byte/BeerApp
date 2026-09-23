@@ -22,6 +22,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navScan => 'Scan';
 
   @override
+  String get navAdd => 'Add';
+
+  @override
   String get navCollection => 'Collection';
 
   @override
@@ -253,6 +256,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discoverNoResultsMessage => 'No beers match your search.';
 
   @override
+  String get addBeerScreenTitle => 'Add a beer';
+
+  @override
+  String get addBeerSearchHint => 'Search beers, breweries, styles, countries';
+
+  @override
+  String get addBeerNoResultsMessage => 'No beers match your search.';
+
+  @override
+  String get addBeerScanAction => 'Scan barcode';
+
+  @override
+  String get beerLockedSemanticLabel =>
+      'Locked. You haven\'t logged this beer yet.';
+
+  @override
   String get beerDetailBreweryLabel => 'Brewery';
 
   @override
@@ -272,9 +291,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cancelAction => 'Cancel';
-
-  @override
-  String get beerDetailLogAction => 'Log this beer';
 
   @override
   String get beerLogSectionTitle => 'Your logs';

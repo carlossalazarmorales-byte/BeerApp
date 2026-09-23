@@ -116,11 +116,17 @@ abstract class AppLocalizations {
   /// **'Discover'**
   String get navDiscover;
 
-  /// Bottom navigation label for the Scan destination.
+  /// Bottom navigation label for the Scan screen's app bar title. Scan is no longer a bottom-nav destination itself -- it is reached only from the Add Beer screen -- but keeps this title since it still accurately describes the screen.
   ///
   /// In en, this message translates to:
   /// **'Scan'**
   String get navScan;
+
+  /// Bottom navigation label for the Add Beer destination (center nav action).
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get navAdd;
 
   /// Bottom navigation label for the Collection destination.
   ///
@@ -446,7 +452,7 @@ abstract class AppLocalizations {
   /// **'We couldn\'t load the beer catalog. Please try again.'**
   String get catalogErrorGeneric;
 
-  /// Button label, shown on every non-scanning Scan screen state, to fall back to the normal Discover search screen.
+  /// Button label, shown on every non-scanning Scan screen state, to fall back to the Add Beer screen's manual search (Scan is reached only by pushing from Add Beer, so this pops back to it).
   ///
   /// In en, this message translates to:
   /// **'Search manually'**
@@ -542,6 +548,36 @@ abstract class AppLocalizations {
   /// **'No beers match your search.'**
   String get discoverNoResultsMessage;
 
+  /// App bar title for the Add Beer screen, opened from the center bottom-nav action.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a beer'**
+  String get addBeerScreenTitle;
+
+  /// Placeholder text for the Add Beer screen's search field. Searches the full catalog, including beers the user has already tried.
+  ///
+  /// In en, this message translates to:
+  /// **'Search beers, breweries, styles, countries'**
+  String get addBeerSearchHint;
+
+  /// Shown when an Add Beer search matches no beers.
+  ///
+  /// In en, this message translates to:
+  /// **'No beers match your search.'**
+  String get addBeerNoResultsMessage;
+
+  /// Secondary action on the Add Beer screen that opens the barcode scanner as a shortcut to identify a beer, instead of searching manually.
+  ///
+  /// In en, this message translates to:
+  /// **'Scan barcode'**
+  String get addBeerScanAction;
+
+  /// Accessible label announced for a beer shown with the locked (not-yet-tried) visual treatment, in addition to its name.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked. You haven\'t logged this beer yet.'**
+  String get beerLockedSemanticLabel;
+
   /// Label for the brewery field on the beer detail screen.
   ///
   /// In en, this message translates to:
@@ -583,12 +619,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get cancelAction;
-
-  /// Button on the beer detail screen that opens the log-entry form.
-  ///
-  /// In en, this message translates to:
-  /// **'Log this beer'**
-  String get beerDetailLogAction;
 
   /// Heading for the list of the current user's own logs for a beer, on the beer detail screen.
   ///

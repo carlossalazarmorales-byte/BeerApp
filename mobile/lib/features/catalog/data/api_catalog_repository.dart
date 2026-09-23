@@ -4,6 +4,7 @@ import '../domain/models/beer.dart';
 import '../domain/models/beer_style.dart';
 import '../domain/models/brewery.dart';
 import '../domain/models/country.dart';
+import '../domain/models/discover_beer.dart';
 import '../domain/models/paged_result.dart';
 
 /// `CatalogRepository` backed by the FastAPI catalog endpoints. Never reads
@@ -52,13 +53,14 @@ class ApiCatalogRepository implements CatalogRepository {
   }
 
   @override
-  Future<PagedResult<Beer>> getBeers({
+  Future<PagedResult<DiscoverBeer>> getBeers({
     int page = 1,
     int pageSize = 20,
     String? countryId,
     String? styleId,
     String? breweryId,
     String? q,
+    bool untriedOnly = false,
   }) async {
     // Trimmed as a courtesy; the backend normalizes independently and is the
     // source of truth (see docs/API.md), so a whitespace-only value here is
@@ -73,9 +75,10 @@ class ApiCatalogRepository implements CatalogRepository {
         'style_id': ?styleId,
         'brewery_id': ?breweryId,
         if (trimmedQ != null && trimmedQ.isNotEmpty) 'q': trimmedQ,
+        if (untriedOnly) 'untried_only': 'true',
       },
     ) as Map<String, dynamic>;
-    return PagedResult.fromJson(json, Beer.fromJson);
+    return PagedResult.fromJson(json, DiscoverBeer.fromJson);
   }
 
   @override

@@ -200,7 +200,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               itemCount: _controller.items.length + 1,
               itemBuilder: (context, index) {
                 if (index < _controller.items.length) {
-                  final beer = _controller.items[index];
+                  final item = _controller.items[index];
+                  final beer = item.beer;
                   return BeerListTile(
                     beer: beer,
                     styleName: beer.styleId == null
@@ -209,6 +210,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     countryName: beer.countryId == null
                         ? null
                         : _controller.countryNames[beer.countryId],
+                    isUnlocked: !item.isTried,
                     onTap: () =>
                         context.push(AppRoutes.beerDetailPath(beer.id)),
                   );
@@ -384,53 +386,89 @@ class _FiltersSheetState extends State<_FiltersSheet> {
       for (final b in widget.controller.breweryOptions) b.id: b.name,
     };
 
+    // Fixed header + fixed footer, with only the (potentially long, e.g.
+    // ~500 breweries) filter content scrolling between them -- a plain
+    // Column here would overflow off the bottom of the sheet on a short
+    // viewport or a large option count, with no way to reach "Show results"
+    // (see docs/QA_ROUND_1.md and CollectionFilterSheet's identical fix).
+    // isScrollControlled:true on the showModalBottomSheet call lets the
+    // sheet grow to full height; it does not by itself make anything
+    // inside it scrollable.
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight:
+              MediaQuery.sizeOf(context).height * 0.9 -
+              MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.discoverFiltersSheetTitle,
-                  style: AppTypography.titleLarge,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    l10n.discoverFiltersSheetTitle,
+                    style: AppTypography.titleLarge,
+                  ),
+                  TextButton(
+                    onPressed: _clearAll,
+                    child: Text(l10n.discoverClearAllAction),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              // See CollectionFilterSheet's identical structure for why no
+              // shrinkWrap flag is needed here.
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
                 ),
-                TextButton(
-                  onPressed: _clearAll,
-                  child: Text(l10n.discoverClearAllAction),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _FilterSection(
+                      label: l10n.discoverFilterSectionStyle,
+                      options: widget.controller.styleNames,
+                      selectedId: _draftStyleId,
+                      onSelected: (id) => setState(() => _draftStyleId = id),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _FilterSection(
+                      label: l10n.discoverFilterSectionCountry,
+                      options: widget.controller.countryNames,
+                      selectedId: _draftCountryId,
+                      onSelected: (id) => setState(() => _draftCountryId = id),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _FilterSection(
+                      label: l10n.discoverFilterSectionBrewery,
+                      options: breweryNames,
+                      selectedId: _draftBreweryId,
+                      onSelected: (id) => setState(() => _draftBreweryId = id),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            _FilterSection(
-              label: l10n.discoverFilterSectionStyle,
-              options: widget.controller.styleNames,
-              selectedId: _draftStyleId,
-              onSelected: (id) => setState(() => _draftStyleId = id),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _FilterSection(
-              label: l10n.discoverFilterSectionCountry,
-              options: widget.controller.countryNames,
-              selectedId: _draftCountryId,
-              onSelected: (id) => setState(() => _draftCountryId = id),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _FilterSection(
-              label: l10n.discoverFilterSectionBrewery,
-              options: breweryNames,
-              selectedId: _draftBreweryId,
-              onSelected: (id) => setState(() => _draftBreweryId = id),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            SizedBox(
-              width: double.infinity,
-              child: PrimaryButton(
-                label: l10n.discoverShowResultsAction,
-                onPressed: _apply,
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: SizedBox(
+                width: double.infinity,
+                child: PrimaryButton(
+                  label: l10n.discoverShowResultsAction,
+                  onPressed: _apply,
+                ),
               ),
             ),
           ],

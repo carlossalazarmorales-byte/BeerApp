@@ -18,12 +18,27 @@ abstract final class AppRoutes {
   /// The authenticated shell's default destination (Map tab).
   static const String home = '/map';
 
-  /// Discover tab -- also the "search manually" fallback destination from
-  /// the Scan screen (permission denied/unsupported/not-found/error
-  /// states). A single-route `StatefulShellBranch` (no nested sub-routes),
-  /// so `context.go(discover)` resolves straight to that branch like
-  /// `navigationShell.goBranch` would, with no extra navigation plumbing.
+  /// Discover tab. A single-route `StatefulShellBranch` (no nested
+  /// sub-routes), so `context.go(discover)` resolves straight to that
+  /// branch like `navigationShell.goBranch` would, with no extra
+  /// navigation plumbing. Untried-only (QA Round 1 Block 1) -- no longer
+  /// the scanner's manual-search fallback, since it can't show every
+  /// catalog beer; see [add].
   static const String discover = '/discover';
+
+  /// Add Beer tab (center bottom-nav action, replacing the old Scan tab --
+  /// QA Round 1 Block 1). Primary path: search the full catalog (including
+  /// already-tried beers, since a user may log one again) and open the
+  /// existing log form. Secondary path: [scan].
+  static const String add = '/add';
+
+  /// Barcode scanner. No longer its own bottom-nav destination -- a
+  /// push-only route reached only from [add], which awaits its typed
+  /// result (the identified `Beer`, or null if the user backed out/used
+  /// "Search manually") to feed the same log form. Declared as a top-level
+  /// route, same reasoning as [beerDetail] below, so it builds full-screen
+  /// above the bottom-nav shell.
+  static const String scan = '/scan';
 
   /// Beer detail. Declared as a top-level route (not nested inside the
   /// Discover tab's `StatefulShellBranch`) so it builds on the root

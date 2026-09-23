@@ -52,6 +52,7 @@ def _beer_row(name: str) -> dict:
         "source": None,
         "created_at": _NOW,
         "updated_at": _NOW,
+        "is_tried": False,
     }
 
 
@@ -115,7 +116,9 @@ def test_beer_service_builds_page_envelope_from_repository_result():
     service = BeerService(repository)
 
     page = asyncio.run(
-        service.list_beers(country_id=None, style_id=None, brewery_id=None, page=1, page_size=20)
+        service.list_beers(
+            user_id="user-1", country_id=None, style_id=None, brewery_id=None, page=1, page_size=20
+        )
     )
 
     assert page.total == 8
@@ -156,7 +159,13 @@ def test_beer_service_strips_surrounding_whitespace_from_q():
 
     asyncio.run(
         service.list_beers(
-            country_id=None, style_id=None, brewery_id=None, q="  stout  ", page=1, page_size=20
+            user_id="user-1",
+            country_id=None,
+            style_id=None,
+            brewery_id=None,
+            q="  stout  ",
+            page=1,
+            page_size=20,
         )
     )
 
@@ -169,7 +178,13 @@ def test_beer_service_treats_whitespace_only_q_as_no_search():
 
     asyncio.run(
         service.list_beers(
-            country_id=None, style_id=None, brewery_id=None, q="   ", page=1, page_size=20
+            user_id="user-1",
+            country_id=None,
+            style_id=None,
+            brewery_id=None,
+            q="   ",
+            page=1,
+            page_size=20,
         )
     )
 
@@ -182,7 +197,13 @@ def test_beer_service_treats_none_q_as_no_search():
 
     asyncio.run(
         service.list_beers(
-            country_id=None, style_id=None, brewery_id=None, q=None, page=1, page_size=20
+            user_id="user-1",
+            country_id=None,
+            style_id=None,
+            brewery_id=None,
+            q=None,
+            page=1,
+            page_size=20,
         )
     )
 

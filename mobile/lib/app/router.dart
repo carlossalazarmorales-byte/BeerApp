@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/onboarding/age_gate_controller.dart';
 import '../features/achievements/domain/achievements_repository.dart';
 import '../features/achievements/presentation/achievements_screen.dart';
+import '../features/add_beer/presentation/add_beer_screen.dart';
 import '../features/auth/domain/account_repository.dart';
 import '../features/auth/domain/auth_repository.dart';
 import '../features/auth/domain/profile_repository.dart';
@@ -177,6 +178,15 @@ GoRouter createRouter({
           beerId: state.pathParameters['beerId']!,
         ),
       ),
+      // Push-only, reached from AddBeerScreen via context.push<Beer>, which
+      // awaits the identified beer (or null) as this route's typed pop
+      // result -- see AppRoutes.scan's doc comment. Declared as a top-level
+      // route, same reasoning as [beerDetail] above.
+      GoRoute(
+        path: AppRoutes.scan,
+        builder: (context, state) =>
+            ScanScreen(catalogRepository: catalogRepository),
+      ),
       // Declared as a top-level route, not nested inside the Profile
       // branch's `routes` below, for the same reasoning as [beerDetail]
       // above -- full-screen above the bottom-nav shell.
@@ -260,9 +270,12 @@ GoRouter createRouter({
           StatefulShellBranch(
             routes: [
               GoRoute(
-                path: '/scan',
-                builder: (context, state) =>
-                    ScanScreen(catalogRepository: catalogRepository),
+                path: AppRoutes.add,
+                builder: (context, state) => AddBeerScreen(
+                  catalogRepository: catalogRepository,
+                  logRepository: logRepository,
+                  refreshSignal: refreshSignal,
+                ),
               ),
             ],
           ),

@@ -22,6 +22,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get navScan => 'Escanear';
 
   @override
+  String get navAdd => 'Añadir';
+
+  @override
   String get navCollection => 'Colección';
 
   @override
@@ -256,6 +259,24 @@ class AppLocalizationsEs extends AppLocalizations {
       'Ninguna cerveza coincide con tu búsqueda.';
 
   @override
+  String get addBeerScreenTitle => 'Añadir una cerveza';
+
+  @override
+  String get addBeerSearchHint =>
+      'Busca cervezas, cervecerías, estilos, países';
+
+  @override
+  String get addBeerNoResultsMessage =>
+      'Ninguna cerveza coincide con tu búsqueda.';
+
+  @override
+  String get addBeerScanAction => 'Escanear código de barras';
+
+  @override
+  String get beerLockedSemanticLabel =>
+      'Bloqueada. Aún no has registrado esta cerveza.';
+
+  @override
   String get beerDetailBreweryLabel => 'Cervecería';
 
   @override
@@ -275,9 +296,6 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get cancelAction => 'Cancelar';
-
-  @override
-  String get beerDetailLogAction => 'Registrar esta cerveza';
 
   @override
   String get beerLogSectionTitle => 'Tus registros';

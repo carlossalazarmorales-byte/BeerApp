@@ -1,3 +1,4 @@
+import 'package:beerapp/features/catalog/domain/models/brewery.dart';
 import 'package:beerapp/features/catalog/domain/models/paged_result.dart';
 import 'package:beerapp/features/collection/presentation/collection_controller.dart';
 import 'package:beerapp/features/collection/presentation/collection_filter_sheet.dart';
@@ -99,5 +100,62 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(controller.appliedStyleId, isNull);
+  });
+
+  testWidgets('a large option count on a small viewport scrolls instead of '
+      'overflowing, and "Show results" stays reachable', (tester) async {
+    // A phone-sized short viewport (landscape-ish height) combined with a
+    // realistic large brewery count (matching the ~500-brewery catalog
+    // this sheet is filtered against in production) -- the exact
+    // conditions that produced "Bottom Overflowed by 155 pixels" before
+    // this fix (see docs/QA_ROUND_1.md).
+    tester.view.physicalSize = const Size(400, 500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    final controller = await _controllerWithStyleOption();
+    controller.styleNames = {
+      for (var i = 0; i < 40; i++) 'style-$i': 'Style $i',
+    };
+    controller.countryNames = {
+      for (var i = 0; i < 40; i++) 'country-$i': 'Country $i',
+    };
+    controller.breweryOptions = [
+      for (var i = 0; i < 60; i++)
+        Brewery(
+          id: 'brewery-$i',
+          name: 'Brewery $i',
+          countryId: 'country-1',
+          verified: false,
+        ),
+    ];
+
+    await tester.pumpWidget(
+      _wrap(
+        Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () => showModalBottomSheet<void>(
+              context: context,
+              isScrollControlled: true,
+              builder: (_) => CollectionFilterSheet(controller: controller),
+            ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+
+    // The footer button is fixed outside the scrollable filter content
+    // (see CollectionFilterSheet), so it must already be on screen and
+    // tappable without having to scroll anything into view first.
+    final showResults = find.text('Show results');
+    expect(showResults, findsOneWidget);
+    await tester.tap(showResults);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
   });
 }

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -14,11 +12,13 @@ import '../../catalog/presentation/catalog_error_text.dart';
 import '../domain/scan_state.dart';
 import 'scan_controller.dart';
 
-/// Camera barcode scanning -- a secondary, optional shortcut into the same
-/// [BeerDetailScreen] manual search already reaches. Never a parallel
-/// logging system: a successful scan only ever navigates to that beer's
-/// existing detail screen (see app/router.dart's `beerDetail` route); it
-/// never creates a beer, a log, or a contribution.
+/// Camera barcode scanning -- a secondary, optional shortcut reached only by
+/// pushing from the Add Beer screen (see app/router.dart's `scan` route).
+/// Never a parallel logging system: a successful scan only ever pops back
+/// to its caller with the identified `Beer` as the route's result, which
+/// Add Beer feeds into the same log form a manual search would -- this
+/// screen itself never creates a beer, a log, or a contribution, and never
+/// auto-saves anything.
 class ScanScreen extends StatefulWidget {
   const ScanScreen({
     required this.catalogRepository,
@@ -110,30 +110,23 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
     final beer = state.beer;
     if (beer == null) return;
     _handlingFound = true;
-    unawaited(_handleFound(beer));
+    _handleFound(beer);
   }
 
-  Future<void> _handleFound(Beer beer) async {
+  void _handleFound(Beer beer) {
     // The camera is already stopped by the controller before it set
-    // `status = found` -- it stays stopped for this entire push, including
-    // while this screen is backgrounded behind BeerDetail.
-    await context.push(AppRoutes.beerDetailPath(beer.id));
+    // `status = found`. This screen's only job once a beer is identified is
+    // to hand it back to whichever screen pushed this route (Add Beer) --
+    // it never navigates onward itself.
     if (!mounted) return;
-    _controller.onReturnedFromDetail();
-    _handlingFound = false;
-    // Only resume the camera if this tab is genuinely still the visible,
-    // active one -- returning from BeerDetail can land back on any tab if
-    // the user navigated elsewhere in between.
-    if (TickerMode.valuesOf(context).enabled) {
-      _activate();
-    }
+    context.pop(beer);
   }
 
-  void _goToDiscover() {
-    // A single-route branch, so this resolves straight to the Discover tab
-    // like `navigationShell.goBranch` would -- the normal manual-search
-    // screen, which must always stay reachable from here.
-    context.go(AppRoutes.discover);
+  void _goBack() {
+    // "Search manually" falls back to the caller (Add Beer), which already
+    // has its own full-catalog search -- this screen has no manual-search
+    // UI of its own.
+    context.pop();
   }
 
   @override
@@ -171,14 +164,14 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
           retryLabel: l10n.scanTryCameraAgainAction,
           onRetry: _activate,
           secondaryLabel: l10n.scanSearchManuallyAction,
-          onSecondaryAction: _goToDiscover,
+          onSecondaryAction: _goBack,
         );
 
       case ScanStatus.unsupported:
         return ErrorState(
           message: l10n.scanUnsupportedMessage,
           secondaryLabel: l10n.scanSearchManuallyAction,
-          onSecondaryAction: _goToDiscover,
+          onSecondaryAction: _goBack,
         );
 
       case ScanStatus.notFound:
@@ -188,7 +181,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
           retryLabel: l10n.scanAgainAction,
           onRetry: _activate,
           secondaryLabel: l10n.scanSearchManuallyAction,
-          onSecondaryAction: _goToDiscover,
+          onSecondaryAction: _goBack,
           // Manual search stays the primary path; this only opens the
           // suggest-a-beer form prefilled with the scanned code. It adds
           // nothing to the catalog by itself.
@@ -206,7 +199,7 @@ class _ScanScreenState extends State<ScanScreen> with WidgetsBindingObserver {
           retryLabel: l10n.scanAgainAction,
           onRetry: _activate,
           secondaryLabel: l10n.scanSearchManuallyAction,
-          onSecondaryAction: _goToDiscover,
+          onSecondaryAction: _goBack,
         );
 
       case ScanStatus.scanning:

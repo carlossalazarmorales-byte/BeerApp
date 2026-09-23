@@ -102,6 +102,7 @@ void main() {
                   'barcode': null,
                   'verified': true,
                   'source': null,
+                  'is_tried': false,
                 },
               ],
               'page': 2,
@@ -118,7 +119,7 @@ void main() {
 
       final result = await repository.getBeers(page: 2, styleId: 'style-1');
 
-      expect(result.items.single.officialName, 'Guinness Draught');
+      expect(result.items.single.beer.officialName, 'Guinness Draught');
       expect(result.page, 2);
       expect(result.total, 21);
       expect(capturedUri!.queryParameters['page'], '2');

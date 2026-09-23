@@ -37,6 +37,11 @@ class CollectionBeer {
   final int? latestRating;
   final DateTime? latestConsumedAt;
 
+  /// Derived, never stored server-side (mirrors the backend repository's
+  /// own "no separate has_logged boolean" comment): a non-null latest log
+  /// means this beer has at least one log, i.e. it's unlocked.
+  bool get isTried => latestRating != null || latestConsumedAt != null;
+
   factory CollectionBeer.fromJson(Map<String, dynamic> json) {
     return CollectionBeer(
       beerId: json['beer_id'] as String,

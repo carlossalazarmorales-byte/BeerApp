@@ -21,19 +21,23 @@ const _beer = Beer(
   barcode: '5000213007075',
 );
 
-class _PushCountingObserver extends NavigatorObserver {
-  int pushCount = 0;
+class _PopCountingObserver extends NavigatorObserver {
+  int popCount = 0;
 
   @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    pushCount++;
-    super.didPush(route, previousRoute);
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    popCount++;
+    super.didPop(route, previousRoute);
   }
 }
 
 /// Builds a minimal router with just the routes ScanScreen actually
-/// navigates between, so `context.push`/`context.go` inside it exercise the
-/// real go_router integration rather than a reimplementation of it.
+/// navigates between, so `context.push`/`context.pop` inside it exercise
+/// the real go_router integration rather than a reimplementation of it.
+/// `/scan` is reached only by pushing (see `AppRoutes.scan`'s doc comment)
+/// -- `initialLocation` is a placeholder "Add Beer" stand-in so there is
+/// always something for `context.pop()` to return to, exactly like the
+/// real Add Beer screen.
 class _Harness {
   factory _Harness({
     FakeCatalogRepository? repository,
@@ -44,22 +48,21 @@ class _Harness {
       repository: catalogRepository,
       barcodeStream: barcodeStream ?? const Stream<BarcodeCapture>.empty(),
     );
-    final pushObserver = _PushCountingObserver();
+    final popObserver = _PopCountingObserver();
     final router = GoRouter(
-      initialLocation: '/scan',
-      observers: [pushObserver],
+      initialLocation: '/add-placeholder',
+      observers: [popObserver],
       routes: [
         GoRoute(
-          path: '/scan',
+          path: '/add-placeholder',
+          builder: (context, state) => const Scaffold(body: Text('Add screen')),
+        ),
+        GoRoute(
+          path: AppRoutes.scan,
           builder: (context, state) => ScanScreen(
             catalogRepository: catalogRepository,
             controllerOverride: controller,
           ),
-        ),
-        GoRoute(
-          path: AppRoutes.discover,
-          builder: (context, state) =>
-              const Scaffold(body: Text('Discover screen')),
         ),
         GoRoute(
           path: AppRoutes.beerDetail,
@@ -80,19 +83,19 @@ class _Harness {
     return _Harness._(
       controller: controller,
       router: router,
-      pushObserver: pushObserver,
+      popObserver: popObserver,
     );
   }
 
   _Harness._({
     required this.controller,
     required this.router,
-    required this.pushObserver,
+    required this.popObserver,
   });
 
   final ScanController controller;
   final GoRouter router;
-  final _PushCountingObserver pushObserver;
+  final _PopCountingObserver popObserver;
 
   // TickerMode(enabled: false) keeps ScanScreen's own automatic
   // activate-the-real-camera attempt (see `didChangeDependencies`) from
@@ -109,6 +112,15 @@ class _Harness {
       supportedLocales: AppLocalizations.supportedLocales,
     ),
   );
+
+  /// Pushes `/scan` the way AddBeerScreen does (`context.push<Beer>`),
+  /// returning the future that resolves with whatever `/scan` eventually
+  /// pops with. Deliberately NOT `async`/awaiting anything itself -- an
+  /// `async` function that `return`s a `Future` chains onto it, so this
+  /// call wouldn't return until `/scan` actually pops. Callers pump
+  /// separately, then await the returned future whenever (if ever) they
+  /// care about its result.
+  Future<Beer?> pushScan() => router.push<Beer?>(AppRoutes.scan);
 }
 
 void main() {
@@ -128,7 +140,8 @@ void main() {
     addTearDown(barcodes.close);
 
     await tester.pumpWidget(harness.app);
-    await tester.pump();
+    unawaited(harness.pushScan());
+    await tester.pumpAndSettle();
 
     barcodes.add(
       const BarcodeCapture(barcodes: [Barcode(rawValue: '0000000000000')]),
@@ -156,7 +169,8 @@ void main() {
     addTearDown(barcodes.close);
 
     await tester.pumpWidget(harness.app);
-    await tester.pump();
+    unawaited(harness.pushScan());
+    await tester.pumpAndSettle();
 
     barcodes.add(
       const BarcodeCapture(barcodes: [Barcode(rawValue: '5000213007075')]),
@@ -172,7 +186,8 @@ void main() {
   });
 
   testWidgets(
-    '"Search manually" navigates to the Discover screen from the not-found state',
+    '"Search manually" pops back to the caller (Add Beer) with no beer, '
+    'from the not-found state',
     (tester) async {
       final repository = FakeCatalogRepository()
         ..getBeerByBarcodeError = const NotFoundApiException(
@@ -187,7 +202,8 @@ void main() {
       addTearDown(barcodes.close);
 
       await tester.pumpWidget(harness.app);
-      await tester.pump();
+      final resultFuture = harness.pushScan();
+      await tester.pumpAndSettle();
 
       barcodes.add(
         const BarcodeCapture(barcodes: [Barcode(rawValue: '0000000000000')]),
@@ -197,7 +213,8 @@ void main() {
       await tester.tap(find.text('Search manually'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Discover screen'), findsOneWidget);
+      expect(find.text('Add screen'), findsOneWidget);
+      expect(await resultFuture, isNull);
     },
   );
 
@@ -218,7 +235,8 @@ void main() {
       addTearDown(barcodes.close);
 
       await tester.pumpWidget(harness.app);
-      await tester.pump();
+      unawaited(harness.pushScan());
+      await tester.pumpAndSettle();
       barcodes.add(
         const BarcodeCapture(barcodes: [Barcode(rawValue: '036000291452')]),
       );
@@ -248,7 +266,8 @@ void main() {
     addTearDown(barcodes.close);
 
     await tester.pumpWidget(harness.app);
-    await tester.pump();
+    unawaited(harness.pushScan());
+    await tester.pumpAndSettle();
     barcodes.add(
       const BarcodeCapture(barcodes: [Barcode(rawValue: '5000213007075')]),
     );
@@ -259,7 +278,8 @@ void main() {
   });
 
   testWidgets(
-    'a found beer triggers exactly one navigation push, even if detected twice',
+    'a found beer pops back to the caller with exactly one result, even if '
+    'detected twice',
     (tester) async {
       final repository = FakeCatalogRepository()
         ..beersByBarcode['5000213007075'] = _beer;
@@ -271,11 +291,9 @@ void main() {
       addTearDown(barcodes.close);
 
       await tester.pumpWidget(harness.app);
-      await tester.pump();
-      // The initial route build itself already counts as one push --
-      // baseline from here so the assertion below is unambiguous about
-      // what it's actually counting.
-      final pushesBeforeDetection = harness.pushObserver.pushCount;
+      final resultFuture = harness.pushScan();
+      await tester.pumpAndSettle();
+      final popsBeforeDetection = harness.popObserver.popCount;
 
       barcodes
         ..add(
@@ -286,11 +304,13 @@ void main() {
         );
       await tester.pumpAndSettle();
 
-      expect(find.text('Beer detail: beer-1'), findsOneWidget);
+      final result = await resultFuture;
+      expect(result?.id, 'beer-1');
+      expect(find.text('Add screen'), findsOneWidget);
       expect(
-        harness.pushObserver.pushCount - pushesBeforeDetection,
+        harness.popObserver.popCount - popsBeforeDetection,
         1,
-        reason: 'two detections of the same barcode must push exactly once',
+        reason: 'two detections of the same barcode must pop exactly once',
       );
     },
   );

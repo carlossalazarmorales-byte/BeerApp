@@ -208,13 +208,17 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ScanNavButton(semanticLabel: 'Scan', onTap: () {}),
+            body: ScanNavButton(
+              semanticLabel: 'Add',
+              icon: Icons.add,
+              onTap: () {},
+            ),
           ),
         ),
       );
 
       expect(
-        tester.widget<Icon>(find.byIcon(Icons.qr_code_scanner)).color,
+        tester.widget<Icon>(find.byIcon(Icons.add)).color,
         AppColors.onPrimaryGradient,
       );
       final decoration = tester

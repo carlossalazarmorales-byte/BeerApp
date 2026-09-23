@@ -8,93 +8,158 @@ with a documented reason. Status tags: open / implemented / deferred / rejected.
 
 ## Block 1 — Core UX
 
-### 2026-09-22 — Locked/unlocked beer visual state — open (decided, pending implementation)
+### 2026-09-22 — Locked/unlocked beer visual state — implemented (2026-09-23)
 A beer is "unlocked" for the current user once they have at least one log for
 it. Unlocked: normal image/presentation. Locked: grayscale/muted image (never
 fully opaque, never blurred), a small lock badge as a corner overlay (not a
 large centered icon obscuring the image), beer remains fully tappable, detail
 screen remains readable. Accessibility semantics must announce locked state
 without making the tile inaccessible. One shared, reusable presentation
-component — not per-screen logic. No DB migration is currently expected for
-this specific join: the existing `user_beer_logs`
-`(user_id, beer_id, consumed_at, id)` index already serves the per-beer EXISTS
-lookup this requires, and this EXISTS pattern is already implemented and
-exercised by the current Map and Collection query paths.
+component — not per-screen logic. No DB migration was needed for this join:
+the existing `user_beer_logs` `(user_id, beer_id, consumed_at, id)` index
+serves the per-beer EXISTS lookup, verified against a real disposable
+Postgres.
 
-### 2026-09-22 — Discover is untried-only, no toggle — open (decided, pending implementation)
+**Implementation:** `mobile/lib/shared/widgets/lockable_beer_image.dart`
+(new shared widget: grayscale `ColorFilter`, corner lock badge, localized
+semantics). Backend: `GET /beers` now returns `is_tried` per row
+(`BeerCatalogOut` in `backend/app/schemas/beers.py`,
+`backend/app/repositories/beers.py`), scoped to the RLS-protected
+`user_beer_logs` table via `scoped_connection` — verified that another
+user's log never marks a beer tried for the current user
+(`test_is_tried_reflects_only_the_requesting_users_own_logs`). Adopted by
+Discover (`beer_list_tile.dart`), Collection (`collection_tile.dart`, a new
+derived `CollectionBeer.isTried` getter), and Beer Detail
+(`beer_detail_screen.dart`, derived from `BeerLogController.isLoading`/
+`logs.isNotEmpty` so the hero never flashes locked-then-unlocked while
+logs are still loading).
+
+### 2026-09-22 — Discover is untried-only, no toggle — implemented (2026-09-23)
 The Discover *screen* must show only beers the current user has not yet
 unlocked/tried, with no user-facing toggle. Tried beers remain reachable via
 Collection, map, and detail flows. This is a product rule for Discover
 specifically — it does **not** mean the underlying catalog endpoint loses the
-ability to return the full catalog. See the next entry for how Add Beer's
-different requirement is kept compatible with this. Must stay server-side
-(anti-join in the paginated query), keep existing pagination/infinite-scroll,
-search, and filters. See the performance-note entry below before
-implementing.
+ability to return the full catalog. Must stay server-side (anti-join in the
+paginated query), keep existing pagination/infinite-scroll, search, and
+filters.
 
-### 2026-09-22 — Add Beer search uses the full catalog, not untried-only — open (decided, pending implementation)
+**Implementation:** `GET /beers?untried_only=true` (`backend/app/routes/beers.py`,
+`backend/app/repositories/beers.py`'s `_build_query`, a `NOT EXISTS` against
+`user_beer_logs`). `DiscoverController` (`mobile/lib/features/discover/presentation/discover_controller.dart`)
+always passes `untriedOnly: true` on every load/search/filter/page-more
+call — no toggle exposed anywhere in the UI. See the performance entry below
+for the required profiling this shipped with.
+
+### 2026-09-22 — Add Beer search uses the full catalog, not untried-only — implemented (2026-09-23)
 Add Beer's manual search/select step must be able to find *any* catalog beer,
 including beers the user has already tried — a user may deliberately log the
 same beer again. Barcode-scanner identification inside Add Beer must likewise
-resolve both tried and untried beers. Consequently `GET /beers` (or its
-repository layer) must keep a general, reusable "list catalog beers" behavior;
-the untried-only exclusion is a mode Discover explicitly requests (e.g. a
-query/repository parameter), not a permanent property of the endpoint. Do not
-build a second catalog implementation for Add Beer — both features must go
-through the same underlying repository/query/search/filter logic, just with
-that parameter set differently.
+resolve both tried and untried beers. `GET /beers` (or its repository layer)
+keeps a general, reusable "list catalog beers" behavior; the untried-only
+exclusion is a mode Discover explicitly requests, not a permanent property of
+the endpoint. No second catalog implementation was built.
 
-### 2026-09-22 — Filter sheet overflow (Collection + Discover) — open (decided, pending implementation)
+**Implementation:** `AddBeerController`
+(`mobile/lib/features/add_beer/presentation/add_beer_controller.dart`) calls
+the same `CatalogRepository.getBeers` Discover uses, simply omitting
+`untriedOnly` (defaults `false`). Backend: one query builder
+(`BeerRepository._build_query`/`list_paginated`) serves both modes; verified
+with backend tests that a tried beer is included in the plain/full mode and
+excluded only when `untried_only=true`
+(`test_untried_only_excludes_a_beer_the_user_has_logged`,
+`test_untried_only_includes_a_beer_the_user_has_not_logged`) and with a
+Flutter widget test that both a tried and an untried beer are shown and
+selectable in Add Beer.
+
+### 2026-09-22 — Filter sheet overflow (Collection + Discover) — implemented (2026-09-23)
 Real bug: Collection's filter sheet produces "Bottom Overflowed by 155
 pixels" and blocks reaching search/apply/exit controls. Root cause: a plain
 non-scrollable `Column` inside the bottom sheet. The identical structural
-defect exists in Discover's own filter sheet (not yet reported by QA, but
-present) and must be fixed in the same pass, not deferred. Target layout:
-fixed header (if applicable), scrollable filter content, fixed/reachable
-bottom actions, safe on small screens, large option counts, and supported
-text scaling. Regression tests required for both sheets.
+defect existed in Discover's own filter sheet and was fixed in the same pass.
 
-### 2026-09-22 — Center nav becomes Add Beer (+), Scanner demoted to secondary — open (decided, pending implementation)
+**Implementation:** both `CollectionFilterSheet`
+(`mobile/lib/features/collection/presentation/collection_filter_sheet.dart`)
+and Discover's `_FiltersSheet`
+(`mobile/lib/features/discover/presentation/discover_screen.dart`) now use a
+fixed header, a `ConstrainedBox`-capped `Flexible(SingleChildScrollView(...))`
+for the filter content (shrinks to content on a small option set, scrolls
+once content exceeds the cap), and a fixed footer for "Show results" —
+verified reachable and hit-testable in both. Regression widget tests added
+in `mobile/test/features/collection/collection_filter_sheet_test.dart` and
+`mobile/test/features/discover/discover_screen_test.dart`, each pumping a
+~40-140-option filter set on a 400×500 viewport and asserting no thrown
+overflow exception and that "Show results" stays tappable.
+
+### 2026-09-22 — Center nav becomes Add Beer (+), Scanner demoted to secondary — implemented (2026-09-23)
 Center bottom-nav action changes from Scanner-first to a Plus/Add Beer
 screen. Scanner is no longer a primary bottom-nav destination. Add Beer
 screen: primary path is search → select beer (full catalog, see above) →
 existing `LogFormSheet` → save; secondary path is "Scan barcode" → existing
 scanner → if a beer is identified (tried or untried) → same `LogFormSheet` →
-save. Scanner must never auto-create or auto-save a log (already true today —
-preserve this). Implementation replaces the current Scan `StatefulShellBranch`
-in the router with an Add branch; Scanner becomes a push-only route reached
-from Add. Today the scanner navigates a recognized barcode straight to Beer
-Detail; under the new flow it instead needs to return the identified beer back
-into the Add flow (a result-return/callback/route-result mechanism, whichever
-fits the existing router architecture), so some change to the scanner
-screen/controller/route-result flow should be expected — this is not
-predeclared as untouched. Constraints: preserve the existing barcode-decoding
-implementation, do not build a second scanner, preserve the existing
-unknown-barcode → suggest-a-beer contribution handoff as-is, and ensure both a
-known *tried* and a known *untried* beer can return into the Add flow.
+save. Scanner never auto-creates or auto-saves a log.
 
-### 2026-09-22 — Log creation centralized through Add flow — open (decided, pending implementation)
-User-facing creation of new logs happens only through the Add/+ flow. Remove
-Beer Detail's "Log / Register Beer" creation action. Beer Detail remains for
-information, existing log/history display, and other non-creation actions.
-Editing an existing log continues through the existing log/history UI
-(unchanged). Reuse the existing `LogFormSheet`/`BeerLogController` from the
-Add flow — do not duplicate the form.
+**Implementation:** `mobile/lib/app/router.dart` replaces the `/scan`
+`StatefulShellBranch` with `AppRoutes.add` → `AddBeerScreen`; `/scan`
+becomes a top-level push-only `GoRoute`. `bottom_nav_bar.dart`'s center slot
+now shows `Icons.add`/"Add" (`ScanNavButton`'s icon is a parameter, not
+hardcoded). `scan_screen.dart`: a found beer now pops the route with the
+`Beer` as its result (`context.pop(beer)`) instead of pushing to Beer
+Detail; "Search manually" pops with no beer instead of `context.go`'ing to
+Discover (Discover can no longer serve as a full-catalog fallback — see the
+Add Beer entry above). The barcode-decoding implementation, the
+unknown-barcode → suggest-a-beer handoff, and the never-auto-save guarantee
+are all unchanged. New `mobile/lib/features/add_beer/` feature
+(`AddBeerScreen`/`AddBeerController`). Covered by
+`mobile/test/app/router_test.dart` (branch reachability, `/scan` push/pop),
+`mobile/test/features/scan/presentation/scan_screen_test.dart` (rewritten
+for the pop-based flow), and
+`mobile/test/features/add_beer/add_beer_screen_test.dart` (scan → identified
+beer → same log form, scanner never auto-saves).
 
-### 2026-09-22 — Performance verification required before Discover untried-only ships — open
-No DB migration is currently expected from the existing schema/indexes, but
-this must not be treated as a final conclusion until the Discover
-untried-only query is profiled. Before shipping, profile the actual proposed
-query shape (Discover's anti-join mode, not Add Beer's general mode) on the
-disposable database at synthetic catalog sizes of ~2,000 / ~10,000 / ~50,000
-beers (comparable to Phase 14). Measure, using `EXPLAIN (ANALYZE, BUFFERS)`
-where useful: untried-only first page, untried-only high-offset page,
-untried-only + search, untried-only + country/style filters, and the count
-query if pagination keeps one. Do not add `pg_trgm`, new indexes, cursor
-pagination, or migrations unless this evidence shows a real need — if it
-does, report that as a separate proposal before implementing it. This
-profiling is the first sub-step of the Discover untried-only implementation
-stage, not a separate documentation task.
+### 2026-09-22 — Log creation centralized through Add flow — implemented (2026-09-23)
+User-facing creation of new logs happens only through the Add/+ flow.
+Removed Beer Detail's "Log / Register Beer" creation action. Beer Detail
+remains for information, existing log/history display, and other
+non-creation actions. Editing an existing log continues through the existing
+log/history UI, unchanged.
+
+**Implementation:** `beer_detail_screen.dart`'s primary log-creation button
+and `_openLogForm` removed; `LogListSection`'s existing-log edit path
+(`log_form_sheet.dart` reused, not duplicated) is untouched. Covered by
+`mobile/test/features/catalog/presentation/beer_detail_screen_test.dart`
+(asserts the button is absent; a separate test confirms the locked/unlocked
+hero states).
+
+### 2026-09-22 — Performance verification required before Discover untried-only ships — implemented (2026-09-23), see escalation below
+Profiled the actual proposed query shapes (untried-only first page,
+high-offset page, +search, +country/style filter, count) against a real,
+RLS-enforced disposable Postgres at synthetic catalogs of ~2,000 / ~10,000 /
+~50,000 beers, two selectivities (~7% and ~80% tried).
+
+**Result:** acceptable (sub-~30ms) at all three sizes for plain browsing
+(first page, country/style filter). **Not acceptable at 50,000 beers** for
+two shapes: untried-only + text search (230–292ms) and deep pagination for
+a low-tried-fraction user (~226ms at ~40% through the result set) — both
+because the anti-join forces a full sequential scan of `beers`, which no
+existing index can avoid. Per the explicit stop condition, **no index,
+migration, or architecture change was made automatically.** See the new
+escalation entry immediately below. The implemented `untried_only`/`is_tried`
+feature itself ships as designed — the current real catalog (~8 beers) is
+far below where this becomes observable, and Block 4 (Catalog Expansion) has
+not started.
+
+### 2026-09-23 — Escalation: Discover search/deep-pagination will need a scaling fix before Block 4's catalog growth — open
+Evidence (see the performance entry above): at ~50,000 beers, `untried_only`
+combined with text search takes ~230–290ms, and deep pagination for a user
+who has tried few beers takes ~226ms — both driven by an unavoidable
+sequential scan on `public.beers` (no index can pre-filter "not referenced
+by another table"). Not a Block 1 blocker at today's real catalog size, but
+must be resolved before Block 4 grows the catalog toward that range.
+Candidate fixes to evaluate then (none implemented, none decided): a
+trigram/`pg_trgm` index to speed the search side independent of the
+anti-join, restructuring the anti-join (e.g. a materialized "untried count"
+or a different join shape), or cursor-based pagination for the deep-offset
+case. Owner decision needed on which to pursue once Block 4 is scheduled.
 
 ---
 

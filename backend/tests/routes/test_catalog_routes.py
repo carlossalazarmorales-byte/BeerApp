@@ -10,7 +10,7 @@ from app.dependencies import (
 from app.errors import NotFoundError
 from app.main import app
 from app.schemas.beer_styles import BeerStyleOut
-from app.schemas.beers import BeerOut
+from app.schemas.beers import BeerCatalogOut, BeerOut
 from app.schemas.breweries import BreweryOut
 from app.schemas.common import Page
 from app.schemas.countries import CountryOut
@@ -117,25 +117,38 @@ def _beer_out() -> BeerOut:
     )
 
 
+def _beer_catalog_out(*, is_tried: bool = False) -> BeerCatalogOut:
+    return BeerCatalogOut(**_beer_out().model_dump(), is_tried=is_tried)
+
+
 class _FakeBeerService:
-    def __init__(self, *, found: bool = True) -> None:
+    def __init__(self, *, found: bool = True, is_tried: bool = False) -> None:
         self._found = found
+        self._is_tried = is_tried
         self.received_q: str | None = None
         self.received_barcode: str | None = None
+        self.received_user_id: str | None = None
+        self.received_untried_only: bool | None = None
 
     async def list_beers(
         self,
         *,
+        user_id: str,
         country_id: str | None,
         style_id: str | None,
         brewery_id: str | None,
         q: str | None = None,
+        untried_only: bool = False,
         page: int,
         page_size: int,
-    ) -> Page[BeerOut]:
+    ) -> Page[BeerCatalogOut]:
         self.received_q = q
-        items = [_beer_out()] if self._found else []
-        return Page[BeerOut](items=items, page=page, page_size=page_size, total=len(items))
+        self.received_user_id = user_id
+        self.received_untried_only = untried_only
+        items = [_beer_catalog_out(is_tried=self._is_tried)] if self._found else []
+        return Page[BeerCatalogOut](
+            items=items, page=page, page_size=page_size, total=len(items)
+        )
 
     async def get_beer(self, beer_id: str) -> BeerOut:
         if not self._found:
@@ -415,3 +428,50 @@ def test_list_beers_q_over_max_length_is_422(client, authenticated):
 
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "validation_error"
+
+
+def test_list_beers_passes_authenticated_user_id_through(client, authenticated):
+    fake = _FakeBeerService()
+    _override(get_beer_service, fake)
+    try:
+        client.get("/beers")
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert fake.received_user_id == "11111111-1111-1111-1111-111111111111"
+
+
+def test_list_beers_untried_only_defaults_to_false(client, authenticated):
+    fake = _FakeBeerService()
+    _override(get_beer_service, fake)
+    try:
+        client.get("/beers")
+    finally:
+        _clear_overrides(get_beer_service)
+
+    # Default (Add Beer's shape): the full catalog, not just untried beers.
+    assert fake.received_untried_only is False
+
+
+def test_list_beers_untried_only_true_is_passed_through(client, authenticated):
+    fake = _FakeBeerService()
+    _override(get_beer_service, fake)
+    try:
+        client.get("/beers", params={"untried_only": "true"})
+    finally:
+        _clear_overrides(get_beer_service)
+
+    # Discover's shape: no user-facing toggle, but the API itself accepts
+    # the explicit flag from whichever caller wants it.
+    assert fake.received_untried_only is True
+
+
+def test_list_beers_response_includes_is_tried(client, authenticated):
+    _override(get_beer_service, _FakeBeerService(is_tried=True))
+    try:
+        response = client.get("/beers")
+    finally:
+        _clear_overrides(get_beer_service)
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["is_tried"] is True

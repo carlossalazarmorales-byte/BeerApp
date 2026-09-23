@@ -52,53 +52,97 @@ class _CollectionFilterSheetState extends State<CollectionFilterSheet> {
       for (final b in widget.controller.breweryOptions) b.id: b.name,
     };
 
+    // Fixed header + fixed footer, with only the (potentially long, e.g.
+    // ~500 breweries) filter content scrolling between them -- a plain
+    // Column here would overflow off the bottom of the sheet on a short
+    // viewport or a large option count, with no way to reach "Show results"
+    // (see docs/QA_ROUND_1.md). isScrollControlled:true on the
+    // showModalBottomSheet call lets the sheet grow to full height; it does
+    // not by itself make anything inside it scrollable.
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
+      child: ConstrainedBox(
+        // Caps the sheet at 90% of the viewport (accounting for the
+        // keyboard, if open) so there is always room to see the footer
+        // button below it -- the Flexible/shrinkWrap combination below then
+        // sizes the sheet to its content up to this bound, and only
+        // scrolls the filter section once content actually exceeds it.
+        constraints: BoxConstraints(
+          maxHeight:
+              MediaQuery.sizeOf(context).height * 0.9 -
+              MediaQuery.viewInsetsOf(context).bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  l10n.collectionFiltersSheetTitle,
-                  style: AppTypography.titleLarge,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                0,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    l10n.collectionFiltersSheetTitle,
+                    style: AppTypography.titleLarge,
+                  ),
+                  TextButton(
+                    onPressed: _clearAll,
+                    child: Text(l10n.discoverClearAllAction),
+                  ),
+                ],
+              ),
+            ),
+            Flexible(
+              // A single-child scroll view already sizes itself to
+              // min(content height, the incoming bounded constraint) with no
+              // shrinkWrap flag needed (unlike a lazy ListView) -- so this
+              // shrinks to content for a small filter set, and only scrolls
+              // once content exceeds the Flexible's allocated share of the
+              // ConstrainedBox above.
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.md,
                 ),
-                TextButton(
-                  onPressed: _clearAll,
-                  child: Text(l10n.discoverClearAllAction),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _FilterSection(
+                      label: l10n.discoverFilterSectionStyle,
+                      options: widget.controller.styleNames,
+                      selectedId: _draftStyleId,
+                      onSelected: (id) => setState(() => _draftStyleId = id),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _FilterSection(
+                      label: l10n.discoverFilterSectionCountry,
+                      options: widget.controller.countryNames,
+                      selectedId: _draftCountryId,
+                      onSelected: (id) => setState(() => _draftCountryId = id),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _FilterSection(
+                      label: l10n.discoverFilterSectionBrewery,
+                      options: breweryNames,
+                      selectedId: _draftBreweryId,
+                      onSelected: (id) => setState(() => _draftBreweryId = id),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            _FilterSection(
-              label: l10n.discoverFilterSectionStyle,
-              options: widget.controller.styleNames,
-              selectedId: _draftStyleId,
-              onSelected: (id) => setState(() => _draftStyleId = id),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _FilterSection(
-              label: l10n.discoverFilterSectionCountry,
-              options: widget.controller.countryNames,
-              selectedId: _draftCountryId,
-              onSelected: (id) => setState(() => _draftCountryId = id),
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            _FilterSection(
-              label: l10n.discoverFilterSectionBrewery,
-              options: breweryNames,
-              selectedId: _draftBreweryId,
-              onSelected: (id) => setState(() => _draftBreweryId = id),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            SizedBox(
-              width: double.infinity,
-              child: PrimaryButton(
-                label: l10n.discoverShowResultsAction,
-                onPressed: _apply,
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.lg),
+              child: SizedBox(
+                width: double.infinity,
+                child: PrimaryButton(
+                  label: l10n.discoverShowResultsAction,
+                  onPressed: _apply,
+                ),
               ),
             ),
           ],

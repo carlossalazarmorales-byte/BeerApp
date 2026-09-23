@@ -410,6 +410,62 @@ void main() {
         expect(find.text('Filtered Beer'), findsNothing);
       },
     );
+
+    testWidgets('a large option count on a small viewport scrolls instead of '
+        'overflowing, and "Show results" stays reachable -- the same '
+        'structural bug and fix as CollectionFilterSheet', (tester) async {
+      tester.view.physicalSize = const Size(400, 500);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      final repository = FakeCatalogRepository()
+        ..beersByPage[1] = PagedResult(
+          items: [_beers(1)[0]],
+          page: 1,
+          pageSize: 20,
+          total: 1,
+        )
+        ..beerStyles = [
+          for (var i = 0; i < 40; i++)
+            BeerStyle(id: 'style-$i', name: 'Style $i'),
+        ]
+        ..countries = [
+          for (var i = 0; i < 40; i++)
+            Country(
+              id: 'country-$i',
+              isoCode: 'C$i',
+              name: 'Country $i',
+              continent: 'Europe',
+            ),
+        ]
+        ..breweriesByPage[1] = PagedResult(
+          items: [
+            for (var i = 0; i < 60; i++)
+              Brewery(
+                id: 'brewery-$i',
+                name: 'Brewery $i',
+                countryId: 'country-1',
+                verified: false,
+              ),
+          ],
+          page: 1,
+          pageSize: 100,
+          total: 60,
+        );
+
+      await tester.pumpWidget(_wrap(DiscoverScreen(repository: repository)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Filters'));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      final showResults = find.text('Show results');
+      expect(showResults, findsOneWidget);
+      await tester.tap(showResults);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    });
   });
 
   testWidgets(

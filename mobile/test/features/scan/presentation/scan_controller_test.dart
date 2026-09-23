@@ -141,7 +141,7 @@ void main() {
       await pumpEventQueue();
       expect(controller.state.status, ScanStatus.found);
 
-      controller.onReturnedFromDetail();
+      controller.resetForScanning();
 
       expect(controller.state.status, ScanStatus.scanning);
       expect(controller.state.beer, isNull);
@@ -155,9 +155,9 @@ void main() {
       await pumpEventQueue();
       expect(controller.state.status, ScanStatus.found);
 
-      // The controller stays in `found` (navigation pending) until the
-      // screen calls onReturnedFromDetail -- a stray extra detection here
-      // must not trigger a second lookup/state change.
+      // The controller stays in `found` (navigation pending, the screen
+      // about to pop with this result) -- a stray extra detection here must
+      // not trigger a second lookup/state change.
       detect('5000213007075');
       await pumpEventQueue();
 
